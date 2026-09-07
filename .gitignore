@@ -1,0 +1,19 @@
+# Local secrets; only placeholder examples may be committed.
+.env
+.env.*
+!.env.example
+
+# Local Python environments and generated caches.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local operating-system files.
+.DS_Store
