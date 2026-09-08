@@ -3,6 +3,9 @@
 Status: Initial scope draft, reviewed during Month 03 / Week 09.
 Detailed domain and authorization design remains in progress.
 
+The [domain model](domain-model.md) records the reviewed Week 09 Tuesday
+decisions. Detailed relational and access-control design remains pending.
+
 ## Problem
 
 Support requests tracked through scattered messages are difficult to follow.
@@ -76,6 +79,8 @@ unchanged.
 - Docker and Docker Compose setup.
 - File-content upload, download, and object storage.
 - Refresh tokens, MFA, billing, and enterprise SSO.
+- User-facing comment editing/deletion and staff-only internal notes.
+- Attachment-to-Comment relationships.
 
 ## Acceptance Scenarios
 
@@ -117,15 +122,36 @@ And the stored ticket status remains unchanged
 This proposed restriction will be reviewed in the access-control and
 status-transition matrices before implementation.
 
+## Reviewed Domain Policies
+
+- An active Organization has exactly one active owner membership belonging to
+  an active User. Ownership transfer is atomic; the previous owner becomes admin.
+- Each User-Organization pair has at most one membership record across all states.
+  Rejoining reactivates that record with an explicitly authorized current role.
+- A User cannot be deactivated while owning an active Organization.
+- The current customer creation flow derives both requester and creator from the
+  authenticated User. A Ticket's Organization, requester, and creator do not change.
+- New Tickets are `open` and may be unassigned. Assignment requires an active User,
+  active same-Organization membership, and a role eligible under the future matrix.
+- Eligibility-revoking changes are rejected while affected `open` or `in_progress`
+  Tickets remain assigned. Membership/role changes are scoped to that Organization;
+  global account deactivation checks all Organizations. Reopening requires renewed
+  eligibility evaluation. See the domain model for details and examples.
+- Comments are append-only for every user role; reading follows Ticket visibility.
+- Each Attachment metadata record belongs directly to exactly one fixed Ticket.
+
 ## Open Design Decisions
 
-- Organization creation, membership lifecycle, and ownership rules.
+- Organization creation, invitation/addition, suspension, and archival workflows.
+- Exact membership-management and ownership-transfer permissions.
 - Exact permissions for owner, admin, agent, and customer.
-- Ticket visibility, requester, assignee, and creator relationships.
+- Ticket visibility and physical keys for participant relationships.
 - Assignment eligibility and assignment permissions.
 - Priority selection and modification permissions.
-- Valid status transitions, including resolution, closure, and reopening rules.
-- Comment visibility and attachment metadata lifecycle.
+- Valid status transitions, including resolution, closure, reopening, and whether
+  `in_progress` requires an assignee. Reopening with an ineligible previous assignee
+  must have an explicit reject, reassign, or permitted-unassignment policy.
+- Comment-posting permissions by Ticket status and attachment metadata lifecycle.
 - Entity fields, relational constraints, and deletion behavior.
 - Endpoint inventory, public errors, and pagination contracts.
 

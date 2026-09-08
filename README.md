@@ -37,3 +37,5 @@ not started. File-content upload and storage are outside the current scope.
 
 See [Product requirements](docs/requirements.md) for the initial scope,
 acceptance scenarios, and unresolved design decisions.
+See [Domain model](docs/domain-model.md) for the shared vocabulary, entity
+lifecycles, invariants, and reviewed Week 09 domain policies.
