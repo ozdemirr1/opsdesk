@@ -4,7 +4,9 @@ Status: Initial scope draft, reviewed during Month 03 / Week 09.
 Detailed domain and authorization design remains in progress.
 
 The [domain model](domain-model.md) records the reviewed Week 09 Tuesday
-decisions. Detailed relational and access-control design remains pending.
+decisions. The [relational model](relational-model.md) and [ERD](erd.md) record
+Wednesday's table and relationship design. The remaining validation decisions and
+full access-control and transition matrices still require review.
 
 ## Problem
 
@@ -145,14 +147,18 @@ status-transition matrices before implementation.
 - Organization creation, invitation/addition, suspension, and archival workflows.
 - Exact membership-management and ownership-transfer permissions.
 - Exact permissions for owner, admin, agent, and customer.
-- Ticket visibility and physical keys for participant relationships.
+- Ticket visibility; participant relationships now use organization-scoped
+  membership foreign keys as described in the relational model.
 - Assignment eligibility and assignment permissions.
 - Priority selection and modification permissions.
 - Valid status transitions, including resolution, closure, reopening, and whether
   `in_progress` requires an assignee. Reopening with an ineligible previous assignee
   must have an explicit reject, reassign, or permitted-unassignment policy.
 - Comment-posting permissions by Ticket status and attachment metadata lifecycle.
-- Entity fields, relational constraints, and deletion behavior.
+- Exact field validation limits, email canonicalization, and the complete
+  concurrency protocol for ownership, assignment, and deactivation operations.
+- Permanent deletion, retention, and anonymization workflows; the relational
+  baseline restricts deletion of referenced records rather than implementing them.
 - Endpoint inventory, public errors, and pagination contracts.
 
 ## Implementation Gate

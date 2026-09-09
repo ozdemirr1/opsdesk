@@ -1,10 +1,12 @@
 # Domain Model
 
-Reviewed: Week 09 Tuesday, 8 September 2026.
+Domain reviewed: Week 09 Tuesday, 8 September 2026.
+Relational handoff updated: Wednesday, 9 September 2026.
 
 This document consolidates Furkan's domain drafts and the mentoring review.
-It records business rules, not implemented behavior. Entity fields, physical keys,
-database constraints, and complete access and transition matrices remain pending.
+It records business rules, not implemented behavior. The [relational model](relational-model.md)
+and [ERD](erd.md) now describe the proposed fields, physical keys, and database
+constraints. Validation details and complete access and transition matrices remain pending.
 The [product requirements](requirements.md) define the surrounding scope.
 
 ## Shared Vocabulary
@@ -39,8 +41,8 @@ authenticated User. Creating Tickets on behalf of other Users is outside that fl
 Email, password, and profile changes do not change that identity.
 
 **Relationships:** Zero or more OrganizationMembership records. Ticket and Comment
-attribution refers to this identity; the physical relationship keys are not chosen
-yet. A User's current membership determines access, not historical authorship alone.
+attribution reaches this identity through stable membership references. Current
+account, membership, and resource permissions determine access, not historical authorship alone.
 
 **Lifecycle:** Created at registration; account details can change; the account may
 become inactive after the applicable preconditions succeed. Permanent deletion and
@@ -62,8 +64,8 @@ anonymization remain open decisions.
 name or settings changes.
 
 **Relationships:** Contains memberships and owns Tickets. Comment and Attachment
-boundaries follow their parent Ticket; this does not yet prescribe duplicate
-organization columns in every table.
+boundaries follow their parent Ticket. The relational design repeats organization_id
+in child tables and enforces consistency through composite foreign keys.
 
 **Lifecycle:** Created through an authorized workflow. Exact creation, suspension,
 archival, deletion, and retention workflows remain to be designed.
@@ -90,7 +92,8 @@ transfer handling must be designed before implementation.
 
 **Purpose and identity:** The contextual relationship between exactly one User and
 one Organization. The User-Organization pair is unique across all membership states;
-the eventual primary-key representation remains a relational-design decision.
+the relational design uses a separate bigint membership_id primary key and a
+User-Organization unique constraint.
 
 **Lifecycle:** Created through organization creation or authorized member addition.
 The role may change. Departure makes the membership inactive; rejoining reactivates
@@ -121,7 +124,8 @@ status, priority, or current assignment.
 
 **Relationships:** Exactly one Organization, one requester, and one creator; an
 optional current assignee; zero or more Comments and Attachment metadata records.
-The choice of User and/or membership foreign keys remains pending.
+The relational design references memberships with the Ticket's organization_id
+included in each participant foreign key.
 
 **Lifecycle:** Created as `open`, optionally unassigned. Status vocabulary is `open`,
 `in_progress`, `resolved`, `closed`; priority vocabulary is `low`, `medium`, `high`,
@@ -199,7 +203,8 @@ anonymization, and organization-wide deletion remain separate open policies.
 **Purpose and identity:** Metadata describing a file associated with a Ticket.
 Its stable identity is independent of filenames, storage paths, or physical bytes.
 Candidate metadata includes filename, byte size, and MIME type (a content-type label
-such as `application/pdf`); exact fields and validation limits remain pending.
+such as `application/pdf`). The relational model records the initial field set;
+validation limits and upload behavior remain pending.
 
 **Relationships:** Exactly one fixed parent Ticket; attribution to the User who
 initiates the future attachment submission. There is no Comment relationship.
@@ -224,8 +229,8 @@ cleanup choices remain open for the future storage workflow.
 
 ## Review and Implementation Handoff
 
-Wednesday must translate the model into keys, nullability, uniqueness, foreign keys,
-and deliberate deletion behavior. Thursday must define eligible roles, object-level
+The relational model and ERD translate these rules into proposed keys, nullability,
+uniqueness, foreign keys, and restricted parent deletion. Thursday must define eligible roles, object-level
 visibility, privileged operations, priority permissions, and status transitions.
 Comment-posting rules by Ticket status and assignment requirements for `in_progress`
 remain open. Owner transfer, ordinary deactivation, and concurrent assignment changes

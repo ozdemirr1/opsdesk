@@ -39,3 +39,5 @@ See [Product requirements](docs/requirements.md) for the initial scope,
 acceptance scenarios, and unresolved design decisions.
 See [Domain model](docs/domain-model.md) for the shared vocabulary, entity
 lifecycles, invariants, and reviewed Week 09 domain policies.
+See the [relational model](docs/relational-model.md) and [ERD](docs/erd.md) for
+the proposed tables, relationship keys, constraints, and remaining design work.
