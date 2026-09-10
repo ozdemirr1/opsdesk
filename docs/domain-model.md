@@ -1,12 +1,15 @@
 # Domain Model
 
 Domain reviewed: Week 09 Tuesday, 8 September 2026.
-Relational handoff updated: Wednesday, 9 September 2026.
+Relational handoff: Wednesday, 9 September 2026.
+Authorization and lifecycle review: Thursday, 10 September 2026.
 
 This document consolidates Furkan's domain drafts and the mentoring review.
 It records business rules, not implemented behavior. The [relational model](relational-model.md)
 and [ERD](erd.md) now describe the proposed fields, physical keys, and database
-constraints. Validation details and complete access and transition matrices remain pending.
+constraints. The [access-control matrix](access-control.md) and
+[Ticket lifecycle](ticket-lifecycle.md) record reviewed permissions and transitions.
+Validation details, remaining workflows, and API contracts remain pending.
 The [product requirements](requirements.md) define the surrounding scope.
 
 ## Shared Vocabulary
@@ -32,8 +35,8 @@ The [product requirements](requirements.md) define the surrounding scope.
 | Atomic operation | Changes succeed together or none are committed. |
 
 Organization owner, requester, creator, and assignee are distinct concepts.
-In the current customer creation flow, requester and creator happen to be the same
-authenticated User. Creating Tickets on behalf of other Users is outside that flow.
+In the self-service creation flow for all four roles, requester and creator are the
+same authenticated User. Creating Tickets on behalf of other Users is outside scope.
 
 ## User
 
@@ -77,9 +80,10 @@ archival, deletion, and retention workflows remain to be designed.
 - O-02: An active Organization has exactly one active owner membership belonging
   to an active User. An admin remaining in the Organization does not replace this
   ownership requirement.
-- O-03: Ownership transfer to an eligible active member is atomic. On success the
-  new member is owner and the previous owner is admin. On failure neither role
-  change is committed. Exact caller permissions remain in the matrix backlog.
+- O-03: Only the current owner can transfer ownership to a different active User
+  with an active admin membership in the same Organization. The transfer is atomic:
+  the target becomes owner and the previous owner becomes admin. On failure neither
+  role change is committed.
 - O-04: Removing, deactivating, or demoting the owner cannot leave an active
   Organization without its required owner. Transfer ownership first.
 
@@ -111,7 +115,10 @@ remain open, and email delivery is outside Month 03.
   must be explicitly authorized under the membership-management policy.
 - M-06: Deactivation or a role change that removes assignment eligibility is rejected
   while the membership holds active-work Tickets in that Organization. Ownership
-  preconditions apply independently.
+  preconditions apply independently. Admin-to-agent preserves eligibility.
+- M-07: Admin and owner can manage other non-owner memberships under the matrix,
+  including admin peers. Ordinary self-role updates are denied for every role.
+  Non-owners may leave after applicable handover; owners must transfer first.
 
 A stable membership preserves relationship continuity, but overwriting current role
 or state does not preserve previous role/state history. A complete audit trail is a
@@ -127,9 +134,11 @@ optional current assignee; zero or more Comments and Attachment metadata records
 The relational design references memberships with the Ticket's organization_id
 included in each participant foreign key.
 
-**Lifecycle:** Created as `open`, optionally unassigned. Status vocabulary is `open`,
-`in_progress`, `resolved`, `closed`; priority vocabulary is `low`, `medium`, `high`,
-`urgent`. These values alone do not authorize transitions or priority changes.
+**Lifecycle:** Always created as `open` and unassigned; assignment is separate.
+Status vocabulary is `open`, `in_progress`, `resolved`, `closed`; priority vocabulary
+is `low`, `medium`, `high`, `urgent`, with `medium` when omitted. In-progress work
+requires an eligible assignee; closed is terminal. See the lifecycle matrix for
+exact transitions and the access matrix for role/resource scopes.
 
 **Rules:**
 
@@ -137,11 +146,11 @@ included in each participant foreign key.
 - T-02: Creation derives requester and creator from the same current authenticated
   User. The User, target membership, and Organization must be active, and the caller
   must have Ticket-creation permission.
-- T-03: A newly created Ticket is `open` and may have no assignee.
+- T-03: A newly created Ticket is always `open` and has no assignee, for all roles.
 - T-04: An assignee, whenever present, belongs to the Ticket's Organization.
-- T-05: Assignment requires an authorized caller and an eligible assignee. The exact
-  eligible roles and assignment permissions remain to be defined; eligibility is
-  not assumed to mean the `agent` role alone.
+- T-05: Assignment requires an authorized caller and an active User with an active
+  same-Organization membership whose role is agent, admin, or owner. The assignment
+  matrix and status limits apply together; visibility is not assignment authority.
 - T-06: Account or membership deactivation does not erase the Ticket or rewrite its
   requester/creator. Historical attribution does not grant current access.
 - T-07: Current assignment may change or be removed through authorized operations
@@ -156,16 +165,19 @@ Reject an operation that removes assignment eligibility while affected `open` or
 - Membership deactivation or an ineligible role change checks that Organization.
 - Global account deactivation checks all Organizations, as well as ownership rules.
 - Authorized staff must first hand over the work to eligible members. Permitted
-  unassignment by status remains a transition-matrix decision.
+  unassignment is limited to open Tickets under the assignment matrix.
 - Preserve the last assignee reference on `resolved` or `closed` Tickets when the
   assignee's eligibility is later revoked; it is contextual attribution, not a full
   history of past assignments.
-- If reopening is supported, re-evaluate assignment eligibility before reopening.
-  The exact reject, reassign, or permitted-unassignment workflow remains open.
+- Returning from resolved/in_progress to open re-evaluates assignment eligibility.
+  Preserve an eligible assignee (or an existing NULL); clear an ineligible assignee
+  atomically with the authorized transition. Closed Tickets cannot reopen. Clearing
+  the current assignee does not preserve a full previous-assignment history.
 
 This is an explicit-handover policy. It avoids silently stranding assigned work;
 it does not guarantee timely resolution or prohibit initially unassigned Tickets.
-Automatic unassignment was not selected; it would not inherently require a job queue.
+Automatic unassignment on deactivation was not selected; it would not inherently
+require a job queue. Conditional cleanup when returning to open is a separate rule.
 
 **Example:** Ece has two `in_progress` Tickets in Organization A. An authorized
 administrator attempts membership deactivation. The request is rejected and both
@@ -197,6 +209,9 @@ anonymization, and organization-wide deletion remain separate open policies.
   Comments rather than rewrites of old ones.
 - C-06: Reading follows the parent Ticket's visibility. Staff-only internal notes
   are outside Month 03. Ticket visibility does not mean public internet visibility.
+- C-07: Posting requires open/in_progress/resolved status in addition to actor and
+  resource permissions. Closed comments remain readable; no new comments are allowed.
+  Posting a comment never automatically reopens the Ticket.
 
 ## Attachment
 
@@ -229,14 +244,17 @@ cleanup choices remain open for the future storage workflow.
 
 ## Review and Implementation Handoff
 
-The relational model and ERD translate these rules into proposed keys, nullability,
-uniqueness, foreign keys, and restricted parent deletion. Thursday must define eligible roles, object-level
-visibility, privileged operations, priority permissions, and status transitions.
-Comment-posting rules by Ticket status and assignment requirements for `in_progress`
-remain open. Owner transfer, ordinary deactivation, and concurrent assignment changes
-must preserve their shared rules; a check followed by a separate unguarded write is
-not sufficient. Organization suspension and emergency account suspension behavior
-require explicit future policy rather than an assumed bypass.
+The relational model and ERD define proposed keys, nullability, uniqueness, and
+restricted parent deletion. The reviewed access and lifecycle matrices now define
+Ticket visibility, priority permissions, eligible assignees, assignment changes,
+Comment posting, membership management, and ownership transfer.
+
+API contracts must still resolve remaining endpoint scope, errors, pagination,
+validation limits, and same-value operations. Organization creation/suspension,
+invitation details, emergency account suspension, and attachment operations require
+explicit policy. Ownership, ordinary deactivation, assignment, and reopening must
+coordinate under a transaction protocol; locking details remain pending. No reviewed
+matrix implies an administrative bypass for an undesigned workflow.
 
 Future tests should cover:
 
@@ -247,7 +265,7 @@ Future tests should cover:
 - Scoped versus global eligibility-revocation checks, unchanged state on rejection,
   successful deactivation after handover, and eligibility checks when reopening.
 - Fixed Ticket participants, fixed Comment parent/author, append-only comments,
-  and Ticket-scoped comment reading and posting.
+  and Ticket-scoped comment reading and posting across lifecycle states.
 - Attachment parent boundaries and metadata not proving file availability.
 
 These are test expectations, not executable or passing tests. No CRUD, schema,

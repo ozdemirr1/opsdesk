@@ -1,11 +1,14 @@
 # Relational Model
 
-Design baseline: Week 09 Wednesday, 9 September 2026.
+Relational baseline: Week 09 Wednesday, 9 September 2026.
+Policy alignment: Thursday, 10 September 2026.
 
 This document translates the [domain model](domain-model.md) into a proposed
 PostgreSQL schema. The [ERD](erd.md) illustrates the relationships. It is design
 documentation, not an executable migration or proof that constraints have been tested.
-Open validation and workflow decisions are listed at the end.
+The [access-control matrix](access-control.md) and [Ticket lifecycle](ticket-lifecycle.md)
+supply reviewed operation rules. Remaining validation and workflow decisions are
+listed at the end.
 
 ## Conventions
 
@@ -84,7 +87,7 @@ two active owners and rely on commit-time validation.
 Application transactions must preserve the stronger active-Organization rule:
 exactly one active owner membership belonging to an active User. A candidate transfer
 sequence is to lock the Organization, re-read and validate current state, demote the
-old owner to admin, promote the eligible active member, validate, then commit together.
+old owner to admin, promote the eligible active admin member, validate, then commit together.
 Failure rolls back both changes. All ownership-affecting workflows must cooperate
 with the same concurrency protocol; wrapping separate checks and writes in a
 transaction is not sufficient on its own. Coordination with global User deactivation
@@ -102,7 +105,7 @@ and a consistent lock order remain implementation prerequisites.
 | title | text | No | Nonblank text; limits pending | Short issue summary |
 | description | text | No | Nonblank text; limits pending | Detailed support request |
 | status | text | No | CHECK valid status; DEFAULT 'open' | Current lifecycle state |
-| priority | text | No | CHECK valid priority; default pending | Urgency level |
+| priority | text | No | CHECK valid priority; DEFAULT 'medium' | Urgency level |
 | created_at | timestamptz | No | DEFAULT now() | Creation transaction time |
 | updated_at | timestamptz | No | DEFAULT now(); explicit refresh on updates | Last application modification timestamp |
 
@@ -115,8 +118,12 @@ UNIQUE (organization_id, ticket_id)
 Title is not unique. Repeated titles and multiple requests by one member are allowed.
 Status vocabulary does not enforce valid transitions, caller permissions, or the
 creation status. The API derives both creator and requester from the authenticated
-User's current active membership and starts the Ticket as open. Assignment at creation
-is not authorized merely because the table has an assignee column.
+User's current active membership for every permitted creator role. Creation starts
+open and unassigned; client-supplied assignment is rejected. Omitted priority defaults
+to medium; explicit null and invalid values are rejected. Assignments require an
+active User and active same-Organization agent/admin/owner membership. In_progress
+requires an eligible assignee; exact additional database enforcement remains part of
+migration design, not a guarantee supplied by the current status CHECK.
 
 The nullable assignee FK uses default MATCH SIMPLE. With a non-null organization_id
 and null assignee_membership_id, this FK requires no membership match. The separate
@@ -156,6 +163,8 @@ remain fixed through normal application operations.
 Author is derived from authenticated identity. User, membership, and Organization
 must be active, with separate permission checks for Ticket reading and Comment posting.
 Reading follows Ticket visibility; there is no internal-note tier in Month 03.
+Posting is permitted only in open/in_progress/resolved under the role/resource rules.
+Comments in closed remain readable but new comments are denied.
 
 ## attachments
 
@@ -239,9 +248,10 @@ and API validation are implemented.
 ## Remaining Design Work
 
 - Define email normalization/storage checks and exact string length limits.
-- Select priority defaults/permissions and eligible assignee roles in the matrix.
-- Define complete transitions, including assignment at creation, unassignment,
-  reopening, and whether in_progress requires an assignee.
+- Translate the reviewed matrices into migration and service checks; priority
+  defaults to medium, assignment at creation is forbidden, and in_progress requires
+  an eligible assignee. No new constraints have been applied.
+- Complete API operation coverage and same-value update/error behavior.
 - Specify the cooperating transaction/lock protocol and lock order for ownership,
   assignment, membership changes, and global account deactivation.
 - Define the updated_at update expression and verification expectations.

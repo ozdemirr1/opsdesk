@@ -41,3 +41,6 @@ See [Domain model](docs/domain-model.md) for the shared vocabulary, entity
 lifecycles, invariants, and reviewed Week 09 domain policies.
 See the [relational model](docs/relational-model.md) and [ERD](docs/erd.md) for
 the proposed tables, relationship keys, constraints, and remaining design work.
+See the [access-control matrix](docs/access-control.md) and
+[Ticket lifecycle](docs/ticket-lifecycle.md) for reviewed role/resource permissions,
+state transitions, and acceptance scenarios. API contracts and implementation remain pending.
