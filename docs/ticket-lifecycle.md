@@ -1,6 +1,7 @@
 # Ticket Lifecycle
 
 Reviewed: Week 09 Thursday, 10 September 2026.
+Same-status contract: Friday, 11 September 2026.
 
 These are product rules and acceptance scenarios, not implemented behavior or
 passing tests. Combine them with the [access-control matrix](access-control.md).
@@ -39,15 +40,36 @@ are still limited to the same Organization and all relevant preconditions.
 
 Every allowed transition requires the exact stated source status. All unlisted
 state changes are denied, including open -> closed and closed -> in_progress.
-Same-status requests do not define a new transition; their rejection/no-op API
-contract remains to be specified. Status vocabulary CHECKs alone enforce none of
-these actor or transition rules.
+Same-status requests use the explicit permission table below; they are not new
+transitions. Status vocabulary CHECKs alone enforce none of these actor rules.
 
 Open -> resolved permits first-contact resolution without first entering
 in_progress, but still requires an eligible assignee. A resolved Ticket can retain
 an assignee who later becomes inactive: eligibility is required to enter resolved,
 not for every future moment spent in that state. Only the caller, not necessarily
 the historical assignee, must remain eligible to perform an authorized closure.
+
+## Same-Status Requests
+
+Authenticate and verify current User, membership, active Organization, Ticket
+visibility, valid input, and the permission below before returning 200. Visibility
+alone is insufficient. Denied cells return permission_denied without mutation.
+
+| Current and requested status | Customer | Agent | Admin | Owner |
+| --- | --- | --- | --- | --- |
+| open | Own requested tickets only | Assigned to self | Any ticket in the organization | Any ticket in the organization |
+| in_progress | Denied | Assigned to self | Any ticket in the organization | Any ticket in the organization |
+| resolved | Denied | Assigned to self | Any ticket in the organization | Any ticket in the organization |
+| closed | Own requested tickets only | Assigned to self | Any ticket in the organization | Any ticket in the organization |
+
+An authorized no-op returns the current TicketResponse without updating timestamps
+or applying transition effects. It does not clear a historical assignee, and does
+not require that historical assignee to be eligible simply to remain resolved/closed.
+Closed -> closed does not authorize any outgoing transition from closed.
+
+These are explicit product permissions. HTTP idempotency does not require a 200
+response for an actor who lacks current permission. Other repeated operations use
+the [API contract](api-contract.md#repeated-requests-and-no-ops).
 
 ## Assignment Effects When Returning to Open
 
@@ -100,8 +122,8 @@ result; two separate requests do not form one atomic operation.
 
 Furkan authored the four scenarios below after reviewing the matrices. This shared
 background makes the active Organization/membership assumptions explicit. A rejected
-mutation must leave durable business data unchanged; success/failure HTTP details
-and executable integration tests remain future work.
+mutation must leave durable business data unchanged. The [API baseline](api-contract.md)
+records HTTP outcomes; executable integration tests remain future work.
 
 ```gherkin
 Feature: Organization-scoped ticket lifecycle and membership rules

@@ -9,7 +9,8 @@ It records business rules, not implemented behavior. The [relational model](rela
 and [ERD](erd.md) now describe the proposed fields, physical keys, and database
 constraints. The [access-control matrix](access-control.md) and
 [Ticket lifecycle](ticket-lifecycle.md) record reviewed permissions and transitions.
-Validation details, remaining workflows, and API contracts remain pending.
+The [API baseline](api-contract.md) records Friday's endpoint scope and contracts,
+including explicit remaining validation and workflow details.
 The [product requirements](requirements.md) define the surrounding scope.
 
 ## Shared Vocabulary
@@ -70,8 +71,11 @@ name or settings changes.
 boundaries follow their parent Ticket. The relational design repeats organization_id
 in child tables and enforces consistency through composite foreign keys.
 
-**Lifecycle:** Created through an authorized workflow. Exact creation, suspension,
-archival, deletion, and retention workflows remain to be designed.
+**Lifecycle:** Any active authenticated User may create an active Organization and
+its initial owner membership atomically. User-facing renaming and suspension/
+reactivation are deferred beyond Month 03; archival, deletion, and retention remain
+future design. Active members can read basic suspended-Organization information,
+but cannot access its child resources or perform scoped mutations.
 
 **Rules:**
 
@@ -101,8 +105,9 @@ User-Organization unique constraint.
 
 **Lifecycle:** Created through organization creation or authorized member addition.
 The role may change. Departure makes the membership inactive; rejoining reactivates
-the same record with an explicitly authorized current role. Invitation mechanics
-remain open, and email delivery is outside Month 03.
+the same record with an explicitly authorized current role. Direct addition uses
+the exact canonical email of an existing active User. Add/reactivate grants only
+customer/agent; admin promotion is separate. Email invitations are outside Month 03.
 
 **Rules:**
 
@@ -239,8 +244,9 @@ implementing upload, claiming file availability, or choosing a storage provider.
 - A-04: Client-supplied filename, size, or MIME type is untrusted input, not verified
   evidence about file bytes. Future file inspection is outside this design phase.
 
-Metadata deletion, retention, physical file cleanup, and synchronous/asynchronous
-cleanup choices remain open for the future storage workflow.
+All Attachment metadata API operations are deferred beyond Month 03. This entity
+remains part of the domain and relational design, not a promised release endpoint.
+Metadata deletion, retention, and physical file cleanup remain future workflow design.
 
 ## Review and Implementation Handoff
 
@@ -249,10 +255,12 @@ restricted parent deletion. The reviewed access and lifecycle matrices now defin
 Ticket visibility, priority permissions, eligible assignees, assignment changes,
 Comment posting, membership management, and ownership transfer.
 
-API contracts must still resolve remaining endpoint scope, errors, pagination,
-validation limits, and same-value operations. Organization creation/suspension,
-invitation details, emergency account suspension, and attachment operations require
-explicit policy. Ownership, ordinary deactivation, assignment, and reopening must
+The API baseline records endpoint scope, errors, pagination, and selected no-op
+permissions. Exact validation, remaining response/error cases, and concurrency
+details still require review. Ticket title/description edits and deletion, global
+User deactivation, Organization renaming/suspension, and metadata APIs are deferred.
+The original Ticket text remains fixed through Month 03 product operations.
+Ownership, ordinary deactivation, assignment, and reopening must
 coordinate under a transaction protocol; locking details remain pending. No reviewed
 matrix implies an administrative bypass for an undesigned workflow.
 

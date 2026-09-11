@@ -28,7 +28,8 @@ The API is currently being designed to support the following core workflows:
 - Ticket lifecycle rules for `open`, `in_progress`, `resolved`, and `closed`.
 - Ticket assignment and role-based access control (RBAC), combined with
   organization and ticket-level permission checks.
-- Permission-controlled ticket comments and attachment metadata tracking.
+- Permission-controlled ticket comments. Attachment metadata remains a domain-design
+  topic; its API and file storage are deferred beyond Month 03.
 
 ## Project Status
 
@@ -43,4 +44,7 @@ See the [relational model](docs/relational-model.md) and [ERD](docs/erd.md) for
 the proposed tables, relationship keys, constraints, and remaining design work.
 See the [access-control matrix](docs/access-control.md) and
 [Ticket lifecycle](docs/ticket-lifecycle.md) for reviewed role/resource permissions,
-state transitions, and acceptance scenarios. API contracts and implementation remain pending.
+state transitions, and acceptance scenarios.
+See the [API contract baseline](docs/api-contract.md) for the 22-endpoint inventory,
+response examples, errors, pagination, release exclusions, and remaining decisions.
+Implementation and the prioritized issue backlog remain pending.

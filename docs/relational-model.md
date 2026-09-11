@@ -1,14 +1,15 @@
 # Relational Model
 
 Relational baseline: Week 09 Wednesday, 9 September 2026.
-Policy alignment: Thursday, 10 September 2026.
+Policy alignment: Friday, 11 September 2026.
 
 This document translates the [domain model](domain-model.md) into a proposed
 PostgreSQL schema. The [ERD](erd.md) illustrates the relationships. It is design
 documentation, not an executable migration or proof that constraints have been tested.
 The [access-control matrix](access-control.md) and [Ticket lifecycle](ticket-lifecycle.md)
-supply reviewed operation rules. Remaining validation and workflow decisions are
-listed at the end.
+supply reviewed operation rules. The [API baseline](api-contract.md) limits the
+Month 03 executable scope; the Attachment schema remains a design artifact with
+migration timing to be decided. Remaining design work is listed at the end.
 
 ## Conventions
 
@@ -139,7 +140,8 @@ PostgreSQL now() represents transaction start, not wall-clock commit time, and d
 not advance within one transaction. Timestamps alone are not a strict revision counter.
 
 Normal updates cannot change organization_id, requester_membership_id,
-creator_membership_id, or created_at. The FKs do not prevent replacement with a
+creator_membership_id, title, description, or created_at during Month 03.
+Successful no-ops do not refresh updated_at. The FKs do not prevent replacement with a
 different valid same-Organization membership. Application boundaries must enforce
 this immutability; stronger database enforcement would require a separate decision.
 
@@ -251,7 +253,9 @@ and API validation are implemented.
 - Translate the reviewed matrices into migration and service checks; priority
   defaults to medium, assignment at creation is forbidden, and in_progress requires
   an eligible assignee. No new constraints have been applied.
-- Complete API operation coverage and same-value update/error behavior.
+- Resolve remaining API response/error cases and repeated operations listed in
+  the API baseline; selected no-ops never refresh updated_at. Ticket title and
+  description are fixed through Month 03 operations; FKs do not enforce this.
 - Specify the cooperating transaction/lock protocol and lock order for ownership,
   assignment, membership changes, and global account deactivation.
 - Define the updated_at update expression and verification expectations.

@@ -7,7 +7,8 @@ The [domain model](domain-model.md) records the reviewed Week 09 Tuesday
 decisions. The [relational model](relational-model.md) and [ERD](erd.md) record
 Wednesday's table and relationship design. Thursday's [access-control matrix](access-control.md)
 and [Ticket lifecycle](ticket-lifecycle.md) define reviewed permissions and transitions.
-API contracts, remaining workflows, and validation decisions still require review.
+Friday's [API contract baseline](api-contract.md) records endpoints, public errors,
+pagination, and release boundaries. Its remaining-review list precedes implementation.
 
 ## Problem
 
@@ -28,8 +29,8 @@ organization must follow explicit membership and permission rules.
 - Owner: holds organization ownership and manages ownership-level actions.
 
 A User is a global identity. Roles belong to OrganizationMembership. The same
-User may hold different roles in different organizations. Exact permissions will
-be defined in the access-control matrix.
+User may hold different roles in different organizations. Exact permissions are
+defined in the access-control matrix and its API-specific extensions.
 
 ## Primary Workflow
 
@@ -58,9 +59,9 @@ priority when omitted. Assignment is always a separate authorized operation.
   according to assignment and lifecycle rules.
 - **FR-05:** Members can add and read comments only where the ticket and comment
   visibility rules permit access.
-- **FR-06:** The domain design includes attachment metadata and its relationship
-  to tickets. File upload and storage are excluded. Metadata fields and permitted
-  operations will be specified during domain and API design.
+- **FR-06:** The domain and relational design includes Ticket-bound attachment
+  metadata. Metadata create/read/delete endpoints and physical file operations
+  are deferred beyond Month 03; this is not a promised release capability.
 
 ## Non-functional Requirement
 
@@ -83,7 +84,13 @@ unchanged.
 - File-content upload, download, and object storage.
 - Refresh tokens, MFA, billing, and enterprise SSO.
 - User-facing comment editing/deletion and staff-only internal notes.
-- Attachment-to-Comment relationships.
+- Attachment-to-Comment relationships and all attachment-metadata API operations.
+- Ticket title/description editing and Ticket deletion.
+- Organization renaming and user-facing suspension/reactivation.
+- Global User deactivation endpoints. Existing deactivation invariants remain valid.
+
+See the [scope rationale](api-contract.md#deferred-month-03-operations). Closing a
+Ticket is not erasure, and FKs only restrict deletion while relevant references exist.
 
 ## Acceptance Scenarios
 
@@ -105,12 +112,12 @@ And the requester is derived from the authenticated user
 ```gherkin
 Given an authenticated user with an active membership only in Organization A
 When the user attempts to create a ticket in Organization B
-Then the API rejects the request
+Then the API returns HTTP 403 with code "organization_access_denied"
 And no new ticket is persisted
 ```
 
-The exact rejection status and public error response will be defined in the
-authorization and API contracts.
+The [error contract](api-contract.md#error-contract) uses the same organization-access
+response when no active membership exists, including a nonexistent Organization.
 
 ### AC-03: Customer Cannot Resolve a Ticket
 
@@ -123,8 +130,9 @@ And the stored ticket status remains unchanged
 ```
 
 The reviewed matrices confirm this restriction. HTTP 403 is the existing intended
-response for this visible-resource scenario; the broader error contract remains
-pending. Additional Thursday scenarios are recorded in the
+response for this visible-resource scenario, including a same-status resolved request.
+The [API baseline](api-contract.md) records the broader error contract. Additional
+Thursday scenarios are recorded in the
 [Ticket lifecycle](ticket-lifecycle.md#acceptance-scenarios).
 
 ## Reviewed Domain Policies
@@ -153,18 +161,14 @@ pending. Additional Thursday scenarios are recorded in the
 
 ## Open Design Decisions
 
-- Organization creation, invitation/addition, suspension, and archival workflows.
-- Remaining operation scope and permissions: Organization read/update, membership
-  directory access, global account-management endpoints, and Ticket title/description
-  editing or deletion. Reviewed matrices grant no blanket administrative authority.
-- Invitation/addition details, inactive-User target handling, and attachment metadata
-  lifecycle and operations. Membership reactivation never reactivates a global User.
-- Same-value update behavior, including requests for the current Ticket status.
-- Exact field validation limits, email canonicalization, and the complete
-  concurrency protocol for ownership, assignment, and deactivation operations.
-- Permanent deletion, retention, and anonymization workflows; the relational
-  baseline restricts deletion of referenced records rather than implementing them.
-- Endpoint inventory, public errors, and pagination contracts.
+- Resolve the [remaining API review](api-contract.md#remaining-review-and-test-handoff):
+  precise validation, email canonicalization, remaining response/error cases, query
+  extensions, collection ordering, and count/items consistency.
+- Define the cooperating concurrency protocol for ownership, assignment, reopening,
+  and eligibility-revoking operations, including lock order and retry behavior.
+- Keep deferred retention, anonymization, erasure, and storage workflows separate
+  from the Month 03 endpoint inventory. No blanket administrative bypass is implied.
+- Complete the prioritized issue backlog and implementation sequence.
 
 ## Implementation Gate
 

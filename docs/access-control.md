@@ -1,12 +1,13 @@
 # Access-Control Matrix
 
 Reviewed: Week 09 Thursday, 10 September 2026.
+API alignment: Friday, 11 September 2026.
 
 This document records Furkan's reviewed product policies. It describes expected
 behavior, not implemented or tested authorization. Read it with the
 [Ticket lifecycle](ticket-lifecycle.md), [domain model](domain-model.md), and
-[relational model](relational-model.md). API paths and exact error contracts remain
-Friday's design work.
+[relational model](relational-model.md). The [API baseline](api-contract.md) records
+paths, errors, pagination, and explicit remaining contract decisions.
 
 ## Shared Preconditions and Rule Composition
 
@@ -25,6 +26,25 @@ Friday's design work.
   failures in a transaction must not persist partial changes.
 - Actor means the person making the request. Assignment eligibility describes the
   recipient of work; these are separate checks.
+
+## Organization Access and Membership Directory
+
+Any active authenticated global User may create an Organization; creation also
+creates the actor's active owner membership in the same transaction. No existing
+target membership is required for that global operation.
+
+Organization list/detail is a narrow exception to the active-Organization rule:
+active members may see basic information for their suspended Organizations.
+The list may include their own membership projection. Inactive membership grants
+no such access. This exception does not extend to child resources or mutations.
+
+The membership directory requires an active Organization and staff role
+(agent/admin/owner). Customers cannot browse it. Return only membership_id,
+organization_id, role, and is_active; exclude global email and account settings.
+Membership active state alone is insufficient evidence of assignment eligibility.
+
+Global registration, login, and current-identity endpoints have the separate
+preconditions in the API baseline. No Organization membership is needed for them.
 
 ## Ticket Visibility
 
@@ -119,8 +139,10 @@ Organizations and ownership dependencies; it is not an admin membership operatio
 Reactivation updates the existing inactive row with an explicitly authorized
 customer/agent role. It is not an alternative route for rewriting active memberships,
 editing an owner, or restoring historical privileges automatically. It never activates
-a global User account. Invitation mechanics and inactive-User target handling remain
-API/workflow decisions; they are not implied by the role matrix.
+a global User account. Add/reactivate requires an active target global User.
+Addition uses an exact canonical email to add an existing User directly; no email
+invitation or acceptance workflow exists. Admin promotion is a separate operation.
+See the API baseline for the remaining account-enumeration tradeoff.
 
 ### Peer Management and Ownership Transfer
 
@@ -155,12 +177,13 @@ inactive actors/organizations, foreign requesters, ordinary self-promotion, owne
 edits through alternate operations, reactivation bypasses, concurrent claims, and
 ownership/assignment races. Assert durable unchanged state after rejected mutations.
 
-Organization creation/read/update/suspension, membership directory visibility,
-global account-management endpoints, attachment-metadata operations, and Ticket
-title/description editing or deletion are not defined by these matrices. Resolve
-their inclusion and permissions with the endpoint inventory; do not infer blanket
-admin/owner authority. Exact HTTP errors, same-value updates, validation lengths,
-and pagination contracts also remain open before the full Week 09 gate is complete.
+The [API baseline](api-contract.md) maps these policies to endpoints. Organization
+renaming/suspension, global User deactivation, Ticket editing/deletion, and Attachment
+metadata APIs are deferred. These exclusions do not erase the relevant domain rules.
+Same-value success requires explicit permission; see the
+[same-status table](ticket-lifecycle.md#same-status-requests). The documented admin
+no-op for removing an empty open assignment is an explicit API case. Remaining
+validation, concurrency, and issue planning still precede the full Week 09 gate.
 
 ## Reference
 
