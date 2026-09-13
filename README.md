@@ -47,8 +47,9 @@ See the [access-control matrix](docs/access-control.md) and
 state transitions, and acceptance scenarios.
 See the [API contract baseline](docs/api-contract.md) for the 22-endpoint inventory,
 response examples, errors, pagination, release exclusions, and remaining decisions.
-Implementation and the prioritized issue backlog remain pending.
+Implementation remains pending; unresolved decisions are tracked in the published backlog.
 
-See the [Week 09 issue plan](docs/issue-plan.md) for 26 draft issue bodies, proposed
-priorities/dependencies, coverage of all 22 endpoints, and the Week 10 sequence
-proposal. Consolidated review and GitHub issue publication remain pending.
+See the [Week 09 issue plan](docs/issue-plan.md) for the 26 published GitHub issues,
+priorities/dependencies, coverage of all 22 endpoints, and the proposed Week 10
+sequence. GitHub tracks current work status; local issue files preserve the initial
+published scope. Publication does not imply completed design tasks or implementation.

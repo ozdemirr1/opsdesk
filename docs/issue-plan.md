@@ -1,58 +1,60 @@
 # Week 09 Issue Plan
 
-Consolidated draft: Sunday, 13 September 2026.
+Published backlog: Sunday, 13 September 2026.
 
-This plan contains 26 draft issues, including the four Saturday drafts now stored
-as individual bodies. Saturday drafts, Sunday reviews, and the grouped proposals
-are consolidated in the linked files. None is an
-implemented feature or a published GitHub issue. The 12 grouped additions and all
-priorities/sequencing still await consolidated user review.
+Furkan published all 26 reviewed issues from source commit `3ad42fe`. The inventory
+below maps local planning identifiers to verified GitHub issue numbers. All 26 were
+open at publication; creating an issue does not complete its design or implementation.
 
-Local identifiers such as D01/F01 are document references, not GitHub issue numbers.
-Each linked file is a reviewable English issue body. Furkan performs GitHub creation
-and Git mutations. Replace or supplement local references with real issue links only
-after publication; do not fabricate them.
+GitHub issues are the live source for work status, scope discussion, and completion
+evidence. Files in `docs/issues/` preserve the initial published scope. Update the
+product requirements, API contracts, and domain documents when accepted behavior
+changes; keep this index's links accurate without duplicating daily issue status.
 
-## Suggested Priorities and Labels
+Local IDs such as D01/F01 remain stable document references, not GitHub numbers.
+Dependency links in published issue bodies point to actual prerequisite issues.
+These Markdown links do not themselves configure GitHub's native blocking relations.
+
+## Published Priorities and Labels
 
 - P0: early prerequisite for the first executable backend slices. This is planned
   sequence, not an incident severity or a promise that every P0 fits Week 10.
 - P1: required Month 03 feature, verification, or delivery work following prerequisites.
-- Suggested labels: priority:P0, priority:P1, type:design, type:infrastructure,
-  type:schema, type:feature, type:quality, type:delivery. Labels are not created yet.
+- Published labels: priority:P0, priority:P1, type:design, type:infrastructure,
+  type:schema, type:feature, type:quality, type:delivery. All eight labels were created.
 - All work remains week-based; GitHub titles may use the established week prefix
   where appropriate. Do not infer branch creation from this planning document.
 
-## Draft Inventory and Dependencies
+## Published Inventory and Dependencies
 
-| Local ID | Issue title | Priority | Suggested type label | Direct dependencies |
-| --- | --- | --- | --- | --- |
-| [D01](issues/d01.md) | Finalize ticket creation validation contract | P0 | type:design | Reviewed baseline / gate |
-| [D02](issues/d02.md) | Finalize identity validation and authentication contracts | P0 | type:design | Reviewed baseline / gate |
-| [D03](issues/d03.md) | Finalize remaining API validation and response contracts | P0 | type:design | Reviewed baseline / gate |
-| [D04](issues/d04.md) | Define coordinated transaction and concurrency rules | P0 | type:design | Reviewed baseline / gate |
-| [B01](issues/b01.md) | Establish the backend application foundation | P0 | type:infrastructure | Reviewed baseline / gate |
-| [B02](issues/b02.md) | Establish guarded PostgreSQL integration tests | P0 | type:infrastructure | [B01](issues/b01.md) |
-| [B03](issues/b03.md) | Create the initial identity and organization schema | P0 | type:schema | [B02](issues/b02.md), [D02](issues/d02.md) |
-| [B04](issues/b04.md) | Create the ticket schema | P0 | type:schema | [B03](issues/b03.md), [D01](issues/d01.md) |
-| [Q01](issues/q01.md) | Add minimal backend continuous integration | P0 | type:quality | [B01](issues/b01.md) |
-| [Q02](issues/q02.md) | Implement shared API errors and safe request logging | P0 | type:infrastructure | [B01](issues/b01.md), [D03](issues/d03.md) |
-| [F02](issues/f02.md) | Implement user registration | P0 | type:feature | [D02](issues/d02.md), [B03](issues/b03.md), [Q02](issues/q02.md) |
-| [F03](issues/f03.md) | Implement login and access-token issuance | P0 | type:feature | [D02](issues/d02.md), [B03](issues/b03.md), [Q02](issues/q02.md) |
-| [F04](issues/f04.md) | Implement authenticated current-user resolution | P0 | type:feature | [D02](issues/d02.md), [B03](issues/b03.md), [Q02](issues/q02.md) |
-| [F05](issues/f05.md) | Implement organization creation with initial ownership | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D03](issues/d03.md), [D04](issues/d04.md) |
-| [F06](issues/f06.md) | Implement organization listing and detail visibility | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D03](issues/d03.md) |
-| [F07](issues/f07.md) | Implement staff-only membership directory | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D03](issues/d03.md) |
-| [F08](issues/f08.md) | Implement member addition and membership reactivation | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D02](issues/d02.md), [D03](issues/d03.md), [D04](issues/d04.md) |
-| [F01](issues/f01.md) | Implement ticket creation for the authenticated member | P1 | type:feature | [D01](issues/d01.md), [D03](issues/d03.md), [D04](issues/d04.md), [B04](issues/b04.md), [F04](issues/f04.md), [Q02](issues/q02.md) |
-| [F11](issues/f11.md) | Implement scoped ticket listing and detail retrieval | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md) |
-| [F12](issues/f12.md) | Implement ticket priority and assignment operations | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md), [D04](issues/d04.md) |
-| [F13](issues/f13.md) | Implement ticket lifecycle transitions and reopening cleanup | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md), [D04](issues/d04.md) |
-| [F09](issues/f09.md) | Implement membership role changes and deactivation | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md), [D04](issues/d04.md) |
-| [F10](issues/f10.md) | Implement atomic organization ownership transfer | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D03](issues/d03.md), [D04](issues/d04.md) |
-| [F14](issues/f14.md) | Implement ticket comments with tenant-safe persistence | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md), [D04](issues/d04.md) |
-| [Q03](issues/q03.md) | Run guarded PostgreSQL integration tests in CI | P1 | type:quality | [Q01](issues/q01.md), [B02](issues/b02.md), [B04](issues/b04.md) |
-| [R01](issues/r01.md) | Publish the first OpsDesk backend preview | P1 | type:delivery | [Q03](issues/q03.md), [Q02](issues/q02.md), [F01](issues/f01.md), [F02](issues/f02.md), [F03](issues/f03.md), [F04](issues/f04.md), [F05](issues/f05.md), [F06](issues/f06.md), [F07](issues/f07.md), [F08](issues/f08.md), [F09](issues/f09.md), [F10](issues/f10.md), [F11](issues/f11.md), [F12](issues/f12.md), [F13](issues/f13.md), [F14](issues/f14.md) |
+| Local ID | GitHub issue | Issue title | Priority | Type label | Direct dependencies |
+| --- | --- | --- | --- | --- | --- |
+| [D01](issues/d01.md) | [#1](https://github.com/ozdemirr1/opsdesk/issues/1) | Finalize ticket creation validation contract | P0 | type:design | Reviewed baseline / gate |
+| [D02](issues/d02.md) | [#2](https://github.com/ozdemirr1/opsdesk/issues/2) | Finalize identity validation and authentication contracts | P0 | type:design | Reviewed baseline / gate |
+| [D03](issues/d03.md) | [#3](https://github.com/ozdemirr1/opsdesk/issues/3) | Finalize remaining API validation and response contracts | P0 | type:design | Reviewed baseline / gate |
+| [D04](issues/d04.md) | [#4](https://github.com/ozdemirr1/opsdesk/issues/4) | Define coordinated transaction and concurrency rules | P0 | type:design | Reviewed baseline / gate |
+| [B01](issues/b01.md) | [#5](https://github.com/ozdemirr1/opsdesk/issues/5) | Establish the backend application foundation | P0 | type:infrastructure | Reviewed baseline / gate |
+| [B02](issues/b02.md) | [#6](https://github.com/ozdemirr1/opsdesk/issues/6) | Establish guarded PostgreSQL integration tests | P0 | type:infrastructure | [B01](issues/b01.md) |
+| [B03](issues/b03.md) | [#7](https://github.com/ozdemirr1/opsdesk/issues/7) | Create the initial identity and organization schema | P0 | type:schema | [B02](issues/b02.md), [D02](issues/d02.md) |
+| [B04](issues/b04.md) | [#8](https://github.com/ozdemirr1/opsdesk/issues/8) | Create the ticket schema | P0 | type:schema | [B03](issues/b03.md), [D01](issues/d01.md) |
+| [Q01](issues/q01.md) | [#9](https://github.com/ozdemirr1/opsdesk/issues/9) | Add minimal backend continuous integration | P0 | type:quality | [B01](issues/b01.md) |
+| [Q02](issues/q02.md) | [#10](https://github.com/ozdemirr1/opsdesk/issues/10) | Implement shared API errors and safe request logging | P0 | type:infrastructure | [B01](issues/b01.md), [D03](issues/d03.md) |
+| [F02](issues/f02.md) | [#11](https://github.com/ozdemirr1/opsdesk/issues/11) | Implement user registration | P0 | type:feature | [D02](issues/d02.md), [B03](issues/b03.md), [Q02](issues/q02.md) |
+| [F03](issues/f03.md) | [#12](https://github.com/ozdemirr1/opsdesk/issues/12) | Implement login and access-token issuance | P0 | type:feature | [D02](issues/d02.md), [B03](issues/b03.md), [Q02](issues/q02.md) |
+| [F04](issues/f04.md) | [#13](https://github.com/ozdemirr1/opsdesk/issues/13) | Implement authenticated current-user resolution | P0 | type:feature | [D02](issues/d02.md), [B03](issues/b03.md), [Q02](issues/q02.md) |
+| [F05](issues/f05.md) | [#14](https://github.com/ozdemirr1/opsdesk/issues/14) | Implement organization creation with initial ownership | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D03](issues/d03.md), [D04](issues/d04.md) |
+| [F06](issues/f06.md) | [#15](https://github.com/ozdemirr1/opsdesk/issues/15) | Implement organization listing and detail visibility | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D03](issues/d03.md) |
+| [F07](issues/f07.md) | [#16](https://github.com/ozdemirr1/opsdesk/issues/16) | Implement staff-only membership directory | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D03](issues/d03.md) |
+| [F08](issues/f08.md) | [#17](https://github.com/ozdemirr1/opsdesk/issues/17) | Implement member addition and membership reactivation | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D02](issues/d02.md), [D03](issues/d03.md), [D04](issues/d04.md) |
+| [F01](issues/f01.md) | [#18](https://github.com/ozdemirr1/opsdesk/issues/18) | Implement ticket creation for the authenticated member | P1 | type:feature | [D01](issues/d01.md), [D03](issues/d03.md), [D04](issues/d04.md), [B04](issues/b04.md), [F04](issues/f04.md), [Q02](issues/q02.md) |
+| [F11](issues/f11.md) | [#19](https://github.com/ozdemirr1/opsdesk/issues/19) | Implement scoped ticket listing and detail retrieval | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md) |
+| [F12](issues/f12.md) | [#20](https://github.com/ozdemirr1/opsdesk/issues/20) | Implement ticket priority and assignment operations | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md), [D04](issues/d04.md) |
+| [F13](issues/f13.md) | [#21](https://github.com/ozdemirr1/opsdesk/issues/21) | Implement ticket lifecycle transitions and reopening cleanup | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md), [D04](issues/d04.md) |
+| [F09](issues/f09.md) | [#22](https://github.com/ozdemirr1/opsdesk/issues/22) | Implement membership role changes and deactivation | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md), [D04](issues/d04.md) |
+| [F10](issues/f10.md) | [#23](https://github.com/ozdemirr1/opsdesk/issues/23) | Implement atomic organization ownership transfer | P1 | type:feature | [F04](issues/f04.md), [B03](issues/b03.md), [D03](issues/d03.md), [D04](issues/d04.md) |
+| [F14](issues/f14.md) | [#24](https://github.com/ozdemirr1/opsdesk/issues/24) | Implement ticket comments with tenant-safe persistence | P1 | type:feature | [F04](issues/f04.md), [B04](issues/b04.md), [D03](issues/d03.md), [D04](issues/d04.md) |
+| [Q03](issues/q03.md) | [#25](https://github.com/ozdemirr1/opsdesk/issues/25) | Run guarded PostgreSQL integration tests in CI | P1 | type:quality | [Q01](issues/q01.md), [B02](issues/b02.md), [B04](issues/b04.md) |
+| [R01](issues/r01.md) | [#26](https://github.com/ozdemirr1/opsdesk/issues/26) | Publish the first OpsDesk backend preview | P1 | type:delivery | [Q03](issues/q03.md), [Q02](issues/q02.md), [F01](issues/f01.md), [F02](issues/f02.md), [F03](issues/f03.md), [F04](issues/f04.md), [F05](issues/f05.md), [F06](issues/f06.md), [F07](issues/f07.md), [F08](issues/f08.md), [F09](issues/f09.md), [F10](issues/f10.md), [F11](issues/f11.md), [F12](issues/f12.md), [F13](issues/f13.md), [F14](issues/f14.md) |
 
 Prerequisites are acceptance gates, not just a suggested reading order. A completed
 registration endpoint is not required to test login or current-user resolution;
@@ -118,12 +120,13 @@ implementation, not a tested guarantee.
 - D04 must select an actual cooperating transaction/lock protocol. Atomicity alone is
   not that protocol. Each dependent implementation waits for the relevant decisions.
 - No full Week 09 completion claim is made merely because every endpoint has a draft.
-  Consolidated review, publication, architecture questions, report and handoff remain.
+  Backlog publication and architecture review are complete. The bootcamp repository
+  records the Week 09 report and Week 10 handoff; final Git closure remains pending.
 
-## Proposed Week 10 Sequence
+## Week 10 Handoff Sequence
 
-Capacity target: approximately 15-20 active hours, to be refined after review. This
-is a dependency-respecting proposal, not a commitment to implement all 26 issues.
+Capacity target: approximately 15-20 active hours, to be adjusted as work proceeds. This
+is a dependency-respecting plan, not a commitment to implement all 26 issues.
 
 1. Resolve D01/D02 and the early shared-error/settings portions of D03; identify any
    remaining prerequisite decisions before their dependent work starts.
@@ -144,11 +147,11 @@ requires release evidence; Docker/Compose remains outside this phase.
 
 ## Publication and Weekly Closure
 
-- Review the grouped proposals and suggested priorities/dependencies with Furkan.
-- Furkan creates the reviewed GitHub issues; capture their actual numbers/URLs and
-  update dependency references. No GitHub publication has occurred in this session.
-- Complete the grouped Sunday architecture review and record answers/corrections.
-- Write the Week 09 report and finalized Week 10 handoff from actual evidence.
-- Keep the bounded career/networking action visible in the weekly record.
+- Completed: Furkan published the reviewed backlog and eight labels; all 26 issue
+  titles, identifiers, labels, and dependency links were verified against GitHub.
+- Completed: grouped Sunday architecture review; precision corrections, Week 09
+  report, and capacity-bounded Week 10 handoff are recorded in the bootcamp repository.
+- No completed career action was evidenced; carry the bounded preparation task
+  explicitly into Week 10 rather than treating it as done.
 - Perform documentation checks and Furkan's staged review/commit/push in both repos.
   A clean draft is not equivalent to an implemented feature, passing API tests, or CI.
