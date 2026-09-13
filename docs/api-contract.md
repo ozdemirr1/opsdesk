@@ -54,8 +54,10 @@ membership directory, or performing Organization-scoped mutations. Inactive
 membership removes even this visibility. The final nested organization-list and
 creation response layouts still need example-based review.
 
-Refresh tokens are outside Month 03. Password limits, email canonicalization,
-duplicate registration, and credential-failure details require the remaining review.
+Refresh tokens are outside Month 03. Sunday's identity review selects the same public
+401 unauthenticated response for otherwise valid login with unknown email, wrong
+password, or inactive account. Password limits, email canonicalization, duplicate
+registration, and remaining credential/token details still require review.
 
 ## Tickets
 
@@ -183,6 +185,7 @@ Record this product tradeoff without claiming that generic errors solve it entir
 | Failure | HTTP status | Public code |
 | --- | --- | --- |
 | Missing, invalid, or expired bearer token; missing/inactive current User | 401 | unauthenticated |
+| Otherwise valid login with unknown email, wrong password, or inactive account | 401 | unauthenticated |
 | No active membership in requested Organization, including nonexistent Organization | 403 | organization_access_denied |
 | Ticket missing, outside path Organization, or outside caller visibility | 404 | ticket_not_found |
 | Visible resource, forbidden operation | 403 | permission_denied |
@@ -283,8 +286,9 @@ email delivery, frontend, background jobs, Docker, and AI retain their existing 
   claims, ownership, role changes, deactivation, and reopening. Atomicity alone
   does not resolve races or stale authorization checks.
 - Decide when the deferred Attachment table becomes an executable migration.
-- Turn these bounded decisions and the 22 endpoints into prioritized issues with
-  dependencies and acceptance criteria; this document is not a completed backlog.
+- Review the [26 issue drafts](issue-plan.md), proposed priorities/dependencies and
+  22-endpoint coverage, then publish the approved issues. This is not a completed
+  GitHub backlog; draft design issues have not resolved their underlying decisions.
 
 Future tests must verify response projections, forbidden/system fields, stale-token
 account checks, tenant and requester scoping, no-op authorization and unchanged

@@ -49,6 +49,6 @@ See the [API contract baseline](docs/api-contract.md) for the 22-endpoint invent
 response examples, errors, pagination, release exclusions, and remaining decisions.
 Implementation and the prioritized issue backlog remain pending.
 
-See the [Week 09 issue plan](docs/issue-plan.md) for four learner-authored drafts,
-the preliminary dependency map, and the Sunday carry-over. These drafts have not
-been published as GitHub issues; the complete prioritized backlog is still pending.
+See the [Week 09 issue plan](docs/issue-plan.md) for 26 draft issue bodies, proposed
+priorities/dependencies, coverage of all 22 endpoints, and the Week 10 sequence
+proposal. Consolidated review and GitHub issue publication remain pending.
