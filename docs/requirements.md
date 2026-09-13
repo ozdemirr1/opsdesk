@@ -3,6 +3,13 @@
 Status: Initial scope draft, reviewed during Month 03 / Week 09.
 Detailed domain and authorization design remains in progress.
 
+The [domain model](domain-model.md) records the reviewed Week 09 Tuesday
+decisions. The [relational model](relational-model.md) and [ERD](erd.md) record
+Wednesday's table and relationship design. Thursday's [access-control matrix](access-control.md)
+and [Ticket lifecycle](ticket-lifecycle.md) define reviewed permissions and transitions.
+Friday's [API contract baseline](api-contract.md) records endpoints, public errors,
+pagination, and release boundaries. Its remaining-review list precedes implementation.
+
 ## Problem
 
 Support requests tracked through scattered messages are difficult to follow.
@@ -22,8 +29,8 @@ organization must follow explicit membership and permission rules.
 - Owner: holds organization ownership and manages ownership-level actions.
 
 A User is a global identity. Roles belong to OrganizationMembership. The same
-User may hold different roles in different organizations. Exact permissions will
-be defined in the access-control matrix.
+User may hold different roles in different organizations. Exact permissions are
+defined in the access-control matrix and its API-specific extensions.
 
 ## Primary Workflow
 
@@ -37,9 +44,9 @@ be defined in the access-control matrix.
 5. Authorized members move the ticket through the defined lifecycle using
    `open`, `in_progress`, `resolved`, and `closed`.
 
-This workflow does not authorize every transition between these statuses.
-Assignment permissions, priority selection, and allowed status transitions remain
-design decisions to resolve during Week 09.
+The matrices define the allowed transitions and assignment permissions. Every role
+can create a Ticket for self; creation starts open and unassigned, with medium
+priority when omitted. Assignment is always a separate authorized operation.
 
 ## Functional Requirements
 
@@ -52,9 +59,9 @@ design decisions to resolve during Week 09.
   according to assignment and lifecycle rules.
 - **FR-05:** Members can add and read comments only where the ticket and comment
   visibility rules permit access.
-- **FR-06:** The domain design includes attachment metadata and its relationship
-  to tickets. File upload and storage are excluded. Metadata fields and permitted
-  operations will be specified during domain and API design.
+- **FR-06:** The domain and relational design includes Ticket-bound attachment
+  metadata. Metadata create/read/delete endpoints and physical file operations
+  are deferred beyond Month 03; this is not a promised release capability.
 
 ## Non-functional Requirement
 
@@ -76,6 +83,14 @@ unchanged.
 - Docker and Docker Compose setup.
 - File-content upload, download, and object storage.
 - Refresh tokens, MFA, billing, and enterprise SSO.
+- User-facing comment editing/deletion and staff-only internal notes.
+- Attachment-to-Comment relationships and all attachment-metadata API operations.
+- Ticket title/description editing and Ticket deletion.
+- Organization renaming and user-facing suspension/reactivation.
+- Global User deactivation endpoints. Existing deactivation invariants remain valid.
+
+See the [scope rationale](api-contract.md#deferred-month-03-operations). Closing a
+Ticket is not erasure, and FKs only restrict deletion while relevant references exist.
 
 ## Acceptance Scenarios
 
@@ -97,14 +112,14 @@ And the requester is derived from the authenticated user
 ```gherkin
 Given an authenticated user with an active membership only in Organization A
 When the user attempts to create a ticket in Organization B
-Then the API rejects the request
+Then the API returns HTTP 403 with code "organization_access_denied"
 And no new ticket is persisted
 ```
 
-The exact rejection status and public error response will be defined in the
-authorization and API contracts.
+The [error contract](api-contract.md#error-contract) uses the same organization-access
+response when no active membership exists, including a nonexistent Organization.
 
-### AC-03: Customer Cannot Resolve a Ticket — Proposed Policy
+### AC-03: Customer Cannot Resolve a Ticket
 
 ```gherkin
 Given an authenticated user with an active customer membership
@@ -114,20 +129,46 @@ Then the API returns HTTP 403 Forbidden
 And the stored ticket status remains unchanged
 ```
 
-This proposed restriction will be reviewed in the access-control and
-status-transition matrices before implementation.
+The reviewed matrices confirm this restriction. HTTP 403 is the existing intended
+response for this visible-resource scenario, including a same-status resolved request.
+The [API baseline](api-contract.md) records the broader error contract. Additional
+Thursday scenarios are recorded in the
+[Ticket lifecycle](ticket-lifecycle.md#acceptance-scenarios).
+
+## Reviewed Domain Policies
+
+- An active Organization has exactly one active owner membership belonging to
+  an active User. Ownership transfer is atomic; the previous owner becomes admin.
+- Each User-Organization pair has at most one membership record across all states.
+  Rejoining reactivates that record with an explicitly authorized current role.
+- A User cannot be deactivated while owning an active Organization.
+- The self-service creation flow derives both requester and creator from the
+  authenticated User. All four roles can create for self. A Ticket's Organization,
+  requester, and creator do not change.
+- New Tickets are always `open` and unassigned. Assignment is a separate operation
+  requiring an active User and active same-Organization agent/admin/owner membership.
+- Eligibility-revoking changes are rejected while affected `open` or `in_progress`
+  Tickets remain assigned. Membership/role changes are scoped to that Organization;
+  global account deactivation checks all Organizations. Returning to open preserves
+  an eligible assignee and clears an ineligible one atomically with the transition.
+  Closed is terminal for all roles. See the lifecycle document for exact rules.
+- Comments are append-only for every user role; reading follows Ticket visibility.
+  Posting is allowed under role/resource rules in open/in_progress/resolved, never closed.
+- Customers see their own requested Tickets; staff see all Tickets in their Organization.
+- Admins may manage non-owner peers. Ordinary self-role changes are denied. Only the
+  owner can transfer ownership to another active User with an active admin membership.
+- Each Attachment metadata record belongs directly to exactly one fixed Ticket.
 
 ## Open Design Decisions
 
-- Organization creation, membership lifecycle, and ownership rules.
-- Exact permissions for owner, admin, agent, and customer.
-- Ticket visibility, requester, assignee, and creator relationships.
-- Assignment eligibility and assignment permissions.
-- Priority selection and modification permissions.
-- Valid status transitions, including resolution, closure, and reopening rules.
-- Comment visibility and attachment metadata lifecycle.
-- Entity fields, relational constraints, and deletion behavior.
-- Endpoint inventory, public errors, and pagination contracts.
+- Resolve the [remaining API review](api-contract.md#remaining-review-and-test-handoff):
+  precise validation, email canonicalization, remaining response/error cases, query
+  extensions, collection ordering, and count/items consistency.
+- Define the cooperating concurrency protocol for ownership, assignment, reopening,
+  and eligibility-revoking operations, including lock order and retry behavior.
+- Keep deferred retention, anonymization, erasure, and storage workflows separate
+  from the Month 03 endpoint inventory. No blanket administrative bypass is implied.
+- Complete the prioritized issue backlog and implementation sequence.
 
 ## Implementation Gate
 
