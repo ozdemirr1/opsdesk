@@ -110,7 +110,9 @@ implementation, not a tested guarantee.
 
 ## Open Decisions and Readiness
 
-- D01 defines Ticket input bounds/normalization; its draft is ready, its values are not.
+- D01 outcomes were reviewed on 15 September: see the
+  [Ticket creation validation contract](ticket-creation-validation.md) for chosen
+  values, normalization, and examples. Implementation and GitHub closure are separate.
 - D02 defines email/password/JWT details and duplicate registration. Shared 401 login
   rejection for unknown email/wrong password/inactive User is selected; exact remaining
   examples and cryptographic configuration still require review.

@@ -6,8 +6,9 @@ This document consolidates the endpoint drafts and mentoring corrections. It is 
 design baseline, not an implemented API or a complete OpenAPI specification. Read
 it with the [access-control matrix](access-control.md),
 [Ticket lifecycle](ticket-lifecycle.md), and [requirements](requirements.md).
-Unresolved details are listed explicitly at the end. The Week 09 issue backlog
-and implementation gate remain pending.
+Unresolved details are listed explicitly at the end. The Week 09 backlog is
+published; dependent implementation still requires its specific design decisions.
+Ticket creation validation was reviewed on 15 September; see the linked contract.
 
 ## Shared Request and Response Rules
 
@@ -71,9 +72,13 @@ registration, and remaining credential/token details still require review.
 | Assign or reassign | `PUT /organizations/{organization_id}/tickets/{ticket_id}/assignment` | Non-null assignee_membership_id | Assignment matrix; open/in_progress; currently eligible target | 200 TicketResponse |
 | Remove assignment | `DELETE /organizations/{organization_id}/tickets/{ticket_id}/assignment` | None | Assignment matrix; only open | 200 TicketResponse with null assignee |
 
-Omitted creation priority becomes medium. Null or unknown priority fails validation.
-Creation rejects supplied status, assignee, requester, creator, and organization
-fields, including values that happen to match the server's intended values.
+The [Ticket creation validation contract](ticket-creation-validation.md) defines
+strict field types, title length 1..255, description length 1..10000, Python-style
+edge trimming, code-point length measurement, forbidden text characters, and examples.
+Priority accepts only exact low/medium/high/urgent values; omission alone selects medium.
+Only title, description, and optional priority are accepted. Reject all other fields,
+including matching server-controlled values. Validation acceptance alone is not a
+successful creation; authorization and a successful commit are still required.
 
 Eligible assignees have an active global User and active same-Organization membership
 with role agent/admin/owner. Agents may distribute unassigned work, but only reassign
@@ -275,8 +280,10 @@ email delivery, frontend, background jobs, Docker, and AI retain their existing 
 
 ## Remaining Review and Test Handoff
 
-- Set email canonicalization, password policy, precise string bounds, and request
-  validation examples. Review login failures, duplicate registration, missing target
+- Ticket creation field rules and examples are recorded in the reviewed
+  [validation contract](ticket-creation-validation.md). Set email canonicalization,
+  password policy, and remaining non-Ticket field bounds. Review login failures,
+  duplicate registration, missing target
   memberships, unexpected server errors, and overlapping-failure precedence.
 - Finalize the proposed queue/directory filters, non-Ticket collection ordering,
   count/items consistency, remaining nested responses, and error details conventions.
@@ -286,9 +293,8 @@ email delivery, frontend, background jobs, Docker, and AI retain their existing 
   claims, ownership, role changes, deactivation, and reopening. Atomicity alone
   does not resolve races or stale authorization checks.
 - Decide when the deferred Attachment table becomes an executable migration.
-- Review the [26 issue drafts](issue-plan.md), proposed priorities/dependencies and
-  22-endpoint coverage, then publish the approved issues. This is not a completed
-  GitHub backlog; draft design issues have not resolved their underlying decisions.
+- Follow the [26 published issues](issue-plan.md) and their prerequisites. Publication
+  does not resolve design decisions; completion needs the corresponding evidence.
 
 Future tests must verify response projections, forbidden/system fields, stale-token
 account checks, tenant and requester scoping, no-op authorization and unchanged

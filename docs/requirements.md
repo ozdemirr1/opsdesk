@@ -161,14 +161,15 @@ Thursday scenarios are recorded in the
 
 ## Open Design Decisions
 
-- Resolve the [remaining API review](api-contract.md#remaining-review-and-test-handoff):
-  precise validation, email canonicalization, remaining response/error cases, query
+- Ticket creation validation is reviewed in its [contract](ticket-creation-validation.md).
+  Resolve the [remaining API review](api-contract.md#remaining-review-and-test-handoff):
+  other field validation, email canonicalization, remaining response/error cases, query
   extensions, collection ordering, and count/items consistency.
 - Define the cooperating concurrency protocol for ownership, assignment, reopening,
   and eligibility-revoking operations, including lock order and retry behavior.
 - Keep deferred retention, anonymization, erasure, and storage workflows separate
   from the Month 03 endpoint inventory. No blanket administrative bypass is implied.
-- Complete the prioritized issue backlog and implementation sequence.
+- Follow the published [issue backlog](issue-plan.md) and the implementation prerequisites.
 
 ## Implementation Gate
 

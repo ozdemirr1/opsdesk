@@ -17,7 +17,8 @@ migration timing to be decided. Remaining design work is listed at the end.
   generates values; the primary key enforces unique identity. Identity generation
   does not make arbitrary SQL changes impossible. Normal application operations
   never accept or change technical identities.
-- Textual fields use text; exact maximum lengths remain explicit validation work.
+- Textual fields use text. Ticket title/description limits are now reviewed;
+  other field limits remain explicit validation work.
 - All columns below are NOT NULL except tickets.assignee_membership_id.
 - Memberships are retained on departure and reactivated on return, rather than
   replaced. Stable references do not constitute complete historical role/assignment logs.
@@ -103,8 +104,8 @@ and a consistent lock order remain implementation prerequisites.
 | requester_membership_id | bigint | No | Composite membership FK | Fixed requester attribution |
 | creator_membership_id | bigint | No | Composite membership FK | Fixed creator attribution |
 | assignee_membership_id | bigint | Yes | Composite membership FK | Optional current assignment |
-| title | text | No | Nonblank text; limits pending | Short issue summary |
-| description | text | No | Nonblank text; limits pending | Detailed support request |
+| title | text | No | CHECK char_length(title) BETWEEN 1 AND 255; see text contract | Short issue summary |
+| description | text | No | CHECK char_length(description) BETWEEN 1 AND 10000; see text contract | Detailed support request |
 | status | text | No | CHECK valid status; DEFAULT 'open' | Current lifecycle state |
 | priority | text | No | CHECK valid priority; DEFAULT 'medium' | Urgency level |
 | created_at | timestamptz | No | DEFAULT now() | Creation transaction time |
@@ -232,8 +233,14 @@ their non-null composite Ticket FK already leads to a Ticket with a valid Organi
 
 ## Text Validation Baseline
 
-The proposed nonblank guard for names, titles, descriptions, comments, filenames,
-and MIME labels is a NOT NULL column with a CHECK such as:
+Ticket input uses the reviewed [creation validation contract](ticket-creation-validation.md):
+trim edges with Python str.strip(), count Unicode code points, preserve internal
+formatting under the field rules, and reject forbidden characters before trimming.
+Persisted title and description length constraints are respectively 1..255 and
+1..10000. Application input checks remain necessary; no migration has been applied.
+
+The proposed nonblank guard for other textual fields (names, comments, filenames,
+and MIME labels) is a NOT NULL column with a CHECK such as:
 
 ```sql
 CHECK (content ~ '[^[:space:]]')
@@ -244,12 +251,14 @@ without an explicit character set only removes ordinary spaces, not every whites
 character. POSIX character-class handling outside ASCII depends on locale/collation;
 the application and database normalization contracts require shared test examples.
 Nonblank does not imply valid MIME syntax, valid email, safe filenames, or bounded size.
-Exact maximum lengths are still open and must be resolved before the relevant schema
-and API validation are implemented.
+Do not apply this POSIX class to Ticket fields as though it exactly matched Python
+whitespace semantics. Any extra Ticket nonblank database guard must preserve the
+accepted request contract. Exact lengths for other fields are still open and must
+be resolved before the relevant schema and API validation are implemented.
 
 ## Remaining Design Work
 
-- Define email normalization/storage checks and exact string length limits.
+- Define email normalization/storage checks and remaining non-Ticket string limits.
 - Translate the reviewed matrices into migration and service checks; priority
   defaults to medium, assignment at creation is forbidden, and in_progress requires
   an eligible assignee. No new constraints have been applied.
