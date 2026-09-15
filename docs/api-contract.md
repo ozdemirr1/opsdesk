@@ -55,10 +55,13 @@ membership directory, or performing Organization-scoped mutations. Inactive
 membership removes even this visibility. The final nested organization-list and
 creation response layouts still need example-based review.
 
-Refresh tokens are outside Month 03. Sunday's identity review selects the same public
-401 unauthenticated response for otherwise valid login with unknown email, wrong
-password, or inactive account. Password limits, email canonicalization, duplicate
-registration, and remaining credential/token details still require review.
+The [identity/authentication contract](identity-authentication-contract.md), reviewed
+15 September, defines ASCII lowercase canonical email, duplicate registration
+(409 email_already_exists), NFC-normalized passwords of 15..128 code points, and
+30-minute HS256 tokens with required sub/iat/exp/iss/aud claims. Otherwise valid login
+with unknown email, wrong password, or inactive account uses the same public
+401 unauthenticated response. Protected requests reload the current active User.
+Refresh tokens remain outside Month 03.
 
 ## Tickets
 
@@ -199,6 +202,7 @@ Record this product tradeoff without claiming that generic errors solve it entir
 | Permitted operation blocked by current business state | 409 | state_conflict |
 | Membership already exists, active or inactive | 409 | membership_exists |
 | Email does not identify an addable active User | 400 | user_not_addable |
+| Registration uses an already registered canonical email | 409 | email_already_exists |
 
 Protected bearer 401 responses include `WWW-Authenticate: Bearer`. Resolve membership
 before exposing Organization suspension. Missing/foreign/invisible Tickets share a
@@ -281,9 +285,9 @@ email delivery, frontend, background jobs, Docker, and AI retain their existing 
 ## Remaining Review and Test Handoff
 
 - Ticket creation field rules and examples are recorded in the reviewed
-  [validation contract](ticket-creation-validation.md). Set email canonicalization,
-  password policy, and remaining non-Ticket field bounds. Review login failures,
-  duplicate registration, missing target
+  [validation contract](ticket-creation-validation.md). Identity inputs and token
+  behavior are recorded in the [identity contract](identity-authentication-contract.md).
+  Finalize remaining Organization/membership/Comment field bounds, missing target
   memberships, unexpected server errors, and overlapping-failure precedence.
 - Finalize the proposed queue/directory filters, non-Ticket collection ordering,
   count/items consistency, remaining nested responses, and error details conventions.

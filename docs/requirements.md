@@ -162,8 +162,10 @@ Thursday scenarios are recorded in the
 ## Open Design Decisions
 
 - Ticket creation validation is reviewed in its [contract](ticket-creation-validation.md).
+  Email, password, and token policies are reviewed in the
+  [identity/authentication contract](identity-authentication-contract.md).
   Resolve the [remaining API review](api-contract.md#remaining-review-and-test-handoff):
-  other field validation, email canonicalization, remaining response/error cases, query
+  other field validation, remaining response/error cases, query
   extensions, collection ordering, and count/items consistency.
 - Define the cooperating concurrency protocol for ownership, assignment, reopening,
   and eligibility-revoking operations, including lock order and retry behavior.
