@@ -121,3 +121,29 @@ error or logging format. Never log raw configuration or credentials.
 Tests can pass an explicit `Settings` instance to `create_app(settings=...)`.
 Explicit field values take precedence over environment variables; tests that
 exercise environment loading control those variables with pytest's `monkeypatch`.
+
+
+## Continuous Integration
+
+The `Backend CI` workflow in `.github/workflows/ci.yml` is configured to run on
+pushes and pull requests. It uses an Ubuntu runner, uv 0.12.3, and the Python version
+pinned in `.python-version`. Dependency installation requires the committed lockfile.
+The workflow token has read-only repository-content permissions, and checkout does
+not retain Git credentials for subsequent commands.
+
+The job checks Ruff linting and formatting, then runs only the application and
+configuration tests. A failed check fails the job. PostgreSQL integration tests,
+Docker builds, and deployment are outside this workflow's scope. No application
+secrets or developer `.env` file are required.
+
+Reproduce the checks locally:
+
+```bash
+uv sync --locked
+uv run --locked ruff check src tests
+uv run --locked ruff format --check src tests
+uv run --locked pytest -q tests/test_application.py tests/test_config.py
+```
+
+Inspect actual run results in the repository's GitHub Actions tab. Workflow
+configuration and passing local checks do not establish a successful hosted run.
