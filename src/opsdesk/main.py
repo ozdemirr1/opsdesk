@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from opsdesk.api.errors import ApiError, handle_api_error
 from opsdesk.config import Settings
 
 
@@ -14,5 +15,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url="/redoc" if settings.docs_enabled else None,
         openapi_url="/openapi.json" if settings.docs_enabled else None,
     )
+
+    app.add_exception_handler(ApiError, handle_api_error)
 
     return app

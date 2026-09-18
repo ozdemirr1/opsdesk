@@ -248,9 +248,10 @@ public response; this concealment supplements actual scoped authorization checks
 Role denial and state conflict are distinct; finalize precedence for requests that
 violate both, including unlisted transitions, before writing error assertions.
 
-The proposed transport extensions are `400 invalid_json` for malformed JSON and
-`415 unsupported_media_type` for unsupported Content-Type. These require explicit
-framework handling and acceptance examples; they are not assumed framework defaults.
+The [shared error/logging contract](error-logging-contract.md), reviewed on
+18 September, accepts `400 invalid_json` and `415 unsupported_media_type`, defines
+safe 500/404/405 mappings, and fixes correlation/logging rules. These require
+explicit implementation and tests; they are not assumed framework defaults.
 
 ### Validation Error Example
 
@@ -264,7 +265,7 @@ messages, without echoing rejected raw values or framework exception internals.
     "message": "Request validation failed.",
     "details": [
       {
-        "field": "priority",
+        "field": "body.priority",
         "message": "Value must be one of: 'low', 'medium', 'high', 'urgent'."
       }
     ]
@@ -272,8 +273,9 @@ messages, without echoing rejected raw values or framework exception internals.
 }
 ```
 
-Use a consistent error envelope. Decide whether non-field failures use an empty
-details array, and define nested/query field paths, before completing response schemas.
+Use a consistent error envelope with `details: []` for non-field failures. Known
+field paths use body/query/path prefixes; never reflect unknown client field names.
+See the shared error/logging contract for the reviewed disclosure boundaries.
 Do not include raw request bodies, passwords, tokens, hashes, or database details.
 
 ## Pagination and Filtering

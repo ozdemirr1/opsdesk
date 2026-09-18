@@ -365,3 +365,17 @@ cleanup on normal/exception paths, identity/unique constraints, required values,
 role vocabulary, restricted deletion, and active-owner boundaries. PostgreSQL 18
 RESTRICT deletion failures report `23001`; missing-parent inserts report `23503`.
 These local results do not establish hosted PostgreSQL CI or implemented API auth.
+
+
+## Shared Error Handling — Partial Implementation
+
+The [error/logging contract](docs/error-logging-contract.md) records the reviewed
+#3 subset for #10. The first implementation slice registers an `ApiError` handler
+with fixed catalog messages, a consistent code/message/details envelope, and a
+Bearer challenge for unauthenticated errors. Sixteen focused API-error tests and
+seven existing application/configuration tests passed locally on 18 September.
+
+Only explicitly raised `ApiError` instances use this handler. Catalog entries do
+not yet implement automatic validation, JSON/media-type, framework 404/405, or
+unexpected-exception mapping. Request IDs and safe request logging are pending.
+No business endpoint or authorization check is introduced. Issue #10 remains open.
