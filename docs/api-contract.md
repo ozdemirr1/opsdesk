@@ -63,6 +63,44 @@ with unknown email, wrong password, or inactive account uses the same public
 401 unauthenticated response. Protected requests reload the current active User.
 Refresh tokens remain outside Month 03.
 
+### Organization Name Contract
+
+Reviewed with Furkan on 17 September 2026. This resolves the Organization-name
+portion of D03 for the initial schema; it does not complete D03 or implement an endpoint.
+
+- `name` is a required string. Missing, null, and non-string values are invalid.
+- Reject U+0000, LF (`\n`), CR (`\r`), and TAB (`\t`) before trimming,
+  including when they appear at either edge.
+- Trim leading/trailing whitespace using Python `str.strip()`. Preserve internal
+  spaces, case, Turkish characters, and other Unicode text. Apply no additional
+  Unicode normalization or case conversion.
+- Measure length after trimming in Unicode code points: minimum 1, maximum 255.
+  Whitespace-only values become empty and are invalid.
+- Invalid name input returns `422 validation_error`. A valid name alone does not
+  guarantee creation: authentication and the atomic Organization/owner write remain required.
+- Names are not unique. Distinct Organizations may have identical names; their
+  `organization_id` values identify them. No rename endpoint is added by this decision.
+
+| Input | Validation result / normalized value |
+| --- | --- |
+| `"  Özdemir Yazılım  "` | Accept as `"Özdemir Yazılım"` |
+| `"Özdemir  Yazılım"` | Accept; preserve both internal spaces |
+| `"   "` or `""` | Reject; empty after trimming |
+| `"\tAcme"`, `"Acme\n"`, `"Acme\rTeam"` | Reject before trimming |
+| `"Acme\u0000Team"` | Reject NUL |
+| `null`, `123`, or omitted name | Reject |
+| 255 `A` characters, optionally surrounded by spaces | Accept after trimming |
+| 256 `A` characters | Reject |
+| Unicode whitespace U+00A0 alone | Reject; empty after Python trimming |
+
+Persist `name` as `text NOT NULL` with `char_length(name) BETWEEN 1 AND 255`.
+Input normalization remains an application responsibility; that length CHECK alone
+neither trims text nor rejects every whitespace-only value. As with Ticket fields,
+any additional database whitespace guard requires shared Unicode edge-case review;
+PostgreSQL POSIX whitespace classes must not be assumed identical to Python's.
+The initial identity migration and PostgreSQL constraint tests now verify these
+storage bounds; the Organization endpoint and input normalizer remain unimplemented.
+
 ## Tickets
 
 | Purpose | Method and path | Input | Authorization and behavior | Success |
@@ -287,7 +325,8 @@ email delivery, frontend, background jobs, Docker, and AI retain their existing 
 - Ticket creation field rules and examples are recorded in the reviewed
   [validation contract](ticket-creation-validation.md). Identity inputs and token
   behavior are recorded in the [identity contract](identity-authentication-contract.md).
-  Finalize remaining Organization/membership/Comment field bounds, missing target
+  Organization name bounds are reviewed above. Finalize remaining membership/Comment
+  field bounds, missing target
   memberships, unexpected server errors, and overlapping-failure precedence.
 - Finalize the proposed queue/directory filters, non-Ticket collection ordering,
   count/items consistency, remaining nested responses, and error details conventions.
