@@ -117,7 +117,10 @@ implementation, not a tested guarantee.
   [identity/authentication contract](identity-authentication-contract.md) for email,
   password, duplicate registration, login, and JWT decisions. Implementations still
   require their own code and test evidence; issue closure remains Furkan's task.
-- D03 collects remaining Organization/membership/Comment validation, list and response
+- D03 Organization name rules were reviewed on 17 September; see the
+  [name contract](api-contract.md#organization-name-contract). This supplies the
+  name bounds needed by B03, not completion of D03.
+- D03 collects remaining membership/Comment validation, list and response
   shapes, error precedence, repeated-operation outcomes, timestamps, safe logging, and
   Attachment migration timing. Proposed filters are not automatically accepted features.
 - D04 must select an actual cooperating transaction/lock protocol. Atomicity alone is
@@ -135,7 +138,8 @@ is a dependency-respecting plan, not a commitment to implement all 26 issues.
    remaining prerequisite decisions before their dependent work starts.
 2. B01: establish executable foundation and meaningful tests. Then Q01 can add fast CI.
 3. B02: establish guarded PostgreSQL sessions and verify real-commit cleanup.
-4. B03: apply identity/Organization schema after schema-affecting D02 decisions.
+4. B03: apply identity/Organization schema after schema-affecting D02 decisions
+   and the reviewed D03 Organization name bounds.
 5. Complete required D03 outcomes and Q02 shared error/logging behavior before feature
    endpoints depend on them. Continue D04 design before coordinated mutation work.
 6. First authentication slice: F02 registration, then F03 login and F04 current-user

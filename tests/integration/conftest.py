@@ -86,3 +86,56 @@ def probe_scope(integration_engine, request):
                 raise
 
     return isolated_scope
+
+
+@pytest.fixture
+def identity_scope(integration_engine, request):
+    factory = create_session_factory(integration_engine)
+
+    def clean_identity_tables():
+        try:
+            with safe_database_errors():
+                with integration_engine.begin() as connection:
+                    revision = connection.execute(
+                        text("SELECT version_num FROM public.alembic_version")
+                    ).scalar_one()
+
+                    if revision != "6a3066cd5538":
+                        raise RuntimeError(
+                            "Unexpected schema revision for identity cleanup."
+                        )
+
+                    connection.execute(
+                        text("DELETE FROM public.organization_memberships")
+                    )
+                    connection.execute(text("DELETE FROM public.users"))
+                    connection.execute(text("DELETE FROM public.organizations"))
+        except Exception:
+            request.session.shouldstop = (
+                "Identity cleanup failed; stopping to preserve test isolation."
+            )
+            raise
+
+    @contextmanager
+    def isolated_scope():
+        clean_identity_tables()
+        body_error = None
+
+        try:
+            with safe_database_errors():
+                yield factory
+        except Exception as exc:
+            body_error = exc
+            raise
+        finally:
+            try:
+                clean_identity_tables()
+            except Exception as cleanup_error:
+                if body_error is not None:
+                    raise ExceptionGroup(
+                        "Identity body and cleanup failed.",
+                        [body_error, cleanup_error],
+                    ) from None
+                raise
+
+    return isolated_scope

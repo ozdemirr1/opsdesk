@@ -17,8 +17,8 @@ migration timing to be decided. Remaining design work is listed at the end.
   generates values; the primary key enforces unique identity. Identity generation
   does not make arbitrary SQL changes impossible. Normal application operations
   never accept or change technical identities.
-- Textual fields use text. Ticket title/description limits are now reviewed;
-  other field limits remain explicit validation work.
+- Textual fields use text. Ticket title/description and Organization name limits
+  are reviewed; other field limits remain explicit validation work.
 - All columns below are NOT NULL except tickets.assignee_membership_id.
 - Memberships are retained on departure and reactivated on return, rather than
   replaced. Stable references do not constitute complete historical role/assignment logs.
@@ -50,10 +50,17 @@ use deterministic ASCII case semantics rather than locale-dependent assumptions.
 | Column | Type | Nullable | Constraint / default | Purpose |
 | --- | --- | --- | --- | --- |
 | organization_id | bigint | No | Identity primary key | Tenant identity |
-| name | text | No | Nonblank text; limits pending | Non-unique display name |
+| name | text | No | CHECK char_length(name) BETWEEN 1 AND 255 | Non-unique display name; application trims and rejects blank input |
 | is_active | boolean | No | DEFAULT true | Organization state |
 
-The field does not by itself define suspension or reactivation workflows. Active
+The [Organization name contract](api-contract.md#organization-name-contract), reviewed
+17 September, defines required string input, Python edge trimming, Unicode code-point
+length 1..255, preserved case/internal spaces, and pre-trim rejection of NUL/LF/CR/TAB.
+Names are not unique. Application normalization is authoritative; the length CHECK
+alone does not enforce trimming or reject every whitespace-only value. Additional
+database whitespace checks require shared Unicode edge-case review, as for Tickets.
+
+The is_active field does not by itself define suspension or reactivation workflows. Active
 Organization creation must establish the required owner in the same business
 transaction; a default of true does not provide that guarantee.
 
@@ -244,7 +251,7 @@ formatting under the field rules, and reject forbidden characters before trimmin
 Persisted title and description length constraints are respectively 1..255 and
 1..10000. Application input checks remain necessary; no migration has been applied.
 
-The proposed nonblank guard for other textual fields (names, comments, filenames,
+The proposed nonblank guard for other textual fields (comments, filenames,
 and MIME labels) is a NOT NULL column with a CHECK such as:
 
 ```sql
@@ -256,18 +263,20 @@ without an explicit character set only removes ordinary spaces, not every whites
 character. POSIX character-class handling outside ASCII depends on locale/collation;
 the application and database normalization contracts require shared test examples.
 Nonblank does not imply valid MIME syntax, valid email, safe filenames, or bounded size.
-Do not apply this POSIX class to Ticket fields as though it exactly matched Python
-whitespace semantics. Any extra Ticket nonblank database guard must preserve the
+Do not apply this POSIX class to Ticket fields or Organization names as though it
+exactly matched Python whitespace semantics. Any extra nonblank guard must preserve the
 accepted request contract. Exact lengths for other fields are still open and must
 be resolved before the relevant schema and API validation are implemented.
 
 ## Remaining Design Work
 
-- Implement the reviewed identity canonical-storage constraints and finalize remaining
-  Organization/membership/Comment text limits. Identity request bounds are reviewed.
+- Initial identity canonical-storage constraints are implemented in revision
+  `6a3066cd5538` and verified locally. Finalize remaining membership/Comment text
+  limits; identity and Organization name request bounds are reviewed.
 - Translate the reviewed matrices into migration and service checks; priority
   defaults to medium, assignment at creation is forbidden, and in_progress requires
-  an eligible assignee. No new constraints have been applied.
+  an eligible assignee. Ticket constraints are not yet implemented; the initial
+  User/Organization/Membership migration is applied to the guarded test target.
 - Resolve remaining API response/error cases and repeated operations listed in
   the API baseline; selected no-ops never refresh updated_at. Ticket title and
   description are fixed through Month 03 operations; FKs do not enforce this.

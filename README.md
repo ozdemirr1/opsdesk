@@ -37,7 +37,9 @@ Backend foundation implementation is underway. The repository now contains a
 FastAPI application factory, validated application settings, and tests covering
 application startup/shutdown, documentation visibility, and configuration behavior.
 Synchronous database configuration, engine/session factories, and guarded local
-PostgreSQL integration tests are implemented. Business tables, migrations,
+PostgreSQL integration tests are implemented. The initial Alembic migration and
+persistence models now cover Users, Organizations, and OrganizationMemberships.
+Constraint and isolated migration-cycle tests cover this schema. Ticket tables,
 business endpoints, and authentication are not implemented.
 File-content upload and storage remain outside the Month 03 scope.
 
@@ -87,12 +89,12 @@ business operations. Stop the server with Ctrl+C.
 Run linting, formatting checks, and tests:
 
 ```bash
-uv run ruff check src tests
-uv run ruff format --check src tests
+uv run ruff check src tests migrations
+uv run ruff format --check src tests migrations
 uv run pytest -q
 ```
 
-To apply formatting locally, use `uv run ruff format src tests`.
+To apply formatting locally, use `uv run ruff format src tests migrations`.
 
 ## Configuration
 
@@ -261,13 +263,15 @@ export OPSDESK_TEST_DB_USERNAME=opsdesk_product_test_runner
 read -rs "OPSDESK_TEST_DB_PASSWORD?Test database password: "
 printf '\n'
 export OPSDESK_TEST_DB_PASSWORD
+uv run alembic upgrade head
 OPSDESK_RUN_INTEGRATION_TESTS=1 uv run pytest -q tests/integration
 ```
 
 The password is entered at a hidden prompt, not embedded in shell history.
 Unset it after the session with `unset OPSDESK_TEST_DB_PASSWORD`.
-Without `OPSDESK_RUN_INTEGRATION_TESTS=1`, ordinary `uv run pytest -q` skips the
-six integration tests. With opt-in enabled, missing/invalid configuration or a
+Without the explicit opt-ins, ordinary `uv run pytest -q` skips PostgreSQL data
+and schema tests. Data tests use `OPSDESK_RUN_INTEGRATION_TESTS=1`; schema tests
+use the separate `OPSDESK_RUN_SCHEMA_TESTS=1` flag described below. With opt-in enabled, missing/invalid configuration or a
 failed connection fails the run rather than silently skipping it. The real
 connection test verifies the database, role, server address, and port.
 
@@ -282,15 +286,17 @@ connection test verifies the database, role, server address, and port.
 - The target guard runs before engine creation and probe setup/cleanup. Only
   `public.integration_probe` is created for these infrastructure tests. Its rows
   are deleted before and after each isolated probe scope in separate committed
-  transactions. No business tables or migration-history records are cleaned.
+  transactions. Identity scopes separately delete only `organization_memberships`,
+  `users`, then `organizations`, after checking revision `6a3066cd5538`.
+  Data cleanup preserves `alembic_version`; it does not reset identity sequences.
 - Tests close their Sessions before cleanup. Real commits are checked from separate
   Sessions; uncommitted writes, exception cleanup, and pool return are also tested.
 - Cleanup failure is surfaced and stops subsequent tests. If the body and teardown
   both fail, an `ExceptionGroup` retains both failures. Subprocess tests exercise
   failures before and after the body and prove the next test does not execute.
 - A forcibly terminated process may not run teardown. The next validated scope's
-  initial cleanup removes leftover probe rows. Future business tables require
-  Alembic migrations and an explicitly reviewed cleanup allowlist.
+  initial cleanup removes leftover rows from its reviewed allowlist. Future tables
+  require Alembic migrations and an explicit cleanup-policy update.
 
 ### Database error reporting boundary
 
@@ -310,3 +316,52 @@ errors; shared API error/logging work remains issue #10.
 
 The existing hosted CI still selects only the seven foundation tests. The expanded
 non-database suite needs a separate CI-selection update; PostgreSQL CI remains #25.
+
+
+## Initial Identity Schema and Migration Verification
+
+Revision `6a3066cd5538` creates `users`, `organizations`, and
+`organization_memberships`. It includes BIGINT GENERATED ALWAYS AS IDENTITY keys,
+required fields, active defaults, canonical-email storage constraints, membership
+pair/composite uniqueness, role validation, RESTRICT foreign keys, and the partial
+unique active-owner index. The index enforces at most one active owner, not at least
+one; it does not check global User activity or authorize an operation. Full email
+syntax and Organization-name normalization remain application-contract concerns.
+
+Online Alembic commands currently use only `IntegrationDatabaseSettings` and the
+exact guarded product test target. This is not a development/production migration
+configuration. Offline SQL generation requires no database settings or connection:
+
+```bash
+uv run alembic upgrade head --sql
+```
+
+After supplying the test settings above, apply the migration with
+`uv run alembic upgrade head`. Run the schema-changing suite separately, with no
+other suite using this database:
+
+```bash
+OPSDESK_RUN_SCHEMA_TESTS=1 uv run pytest -q tests/schema
+```
+
+The schema suite requires the expected database/role/server, current revision,
+empty identity tables, and no unexpected public tables. It does not delete rows to
+satisfy those preconditions. It downgrades to base, checks table removal, and
+re-upgrades to the pinned revision. A second case injects a test failure after
+removal and verifies restoration. The finally block attempts restoration; a
+restoration failure stops later tests and preserves both errors when applicable.
+Restoring schema does not restore deleted business data. Do not run this suite
+against a populated database or interrupt it deliberately.
+
+Only after the schema suite succeeds, run the ordinary data suite:
+
+```bash
+OPSDESK_RUN_INTEGRATION_TESTS=1 uv run pytest -q tests/integration
+```
+
+Local terminal evidence on 18 September 2026: two schema-cycle tests passed,
+followed by 60 PostgreSQL data tests. Coverage includes fresh-session persistence,
+cleanup on normal/exception paths, identity/unique constraints, required values,
+role vocabulary, restricted deletion, and active-owner boundaries. PostgreSQL 18
+RESTRICT deletion failures report `23001`; missing-parent inserts report `23503`.
+These local results do not establish hosted PostgreSQL CI or implemented API auth.
