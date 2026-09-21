@@ -64,3 +64,28 @@ is added just to exercise this infrastructure. Test headers, error envelopes,
 synthetic-secret exclusion, and request/log correlation as externally visible
 behavior. Full overlapping business-failure precedence remains #3 work before
 those feature endpoints are implemented.
+
+
+## Implementation Clarifications and Evidence — 21 September 2026
+
+- The response contains at most 20 validation details. Missing fields use
+  Field is required.; extras use Unexpected field.; other validation failures use
+  Invalid value. Only known top-level fields are exposed, with deeper paths reduced
+  to their known ancestor and unknown fields to body/query/path (or request).
+- A present body requires one Content-Type header with application/json as the
+  media type, case-insensitively; parameters are permitted. Empty required bodies
+  produce 422. The Content-Type gate precedes JSON parsing and schema validation.
+  This transport order does not settle overlapping business authorization failures.
+- Unmapped framework 4xx errors retain their HTTP status with http_error and the
+  fixed message Request could not be processed. Arbitrary exception detail/headers
+  are not copied; the current supported headers are Allow and bearer challenges.
+- HTTP diagnostics bound route templates to 200 characters, replace unknown methods
+  with OTHER, and record response_started/unexpected_error flags. After response
+  start, a new 500 body cannot be sent; raise a fixed error and preserve the sent status
+  in diagnostics. Before response start, unexpected errors receive generic 500.
+- Configure Uvicorn with --no-access-log. Local real-server evidence verified a safe
+  unmatched-route response/log with matching server ID and absent synthetic secrets.
+  TestClient tests cover handled, validation, framework, and unexpected failures.
+- Local checks: 101 non-integration tests passed, 62 database/schema cases deselected,
+  Ruff passes and 41 Python files formatted. These are local results; hosted CI and
+  PR merge must be verified separately. Remaining #3/#4 decisions stay open.

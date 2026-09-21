@@ -29,7 +29,11 @@ class ApiError(Exception):
         super().__init__(code)
 
 
-def error_response(code: str) -> JSONResponse:
+def error_response(
+    code: str,
+    *,
+    details: list[dict[str, str]] | None = None,
+) -> JSONResponse:
     status_code, message = ERROR_DEFINITIONS[code]
     headers = {"WWW-Authenticate": "Bearer"} if code == "unauthenticated" else None
 
@@ -39,7 +43,7 @@ def error_response(code: str) -> JSONResponse:
             "error": {
                 "code": code,
                 "message": message,
-                "details": [],
+                "details": details if details is not None else [],
             }
         },
         headers=headers,
