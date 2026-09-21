@@ -78,7 +78,7 @@ uv sync --locked
 Start the development server:
 
 ```bash
-uv run uvicorn opsdesk.main:create_app --factory --reload
+uv run uvicorn opsdesk.main:create_app --factory --reload --no-access-log
 ```
 
 With the default settings, open [Swagger UI](http://127.0.0.1:8000/docs),
@@ -114,7 +114,7 @@ implicitly disable documentation or apply deployment security settings.
 For example:
 
 ```bash
-OPSDESK_ENVIRONMENT=production OPSDESK_DOCS_ENABLED=false uv run uvicorn opsdesk.main:create_app --factory
+OPSDESK_ENVIRONMENT=production OPSDESK_DOCS_ENABLED=false uv run uvicorn opsdesk.main:create_app --factory --no-access-log
 ```
 
 This command demonstrates configuration only; it is not a production deployment
@@ -135,8 +135,8 @@ pinned in `.python-version`. Dependency installation requires the committed lock
 The workflow token has read-only repository-content permissions, and checkout does
 not retain Git credentials for subsequent commands.
 
-The job checks Ruff linting and formatting, then runs only the application and
-configuration tests. A failed check fails the job. PostgreSQL integration tests,
+The job checks Ruff linting and formatting for src, tests, and migrations, then
+runs all tests not marked integration. A failed check fails the job. PostgreSQL integration tests,
 Docker builds, and deployment are outside this workflow's scope. No application
 secrets or developer `.env` file are required.
 
@@ -144,9 +144,9 @@ Reproduce the checks locally:
 
 ```bash
 uv sync --locked
-uv run --locked ruff check src tests
-uv run --locked ruff format --check src tests
-uv run --locked pytest -q tests/test_application.py tests/test_config.py
+uv run --locked ruff check src tests migrations
+uv run --locked ruff format --check src tests migrations
+uv run --locked pytest -q -m "not integration"
 ```
 
 Inspect actual run results in the repository's GitHub Actions tab. Workflow
@@ -314,8 +314,8 @@ chaining; it does not erase the original exception or sensitive objects in memor
 These checks are not a universal guarantee for future application logs or HTTP
 errors; shared API error/logging work remains issue #10.
 
-The existing hosted CI still selects only the seven foundation tests. The expanded
-non-database suite needs a separate CI-selection update; PostgreSQL CI remains #25.
+The workflow now selects all non-integration tests. Hosted execution evidence must
+be checked for the pushed commit; PostgreSQL CI remains #25.
 
 
 ## Initial Identity Schema and Migration Verification
@@ -365,3 +365,42 @@ cleanup on normal/exception paths, identity/unique constraints, required values,
 role vocabulary, restricted deletion, and active-owner boundaries. PostgreSQL 18
 RESTRICT deletion failures report `23001`; missing-parent inserts report `23503`.
 These local results do not establish hosted PostgreSQL CI or implemented API auth.
+
+
+## Shared API Errors and Request Diagnostics
+
+The [error/logging contract](docs/error-logging-contract.md) defines the reviewed
+#3 subset implemented for #10. ApiError maps known failures to fixed public messages.
+Validation errors use bounded, safe details; malformed JSON/UTF-8 maps to 400 and
+unsupported or missing media type for a present JSON-request body maps to 415.
+Framework 404/405 responses use the same envelope, with Allow and bearer challenges
+preserved where appropriate. Other unmapped framework 4xx responses retain their
+status with generic http_error. Unexpected failures before response start use a
+generic 500, including unmapped database errors.
+
+JsonAPIRoute is the factory router's default. Future separately created APIRouter
+instances must also specify route_class=JsonAPIRoute for the same body policy.
+Validation exposes only recognized top-level model/parameter names; deeper paths
+fall back to the safe known ancestor, and unknown names to the source location.
+At most 20 details are returned; Pydantic input/ctx/raw messages are not serialized.
+
+Each HTTP request gets a server UUID in X-Request-ID and request.state.request_id.
+Incoming IDs are ignored. The JSON request log contains only the server ID, bounded
+method/route template, status, duration, and response-start/unexpected-error flags.
+Unknown routes use <unmatched>; unknown methods use OTHER. No raw path/query/body,
+Authorization value, token, exception message, or SQL URL is included.
+
+Use --no-access-log in the Uvicorn commands above: Uvicorn's default access log can
+include raw paths/query strings. Its server error logging remains enabled. Errors
+after response start cannot be replaced with a new JSON response; a fixed error is
+raised and the diagnostic records the original status with unexpected_error=true.
+These controls do not secure arbitrary third-party loggers, proxies or debug tools.
+Startup configuration validation remains separately tested before middleware exists.
+
+Local verification on 21 September: Ruff passes, 41 files are formatted, and
+101 non-integration tests pass with 62 database/schema tests deselected. An actual
+Uvicorn request containing synthetic path/query/header markers returned a safe 404
+and a fresh request ID; the supplied server log matched the ID, used <unmatched>,
+and omitted those markers. This runtime check covered that request, not every
+possible server failure. No business endpoint or authorization implementation is
+introduced. GitHub issue/PR closure remains separate from local verification.

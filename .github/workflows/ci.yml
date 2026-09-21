@@ -29,10 +29,10 @@ jobs:
         run: uv sync --locked
 
       - name: Lint
-        run: uv run --locked ruff check src tests
+        run: uv run --locked ruff check src tests migrations
 
       - name: Check formatting
-        run: uv run --locked ruff format --check src tests
+        run: uv run --locked ruff format --check src tests migrations
 
-      - name: Run foundation tests
-        run: uv run --locked pytest -q tests/test_application.py tests/test_config.py
+      - name: Run non-database tests
+        run: uv run --locked pytest -q -m "not integration"
