@@ -169,7 +169,10 @@ Two agents who both observed an unassigned Ticket must not overwrite each other'
 claims. Check current assignment for handover, current roles for membership changes,
 and current admin/active status at ownership transfer. Assignment, deactivation,
 reopening, and ownership workflows must coordinate; separate checks plus writes are
-insufficient. Exact locking, lock order, conflict responses, and retries remain open.
+insufficient. The accepted [concurrency contract](concurrency-contract.md) defines locking,
+lock order, fresh validation, and timeout/retry policy. Feature implementations and
+real overlapping-operation tests remain pending; remaining no-op/error precedence
+decisions are tracked separately under #3.
 
 The [reviewed scenarios](ticket-lifecycle.md#acceptance-scenarios) are design evidence,
 not executed tests. Future verification must also cover cross-tenant attempts,

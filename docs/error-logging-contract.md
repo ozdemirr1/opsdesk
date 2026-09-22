@@ -89,3 +89,18 @@ those feature endpoints are implemented.
 - Local checks: 101 non-integration tests passed, 62 database/schema cases deselected,
   Ruff passes and 41 Python files formatted. These are local results; hosted CI and
   PR merge must be verified separately. Remaining #3/#4 decisions stay open.
+
+## Accepted contention policy — recorded 22 September 2026
+
+The [concurrency contract](concurrency-contract.md) adds an accepted, not yet
+implemented exception to generic unexpected-database-error handling: recognized
+lock timeout (55P03), deadlock (40P01) or serialization failure (40001) in that
+transaction boundary requires full rollback and HTTP 503 concurrency_busy.
+The fixed message is `The operation is temporarily busy. Please try again.`;
+use the standard envelope with `details: []`. Do not expose driver messages.
+
+Use a transaction-local 2-second lock_timeout per lock acquisition, with no
+automatic retry and no promised Retry-After header. Known business conflicts keep
+their existing mappings; other unexpected database failures remain generic 500.
+Add the code and handler tests when implementing the first dependent feature.
+The existing #10 test/CI evidence does not cover this new behavior.

@@ -404,3 +404,11 @@ and a fresh request ID; the supplied server log matched the ID, used <unmatched>
 and omitted those markers. This runtime check covered that request, not every
 possible server failure. No business endpoint or authorization implementation is
 introduced. GitHub issue/PR closure remains separate from local verification.
+
+## Concurrency design
+
+The accepted [transaction and locking contract](docs/concurrency-contract.md)
+coordinates Organization mutations, defines ordered locks and fresh validation,
+and specifies a 2-second per-lock wait with 503 concurrency_busy and no automatic
+retry. This is documented design; executable locking, contention responses,
+lock-wait measurement, and business concurrency tests are not implemented yet.

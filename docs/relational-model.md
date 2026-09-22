@@ -99,13 +99,14 @@ The index is not a deferred unique constraint: a transfer cannot temporarily cre
 two active owners and rely on commit-time validation.
 
 Application transactions must preserve the stronger active-Organization rule:
-exactly one active owner membership belonging to an active User. A candidate transfer
-sequence is to lock the Organization, re-read and validate current state, demote the
-old owner to admin, promote the eligible active admin member, validate, then commit together.
+exactly one active owner membership belonging to an active User. The accepted
+[concurrency contract](concurrency-contract.md) requires ordered locks and fresh
+validation, then demotion of the old owner to admin and an explicit flush before
+promoting the eligible active admin member; both changes commit together.
 Failure rolls back both changes. All ownership-affecting workflows must cooperate
 with the same concurrency protocol; wrapping separate checks and writes in a
 transaction is not sufficient on its own. Coordination with global User deactivation
-and a consistent lock order remain implementation prerequisites.
+remains a future lifecycle gate; the accepted lock order must be implemented.
 
 ## tickets
 
@@ -280,8 +281,9 @@ be resolved before the relevant schema and API validation are implemented.
 - Resolve remaining API response/error cases and repeated operations listed in
   the API baseline; selected no-ops never refresh updated_at. Ticket title and
   description are fixed through Month 03 operations; FKs do not enforce this.
-- Specify the cooperating transaction/lock protocol and lock order for ownership,
-  assignment, membership changes, and global account deactivation.
+- Implement the accepted [lock protocol](concurrency-contract.md) for ownership,
+  assignment and membership changes; review global deactivation coordination before
+  adding that deferred endpoint.
 - Define the updated_at update expression and verification expectations.
 - Review access-pattern indexes after endpoint/pagination contracts; avoid adding
   speculative indexes. PostgreSQL does not automatically index referencing FK columns.
