@@ -123,8 +123,10 @@ implementation, not a tested guarantee.
 - D03 collects remaining membership/Comment validation, list and response
   shapes, error precedence, repeated-operation outcomes, timestamps, safe logging, and
   Attachment migration timing. Proposed filters are not automatically accepted features.
-- D04 must select an actual cooperating transaction/lock protocol. Atomicity alone is
-  not that protocol. Each dependent implementation waits for the relevant decisions.
+- D04 has an accepted [cooperating lock protocol](concurrency-contract.md), recorded
+  on 22 September: Organization coordination, ordered locks, fresh validation,
+  2-second per-lock waits, and 503 concurrency_busy without automatic retries.
+  Implementation/concurrency tests remain future work; no GitHub closure is claimed.
 - No full Week 09 completion claim is made merely because every endpoint has a draft.
   Backlog publication and architecture review are complete. The bootcamp repository
   records the Week 09 report and Week 10 handoff; final Git closure remains pending.

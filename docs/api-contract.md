@@ -334,9 +334,11 @@ email delivery, frontend, background jobs, Docker, and AI retain their existing 
   count/items consistency, remaining nested responses, and error details conventions.
 - Define same-assignee/same-role updates and repeated reactivation/deactivation
   cases without weakening current authorization.
-- Specify cooperating transactions, lock order, and conflict/retry behavior for
-  claims, ownership, role changes, deactivation, and reopening. Atomicity alone
-  does not resolve races or stale authorization checks.
+- Implement the accepted [concurrency contract](concurrency-contract.md) for
+  claims, ownership, role changes, deactivation, and reopening. It specifies a
+  2-second per-lock wait, full rollback and 503 concurrency_busy for recognized
+  contention failures, with no automatic retry. This is accepted behavior awaiting
+  implementation; endpoint-specific no-op and overlapping-error decisions remain #3.
 - Decide when the deferred Attachment table becomes an executable migration.
 - Follow the [26 published issues](issue-plan.md) and their prerequisites. Publication
   does not resolve design decisions; completion needs the corresponding evidence.
