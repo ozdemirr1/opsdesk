@@ -3,8 +3,10 @@
 Reviewed: 15 September 2026. Design source: [issue #2](https://github.com/ozdemirr1/opsdesk/issues/2).
 
 This is the request, storage, and token contract for registration, login, current-user
-resolution, and shared email lookup. It is not an implemented authentication system.
-The same email identity policy applies when an administrator adds an existing User.
+resolution, and shared email lookup. The registration slice was implemented locally on
+24 September 2026; login, JWT validation, current-user resolution, and organization
+authorization remain design contracts. The same email identity policy applies when an
+administrator adds an existing User.
 
 ## Request and Response Boundaries
 
@@ -195,11 +197,17 @@ timestamp, wrong issuer/audience, array audience, invalid signature, wrong algor
 or malformed token produces protected-request 401. Valid claims with missing or
 inactive User also produce 401. Protected-token failures are not login-body tests.
 
-Implementation must cover exact email length and syntax boundaries, all wrong types,
-forbidden fields, duplicate normalized email races, NFC length-changing examples,
-password space/case preservation, correct Argon2id verification, dummy-hash handling,
-the complete token rejection matrix, and absence of sensitive values from responses,
-logs, and validation errors. These are planned tests, not execution evidence.
+Registration implementation covers exact email length and syntax boundaries, wrong
+types, forbidden fields, NFC length-changing examples, password space/case preservation,
+Argon2id verification, safe response projection, explicit rollback, named-constraint
+mapping, and fresh-session PostgreSQL persistence. Local verification on 24 September
+2026 passed 147 non-integration tests and all 66 PostgreSQL integration tests.
+
+The independent-session overlapping duplicate race remains required before issue #11
+is complete. Dummy-hash login behavior, the complete token rejection matrix, and
+protected-current-user behavior belong to the later login/authentication slices and are
+still planned tests. Hosted CI and pull-request review also remain separate from this
+local evidence.
 
 ## References
 
