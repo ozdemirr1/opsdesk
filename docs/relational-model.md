@@ -167,7 +167,7 @@ this immutability; stronger database enforcement would require a separate decisi
 | organization_id | bigint | No | Shared by both composite FKs | Tenant consistency |
 | ticket_id | bigint | No | Composite Ticket FK | Fixed parent |
 | author_membership_id | bigint | No | Composite membership FK | Fixed author attribution |
-| content | text | No | Nonblank text; limits pending | Conversational message |
+| content | text | No | CHECK char_length(content) BETWEEN 1 AND 10000; see text contract | Conversational message |
 | created_at | timestamptz | No | DEFAULT now() | Creation transaction time |
 
 There is no updated_at: user-facing comments are append-only. No normal application
@@ -252,11 +252,16 @@ formatting under the field rules, and reject forbidden characters before trimmin
 Persisted title and description length constraints are respectively 1..255 and
 1..10000. Application input checks remain necessary; no migration has been applied.
 
-The proposed nonblank guard for other textual fields (comments, filenames,
-and MIME labels) is a NOT NULL column with a CHECK such as:
+The reviewed Comment contract normalizes line endings in the application, preserves
+internal LF/TAB formatting, rejects other C0 controls and persists 1..10000 Unicode
+code points. The database length CHECK provides a storage boundary but does not
+replace application normalization or forbidden-control validation.
+
+The proposed nonblank guard for remaining textual fields (filenames and MIME labels)
+is a NOT NULL column with a CHECK such as:
 
 ```sql
-CHECK (content ~ '[^[:space:]]')
+CHECK (filename ~ '[^[:space:]]')
 ```
 
 This requires a character outside PostgreSQL's whitespace class. Plain trim(content)
@@ -272,8 +277,8 @@ be resolved before the relevant schema and API validation are implemented.
 ## Remaining Design Work
 
 - Initial identity canonical-storage constraints are implemented in revision
-  `6a3066cd5538` and verified locally. Finalize remaining membership/Comment text
-  limits; identity and Organization name request bounds are reviewed.
+  `6a3066cd5538` and verified locally. Identity, Organization name, membership input,
+  and Comment content bounds are reviewed; the Comment table is not implemented yet.
 - Translate the reviewed matrices into migration and service checks; priority
   defaults to medium, assignment at creation is forbidden, and in_progress requires
   an eligible assignee. Ticket constraints are not yet implemented; the initial

@@ -39,8 +39,11 @@ application startup/shutdown, documentation visibility, and configuration behavi
 Synchronous database configuration, engine/session factories, and guarded local
 PostgreSQL integration tests are implemented. The initial Alembic migration and
 persistence models now cover Users, Organizations, and OrganizationMemberships.
-Constraint and isolated migration-cycle tests cover this schema. Ticket tables,
-business endpoints, and authentication are not implemented.
+Constraint and isolated migration-cycle tests cover this schema. `POST /users`
+implements the first identity slice with strict request validation, canonical email
+storage, Argon2id password hashing, explicit transaction handling, and a safe duplicate
+email response. Login, JWT/current-user authentication, Organization/Ticket endpoints,
+and Ticket tables are not implemented.
 File-content upload and storage remain outside the Month 03 scope.
 
 See [Product requirements](docs/requirements.md) for the initial scope,
@@ -75,16 +78,17 @@ Install runtime and development dependencies from the lockfile:
 uv sync --locked
 ```
 
-Start the development server:
+Set all five `OPSDESK_DB_` connection variables described below, then start the
+development server:
 
 ```bash
 uv run uvicorn opsdesk.main:create_app --factory --reload --no-access-log
 ```
 
-With the default settings, open [Swagger UI](http://127.0.0.1:8000/docs),
+Open [Swagger UI](http://127.0.0.1:8000/docs),
 [ReDoc](http://127.0.0.1:8000/redoc), or the
-[OpenAPI document](http://127.0.0.1:8000/openapi.json). The schema currently has no
-business operations. Stop the server with Ctrl+C.
+[OpenAPI document](http://127.0.0.1:8000/openapi.json). The schema includes the
+`POST /users` registration operation. Stop the server with Ctrl+C.
 
 Run linting, formatting checks, and tests:
 
@@ -98,15 +102,23 @@ To apply formatting locally, use `uv run ruff format src tests migrations`.
 
 ## Configuration
 
-Settings are validated when the application factory creates its configuration.
-They use the `OPSDESK_` environment-variable prefix. No environment variable is
-currently required: the application starts with defaults without database or
-authentication services. `.env` files are not loaded automatically.
+Application settings are validated when the application factory creates its
+configuration and use the `OPSDESK_` prefix. A non-test application also creates its
+database engine and requires all five `OPSDESK_DB_` connection variables below.
+`.env` files are not loaded automatically.
 
 | Environment variable | Accepted values | Default |
 | --- | --- | --- |
 | `OPSDESK_ENVIRONMENT` | `development`, `test`, `production` | `development` |
 | `OPSDESK_DOCS_ENABLED` | Boolean values parsed by Pydantic; use `true` or `false` | `true` |
+
+| Database environment variable | Requirement |
+| --- | --- |
+| `OPSDESK_DB_HOST` | Required non-empty host |
+| `OPSDESK_DB_PORT` | Required integer from 1 through 65535 |
+| `OPSDESK_DB_DATABASE` | Required non-empty database name |
+| `OPSDESK_DB_USERNAME` | Required non-empty role name |
+| `OPSDESK_DB_PASSWORD` | Required non-empty secret; never commit or log it |
 
 `OPSDESK_ENVIRONMENT` labels the environment; selecting `production` does not
 implicitly disable documentation or apply deployment security settings.
@@ -122,9 +134,12 @@ recipe. Invalid supported setting values prevent application creation. Validatio
 error text hides input values, but this is not a guarantee for every structured
 error or logging format. Never log raw configuration or credentials.
 
-Tests can pass an explicit `Settings` instance to `create_app(settings=...)`.
-Explicit field values take precedence over environment variables; tests that
-exercise environment loading control those variables with pytest's `monkeypatch`.
+Tests can pass an explicit `Settings` instance and an injected SQLAlchemy session
+factory to `create_app(...)`. Unit tests use the `test` environment without creating
+an application-owned engine; HTTP-to-PostgreSQL tests inject the guarded integration
+session factory. Explicit setting values take precedence over environment variables;
+tests that exercise environment loading control those variables with pytest's
+`monkeypatch`.
 
 
 ## Continuous Integration
@@ -364,7 +379,33 @@ followed by 60 PostgreSQL data tests. Coverage includes fresh-session persistenc
 cleanup on normal/exception paths, identity/unique constraints, required values,
 role vocabulary, restricted deletion, and active-owner boundaries. PostgreSQL 18
 RESTRICT deletion failures report `23001`; missing-parent inserts report `23503`.
-These local results do not establish hosted PostgreSQL CI or implemented API auth.
+These historical local results do not establish hosted PostgreSQL CI.
+
+## User Registration
+
+`POST /users` accepts exactly `email` and `password`. Email input is trimmed,
+validated as a strict ASCII address, canonicalized to lowercase, and bounded to 254
+characters. Password input is normalized with Unicode NFC, preserved without trimming,
+and bounded to 15..128 code points. The server creates the User ID and active state;
+registration creates no Organization, membership, or role.
+
+The registration service hashes with Argon2id through pwdlib before persistence and
+owns the commit/rollback boundary. The SQLAlchemy repository flushes before projecting
+the response and maps only the named `uq_users_email` constraint to
+`409 email_already_exists`. Other persistence failures remain server errors. A
+successful response exposes only `user_id`, canonical `email`, and `is_active`.
+
+Local verification on 24 September 2026: Ruff lint and format checks passed; 147
+non-integration tests passed with 68 database/schema tests deselected; all 66 then-current
+PostgreSQL integration tests passed. On 26 September, a controlled HTTP race used two
+independent Sessions synchronized before insertion: one request returned 201, the other
+returned `409 email_already_exists`, and a fresh Session found exactly one User whose
+stored hash verified only the winning password. The focused registration file now has
+seven passing tests. The migration-cycle suite was not rerun because this slice does
+not change the schema. The final merge-candidate run passed 147 non-integration tests
+with 69 database/schema tests deselected and all 67 ordinary PostgreSQL integration
+tests. Hosted CI, pull-request review, and merge remain pending before issue #11 is
+complete.
 
 
 ## Shared API Errors and Request Diagnostics
@@ -402,8 +443,9 @@ Local verification on 21 September: Ruff passes, 41 files are formatted, and
 Uvicorn request containing synthetic path/query/header markers returned a safe 404
 and a fresh request ID; the supplied server log matched the ID, used <unmatched>,
 and omitted those markers. This runtime check covered that request, not every
-possible server failure. No business endpoint or authorization implementation is
-introduced. GitHub issue/PR closure remains separate from local verification.
+possible server failure. At that 21 September milestone no business endpoint or
+authorization implementation was introduced. GitHub issue/PR closure remains separate
+from local verification.
 
 ## Concurrency design
 

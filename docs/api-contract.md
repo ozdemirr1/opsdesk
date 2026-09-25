@@ -52,8 +52,9 @@ from the body. Failure to create that membership rolls back Organization creatio
 Suspended Organizations remain discoverable through these basic list/detail views
 for active members. This exception does not permit reading Tickets, Comments, the
 membership directory, or performing Organization-scoped mutations. Inactive
-membership removes even this visibility. The final nested organization-list and
-creation response layouts still need example-based review.
+membership removes even this visibility. Organization creation and list operations
+use the reviewed nested projections below; they never expose another User's global
+account fields.
 
 The [identity/authentication contract](identity-authentication-contract.md), reviewed
 15 September, defines ASCII lowercase canonical email, duplicate registration
@@ -100,6 +101,38 @@ any additional database whitespace guard requires shared Unicode edge-case revie
 PostgreSQL POSIX whitespace classes must not be assumed identical to Python's.
 The initial identity migration and PostgreSQL constraint tests now verify these
 storage bounds; the Organization endpoint and input normalizer remain unimplemented.
+
+### Organization Response Structures
+
+Reviewed with Furkan on 24 September 2026. `POST /organizations` accepts only the
+reviewed `name` field. The authenticated current User is derived after token
+verification and a current persisted-User lookup. The service creates an active
+Organization and that User's active owner membership; `user_id`, `role`, and
+`is_active` are not client-selected fields.
+
+A successful creation returns a named wrapper rather than flattening two records:
+
+```json
+{
+  "organization": {
+    "organization_id": 42,
+    "name": "Özdemir Yazılım",
+    "is_active": true
+  },
+  "own_membership": {
+    "membership_id": 81,
+    "organization_id": 42,
+    "role": "owner",
+    "is_active": true
+  }
+}
+```
+
+Each `GET /organizations` item uses the same `organization` and `own_membership`
+shape. The surrounding collection uses the common `items`, `total_count`, `limit`,
+and `offset` envelope. `GET /organizations/{organization_id}` continues to return
+only the Organization projection because its authorization check does not turn the
+response into a membership-directory operation.
 
 ## Tickets
 
@@ -192,7 +225,54 @@ case-by-case contracts; do not generalize this table into a universal shortcut.
 CommentResponse fields: comment_id, author_membership_id, content, created_at.
 MembershipResponse fields: membership_id, organization_id, role, is_active.
 The directory and mutation responses do not expose global email or account settings.
-Named wrappers for the ownership-transfer response remain to be finalized.
+
+`POST /organizations/{organization_id}/ownership-transfer` returns the two
+post-commit membership projections in a named wrapper:
+
+```json
+{
+  "previous_owner_membership": {
+    "membership_id": 81,
+    "organization_id": 42,
+    "role": "admin",
+    "is_active": true
+  },
+  "new_owner_membership": {
+    "membership_id": 96,
+    "organization_id": 42,
+    "role": "owner",
+    "is_active": true
+  }
+}
+```
+
+The names describe each membership's committed state. The response contains no
+global User email or account settings.
+
+### Comment and Membership Input Fields
+
+Reviewed with Furkan on 24 September 2026:
+
+- Comment creation accepts exactly one required string field, `content`. Normalize
+  CRLF and lone CR to LF, then reject NUL and all remaining C0 control characters
+  other than LF and TAB. Trim leading and trailing whitespace with Python
+  `str.strip()`. Preserve
+  internal LF, TAB, spaces, case, and Unicode text. The normalized content must
+  contain 1..10000 Unicode code points. Missing, null, wrong-type, empty-after-trim,
+  over-limit, forbidden-control, and extra fields produce `422 validation_error`.
+- Member addition accepts exactly `email` and `role`. Email uses the shared identity
+  canonicalization contract. Role is an exact `customer|agent` value; it is not a
+  free-form string. Reactivation accepts exactly `role` with the same two values.
+- Role update accepts exactly `role` with the exact
+  `customer|agent|admin` vocabulary. Ownership is never granted through this body.
+- Assignment accepts exactly `assignee_membership_id`; ownership transfer accepts
+  exactly `target_membership_id`. Body and path membership identifiers are strict
+  JSON/Python integers in the PostgreSQL signed-bigint range 1..9223372036854775807;
+  booleans, strings, floats, null, zero, negatives, arrays, objects, out-of-range
+  integers, and extra body fields are invalid. Resource lookups still enforce tenant
+  scope.
+- Server-derived actor, author, User, Organization, role/default state, timestamps,
+  and parent relationships are rejected if supplied through a client body.
 
 The directory's membership is_active filter alone does not establish assignability:
 the global User and role must also be eligible. A proposed `assignable=true` filter
@@ -327,11 +407,12 @@ email delivery, frontend, background jobs, Docker, and AI retain their existing 
 - Ticket creation field rules and examples are recorded in the reviewed
   [validation contract](ticket-creation-validation.md). Identity inputs and token
   behavior are recorded in the [identity contract](identity-authentication-contract.md).
-  Organization name bounds are reviewed above. Finalize remaining membership/Comment
-  field bounds, missing target
-  memberships, unexpected server errors, and overlapping-failure precedence.
+  Organization name and membership/Comment input bounds are reviewed above. Finalize
+  missing target memberships, unexpected server errors, and overlapping-failure
+  precedence.
 - Finalize the proposed queue/directory filters, non-Ticket collection ordering,
-  count/items consistency, remaining nested responses, and error details conventions.
+  count/items consistency and error details conventions. Organization creation/list
+  and ownership-transfer nested responses are reviewed above.
 - Define same-assignee/same-role updates and repeated reactivation/deactivation
   cases without weakening current authorization.
 - Implement the accepted [concurrency contract](concurrency-contract.md) for
