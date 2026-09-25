@@ -395,13 +395,17 @@ the response and maps only the named `uq_users_email` constraint to
 `409 email_already_exists`. Other persistence failures remain server errors. A
 successful response exposes only `user_id`, canonical `email`, and `is_active`.
 
-Local verification on 24 September 2026: Ruff lint and format checks pass; 147
-non-integration tests pass with 68 database/schema tests deselected; all 66 PostgreSQL
-integration tests pass. The focused HTTP tests include successful persistence through
-a fresh Session, safe response projection, duplicate registration, and engine disposal.
-The migration-cycle suite was not rerun because this slice does not change the schema.
-The controlled two-session overlapping duplicate race, hosted CI, pull-request review,
-and merge remain pending before issue #11 is complete.
+Local verification on 24 September 2026: Ruff lint and format checks passed; 147
+non-integration tests passed with 68 database/schema tests deselected; all 66 then-current
+PostgreSQL integration tests passed. On 26 September, a controlled HTTP race used two
+independent Sessions synchronized before insertion: one request returned 201, the other
+returned `409 email_already_exists`, and a fresh Session found exactly one User whose
+stored hash verified only the winning password. The focused registration file now has
+seven passing tests. The migration-cycle suite was not rerun because this slice does
+not change the schema. The final merge-candidate run passed 147 non-integration tests
+with 69 database/schema tests deselected and all 67 ordinary PostgreSQL integration
+tests. Hosted CI, pull-request review, and merge remain pending before issue #11 is
+complete.
 
 
 ## Shared API Errors and Request Diagnostics

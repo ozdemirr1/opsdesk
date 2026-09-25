@@ -1,3 +1,6 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
@@ -7,6 +10,7 @@ from opsdesk.config import Settings
 from opsdesk.db.models import OrganizationMembershipRow, OrganizationRow, UserRow
 from opsdesk.db.repositories.users import SqlAlchemyUserRepository
 from opsdesk.db.session import session_scope
+from opsdesk.identity.dependencies import get_registration_service
 from opsdesk.identity.models import NewUser
 from opsdesk.identity.passwords import PasswordHasher
 from opsdesk.identity.repositories import UserEmailConflictError
@@ -20,6 +24,16 @@ def build_registration_service(session):
         transaction=session,
         password_hasher=PasswordHasher(),
     )
+
+
+class CoordinatedUserRepository:
+    def __init__(self, repository, ready: Barrier):
+        self._repository = repository
+        self._ready = ready
+
+    def create(self, new_user):
+        self._ready.wait()
+        return self._repository.create(new_user)
 
 
 @pytest.mark.integration
@@ -208,4 +222,87 @@ def test_http_registration_round_trip_and_duplicate_conflict(identity_scope):
             assert PasswordHasher().verify_password(
                 plain_password,
                 users[0].password_hash,
+            )
+
+
+@pytest.mark.integration
+def test_concurrent_http_registration_creates_exactly_one_user(identity_scope):
+    ready = Barrier(2, timeout=10)
+    email = "concurrent-registration@example.com"
+    passwords = [
+        "first concurrent password",
+        "second concurrent password",
+    ]
+
+    with identity_scope() as factory:
+
+        def get_coordinated_registration_service():
+            with session_scope(factory) as session:
+                yield RegistrationService(
+                    repository=CoordinatedUserRepository(
+                        SqlAlchemyUserRepository(session),
+                        ready,
+                    ),
+                    transaction=session,
+                    password_hasher=PasswordHasher(),
+                )
+
+        app = create_app(
+            Settings(environment="test"),
+            session_factory=factory,
+        )
+        app.dependency_overrides[get_registration_service] = (
+            get_coordinated_registration_service
+        )
+
+        with TestClient(app) as client:
+
+            def register(password):
+                return client.post(
+                    "/users",
+                    json={
+                        "email": email,
+                        "password": password,
+                    },
+                )
+
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                futures = [
+                    executor.submit(register, password) for password in passwords
+                ]
+                responses = [future.result(timeout=20) for future in futures]
+
+        assert sorted(response.status_code for response in responses) == [201, 409]
+
+        created_response = next(
+            response for response in responses if response.status_code == 201
+        )
+        conflict_response = next(
+            response for response in responses if response.status_code == 409
+        )
+
+        assert created_response.json()["email"] == email
+        assert conflict_response.json() == {
+            "error": {
+                "code": "email_already_exists",
+                "message": "Email already exists.",
+                "details": [],
+            }
+        }
+
+        with session_scope(factory) as verification_session:
+            users = verification_session.scalars(
+                select(UserRow).where(UserRow.email == email)
+            ).all()
+
+            assert len(users) == 1
+            assert (
+                sum(
+                    PasswordHasher().verify_password(
+                        password,
+                        users[0].password_hash,
+                    )
+                    for password in passwords
+                )
+                == 1
             )

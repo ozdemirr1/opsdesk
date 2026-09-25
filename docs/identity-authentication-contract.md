@@ -203,11 +203,16 @@ Argon2id verification, safe response projection, explicit rollback, named-constr
 mapping, and fresh-session PostgreSQL persistence. Local verification on 24 September
 2026 passed 147 non-integration tests and all 66 PostgreSQL integration tests.
 
-The independent-session overlapping duplicate race remains required before issue #11
-is complete. Dummy-hash login behavior, the complete token rejection matrix, and
-protected-current-user behavior belong to the later login/authentication slices and are
-still planned tests. Hosted CI and pull-request review also remain separate from this
-local evidence.
+On 26 September 2026, the independent-Session overlapping duplicate test passed through
+the HTTP boundary. A barrier synchronized both attempts before insertion; the executor
+joined both before cleanup. PostgreSQL admitted one User, the responses were one 201
+and one documented 409, and a fresh Session verified one persisted User and the winning
+password hash. The final merge-candidate run passed 147 non-integration tests with 69
+database/schema tests deselected and all 67 ordinary PostgreSQL integration tests.
+Dummy-hash login behavior, the complete token rejection matrix, and
+protected-current-user behavior belong to the later login/authentication slices and
+remain planned tests. Hosted CI and pull-request review remain separate from this local
+evidence.
 
 ## References
 
