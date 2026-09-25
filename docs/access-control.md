@@ -42,6 +42,9 @@ The membership directory requires an active Organization and staff role
 (agent/admin/owner). Customers cannot browse it. Return only membership_id,
 organization_id, role, and is_active; exclude global email and account settings.
 Membership active state alone is insufficient evidence of assignment eligibility.
+The reviewed `assignable` directory filter also evaluates the current global User,
+membership and role but does not add those private account fields to the projection.
+Every assignment mutation rechecks eligibility instead of trusting an earlier list.
 
 Global registration, login, and current-identity endpoints have the separate
 preconditions in the API baseline. No Organization membership is needed for them.
@@ -57,6 +60,11 @@ preconditions in the API baseline. No Organization membership is needed for them
 Own requested tickets means requester_membership_id matches the actor's current
 membership. Comment reads follow the parent Ticket. These scopes apply in all four
 Ticket states, including closed; posting has separate restrictions.
+
+Collection filters run inside these visibility scopes. A customer cannot use a
+status, priority, assignment or assignee filter to count or retrieve another
+requester's Ticket. A syntactically valid missing or foreign assignee filter returns
+an empty visible collection rather than confirming whether that membership exists.
 
 Organization-wide agent visibility supports a shared queue, review of unassigned
 requests, and handover context. It does not itself grant claiming or reassignment.

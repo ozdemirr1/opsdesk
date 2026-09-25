@@ -158,10 +158,14 @@ Eligible assignees have an active global User and active same-Organization membe
 with role agent/admin/owner. Agents may distribute unassigned work, but only reassign
 their own existing assignments. Admins/owners may reassign any in-scope Ticket.
 
-The proposed unassigned-queue filter is `assignment=assigned|unassigned`; omission
-means both. Combining unassigned with assignee_membership_id would be a 422 error.
-Finalize this query extension before implementation: a numeric assignee ID alone
-cannot represent NULL, and filters must never widen the caller's visibility scope.
+The reviewed Ticket filters are `status=open|in_progress|resolved|closed`,
+`priority=low|medium|high|urgent`, `assignment=assigned|unassigned`, and a positive
+signed-bigint `assignee_membership_id`. Omission means no restriction for that field.
+Combining `assignment=unassigned` with `assignee_membership_id` is contradictory and
+returns `422 validation_error`; `assignment=assigned` with a specific assignee is
+allowed. A syntactically valid missing or foreign assignee ID yields an empty visible
+result rather than disclosing target existence. Filters are applied inside the
+caller's existing visibility scope and can never widen it.
 
 ### TicketResponse Example
 
@@ -274,11 +278,16 @@ Reviewed with Furkan on 24 September 2026:
 - Server-derived actor, author, User, Organization, role/default state, timestamps,
   and parent relationships are rejected if supplied through a client body.
 
-The directory's membership is_active filter alone does not establish assignability:
-the global User and role must also be eligible. A proposed `assignable=true` filter
-would compute these conditions without exposing global account details. Its full
-query semantics remain a follow-up. The assignment operation always checks current
-eligibility again. Human-readable directory labels are a separate future design.
+The membership directory accepts exact `role=customer|agent|admin|owner`,
+`is_active=true|false`, and `assignable=true|false` filters. Omission means no
+restriction for that field. Assignable means the membership is active, its global
+User is active, and its role is agent/admin/owner; false selects the complement inside
+the authorized directory without adding global account fields to the response.
+`assignable=true` with `is_active=false` or `role=customer` is contradictory and
+returns `422 validation_error`. Combining it with `is_active=true` or an eligible
+staff role is allowed even though the condition is partly redundant. The assignment
+operation always checks current eligibility again. Human-readable directory labels
+are a separate future design.
 
 Add/reactivate accepts customer/agent only, preserving the reviewed membership
 matrix. Granting admin requires the separate authorized role update. Neither ordinary
@@ -362,8 +371,14 @@ Do not include raw request bodies, passwords, tokens, hashes, or database detail
 
 - Use integer limit and offset. Default limit: 20; valid range: 1..100.
   Default offset: 0; minimum: 0. Reject invalid values with 422; do not silently clamp.
+- Each pagination/filter key may appear at most once. Repeated keys, unknown query
+  fields, invalid enums and invalid scalar representations return `422 validation_error`.
+  Boolean filters accept only the lowercase query text `true` or `false`.
 - Ticket ordering is created_at DESC, ticket_id DESC. The ID breaks timestamp ties;
-  it does not prove commit chronology. Other collection orderings remain open.
+  it does not prove commit chronology. Organization lists use organization_id ASC;
+  membership lists use membership_id ASC; Comment lists use created_at ASC,
+  comment_id ASC so conversations read chronologically. These ID orderings are stable
+  tie-breakers, not a claim that IDs equal commit time.
 - Apply caller visibility and client filters before ordering and pagination.
 - total_count uses exactly the same visibility and filters, without limit/offset.
   Staff may legitimately count all in-scope Organization Tickets when unfiltered.
@@ -384,9 +399,19 @@ Deterministic ordering does not provide a snapshot across requests: concurrent i
 or filter-changing updates may shift offsets and cause skipped or repeated records.
 The page-size cap bounds returned rows, not all database work or large-offset cost.
 
-The consistency policy between count and items is still open. Separate SELECTs under
-PostgreSQL Read Committed can see different snapshots even inside one transaction;
-do not promise a single shared snapshot until the repository strategy is selected.
+Within one response, total_count and items must come from the same PostgreSQL snapshot.
+Implementations may use one SQL statement, or two SELECTs inside one short,
+read-only REPEATABLE READ transaction whose snapshot begins before either query. No row
+lock is required for this read contract. A later HTTP request receives a new snapshot;
+offset pagination therefore does not promise stability across requests.
+
+`GET /organizations` accepts only `is_active=true|false` in addition to pagination;
+omission includes active and suspended Organizations, always limited to Organizations
+where the actor currently has an active membership. Ticket filters have the exact
+semantics defined in the Tickets section. Comment lists have no filter beyond
+pagination. Membership filters have the exact role/active/assignable semantics defined
+in the Comments and Memberships section. A valid filter that matches nothing returns
+the ordinary 200 empty collection envelope, not a resource-existence error.
 
 ## Deferred Month 03 Operations
 
@@ -410,9 +435,10 @@ email delivery, frontend, background jobs, Docker, and AI retain their existing 
   Organization name and membership/Comment input bounds are reviewed above. Finalize
   missing target memberships, unexpected server errors, and overlapping-failure
   precedence.
-- Finalize the proposed queue/directory filters, non-Ticket collection ordering,
-  count/items consistency and error details conventions. Organization creation/list
-  and ownership-transfer nested responses are reviewed above.
+- Collection filters, deterministic ordering and single-snapshot count/items behavior
+  are reviewed above. Organization creation/list and ownership-transfer nested
+  responses are also reviewed. Finalize remaining business error details and
+  overlapping-failure conventions.
 - Define same-assignee/same-role updates and repeated reactivation/deactivation
   cases without weakening current authorization.
 - Implement the accepted [concurrency contract](concurrency-contract.md) for

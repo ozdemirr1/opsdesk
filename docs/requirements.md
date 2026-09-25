@@ -165,10 +165,12 @@ Thursday scenarios are recorded in the
   Email, password, and token policies are reviewed in the
   [identity/authentication contract](identity-authentication-contract.md).
   Resolve the [remaining API review](api-contract.md#remaining-review-and-test-handoff):
-  other field validation, remaining response/error cases, query
-  extensions, collection ordering, and count/items consistency.
-- Define the cooperating concurrency protocol for ownership, assignment, reopening,
-  and eligibility-revoking operations, including lock order and retry behavior.
+  repeated-operation/business-error precedence, timestamp semantics, and Attachment
+  migration timing. Field bounds, response structures, query filters, collection
+  ordering, and count/items consistency are reviewed.
+- Implement the accepted cooperating concurrency protocol for ownership, assignment,
+  reopening, and eligibility-revoking operations, including its lock order and
+  contention behavior.
 - Keep deferred retention, anonymization, erasure, and storage workflows separate
   from the Month 03 endpoint inventory. No blanket administrative bypass is implied.
 - Follow the published [issue backlog](issue-plan.md) and the implementation prerequisites.
