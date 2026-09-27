@@ -42,3 +42,17 @@ def test_same_password_generates_different_hashes_but_both_verify():
     assert hash_one != hash_two
     assert hasher.verify_password(plain_password, hash_one) is True
     assert hasher.verify_password(plain_password, hash_two) is True
+
+
+def test_dummy_hash_is_library_created_and_does_not_match_input():
+    hasher = PasswordHasher()
+    dummy_hash = hasher.create_dummy_hash()
+
+    assert dummy_hash.startswith("$argon2id$")
+    assert (
+        hasher.verify_password(
+            "submitted attacker password",
+            dummy_hash,
+        )
+        is False
+    )

@@ -7,7 +7,11 @@ class UserEmailConflictError(Exception):
     pass
 
 
-class UserRepository(Protocol):
+class UserReader(Protocol):
+    def get_by_email(self, email: str) -> User | None: ...
+
+
+class UserRepository(UserReader, Protocol):
     def create(self, new_user: NewUser) -> User: ...
 
 

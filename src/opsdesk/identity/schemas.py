@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -29,6 +29,37 @@ class RegisterUserRequest(BaseModel):
     @classmethod
     def validate_password(cls, value: str) -> str:
         return normalize_password(value)
+
+
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        hide_input_in_errors=True,
+    )
+
+    email: str
+    password: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return normalize_password(value)
+
+
+class AccessTokenResponse(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+    )
+
+    access_token: str = Field(min_length=1)
+    token_type: Literal["bearer"] = "bearer"
 
 
 class UserProfile(BaseModel):

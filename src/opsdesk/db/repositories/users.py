@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -31,6 +32,19 @@ class SqlAlchemyUserRepository:
             if _constraint_name(error) == EMAIL_UNIQUE_CONSTRAINT:
                 raise UserEmailConflictError from error
             raise
+
+        return User(
+            user_id=row.user_id,
+            email=row.email,
+            password_hash=row.password_hash,
+            is_active=row.is_active,
+        )
+
+    def get_by_email(self, email: str) -> User | None:
+        row = self._session.scalar(select(UserRow).where(UserRow.email == email))
+
+        if row is None:
+            return None
 
         return User(
             user_id=row.user_id,
