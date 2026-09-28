@@ -245,7 +245,10 @@ implementing upload, claiming file availability, or choosing a storage provider.
   evidence about file bytes. Future file inspection is outside this design phase.
 
 All Attachment metadata API operations are deferred beyond Month 03. This entity
-remains part of the domain and relational design, not a promised release endpoint.
+remains part of the domain and relational design, not a promised release endpoint or
+an executable Month 03 table. Its migration ships with the first scheduled Attachment
+feature after metadata, authorization, size/type, retention, and storage-failure rules
+are reviewed.
 Metadata deletion, retention, and physical file cleanup remain future workflow design.
 
 ## Review and Implementation Handoff

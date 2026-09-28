@@ -164,10 +164,10 @@ Thursday scenarios are recorded in the
 - Ticket creation validation is reviewed in its [contract](ticket-creation-validation.md).
   Email, password, and token policies are reviewed in the
   [identity/authentication contract](identity-authentication-contract.md).
-  Resolve the [remaining API review](api-contract.md#remaining-review-and-test-handoff):
-  repeated-operation/business-error precedence, timestamp semantics, and Attachment
-  migration timing. Field bounds, response structures, query filters, collection
-  ordering, and count/items consistency are reviewed.
+  Implement the finalized [API review](api-contract.md#finalized-review-and-test-handoff):
+  field bounds, response structures, query filters, collection ordering,
+  count/items consistency, repeated-operation/business-error precedence, timestamp
+  semantics, and the explicit Attachment migration deferral are reviewed.
 - Implement the accepted cooperating concurrency protocol for ownership, assignment,
   reopening, and eligibility-revoking operations, including its lock order and
   contention behavior.

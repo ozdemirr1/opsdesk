@@ -1,8 +1,9 @@
 # Shared API Errors and Request Logging Contract
 
-Reviewed with Furkan on 18 September 2026. This resolves the #3 subset required
-by #10; other #3 validation, response, ordering, no-op, and precedence decisions
-remain open. This document is a contract, not implementation evidence.
+Reviewed with Furkan on 18 September 2026 and aligned with the finalized #3 business
+precedence on 28 September. This document is a contract; its shared transport/logging
+subset is implemented by #10, while dependent business endpoints must implement their
+own accepted precedence.
 
 ## Public errors
 
@@ -62,8 +63,8 @@ must be reviewed before claiming raw paths are absent from the development logs.
 Use bounded test-only routes for implementation tests; no product feature endpoint
 is added just to exercise this infrastructure. Test headers, error envelopes,
 synthetic-secret exclusion, and request/log correlation as externally visible
-behavior. Full overlapping business-failure precedence remains #3 work before
-those feature endpoints are implemented.
+behavior. The API contract now defines overlapping business-failure precedence for
+the dependent feature endpoints.
 
 
 ## Implementation Clarifications and Evidence — 21 September 2026

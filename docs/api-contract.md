@@ -201,7 +201,13 @@ returning a successful no-op. Framework validation ordering must not bypass thes
 | Authorized staff repeats current priority on an open Ticket | 200 | None; priority status limits still apply |
 | Actor repeats current status with the explicit same-status permission | 200 | None; no reopening cleanup |
 | Agent repeats reassignment after transferring work to another member | 403 permission_denied | None; assigned-to-self condition no longer holds |
+| Authorized actor assigns the same currently eligible assignee again | 200 | None; assignment/state rules still apply |
 | Admin removes assignment from an already unassigned open Ticket | 200 | None |
+| Admin/owner repeats the same permitted role for another active non-owner member | 200 | None; target and handover preconditions still apply |
+| Admin/owner reactivates an already active membership | 409 state_conflict | None; reactivation does not replace role update |
+| Admin/owner deactivates an already inactive non-owner membership | 200 | None; return its inactive projection |
+| Former member repeats `/memberships/me` after leaving | 403 organization_access_denied | None; active membership authorization is gone |
+| Former owner repeats the completed ownership transfer | 403 permission_denied | None; the actor is no longer owner |
 
 The [same-status permission table](ticket-lifecycle.md#same-status-requests) is
 distinct from visibility and real transitions. Seeing a resolved Ticket does not
@@ -209,8 +215,9 @@ authorize a customer to PUT resolved, even when that value is already stored.
 
 HTTP idempotency concerns the intended effect of repeated requests, not identical
 responses. It does not mandate returning 200 after the caller loses permission.
-Same-assignee PUT and other repeated membership operations still need explicit
-case-by-case contracts; do not generalize this table into a universal shortcut.
+Repeated Comment, Organization and Ticket creation requests create distinct resources;
+this release has no idempotency-key protocol. The table is endpoint-specific rather
+than a universal shortcut.
 
 ## Comments and Memberships
 
@@ -295,9 +302,11 @@ role update nor reactivation may rewrite the owner or change the actor's own rol
 Admin-to-agent preserves eligibility; active work alone does not block that change.
 
 Membership DELETE is logical deactivation, retaining the row and historical references.
-After leaving, the caller no longer passes active membership authorization on a retry.
-Likewise, a former owner cannot repeat ownership transfer using their old authority.
-Resolve the static `/memberships/me` route distinctly from the numeric member route.
+An authorized admin/owner repeating deletion of an already inactive non-owner target
+receives the current inactive projection without a write. After leaving, the caller no
+longer passes active membership authorization on a retry. Likewise, a former owner
+cannot repeat ownership transfer using their old authority. Resolve the static
+`/memberships/me` route distinctly from the numeric member route.
 
 ### Exact-email Addition and Disclosure Limits
 
@@ -308,7 +317,9 @@ canonical email policy as registration/login; no partial search or user director
 Missing and inactive global Users share `400 user_not_addable`, with a safe message
 such as "The specified user cannot be added." An existing membership, including an
 inactive row, yields `409 membership_exists`; use the explicit reactivation workflow.
-Define precedence for overlapping target conditions during the remaining error review.
+When both apply, `membership_exists` takes precedence after canonical User lookup so a
+duplicate row is never treated as a new addition. Reactivating that row still requires
+an active global User and otherwise returns `400 user_not_addable`.
 
 These responses do not remove account-enumeration risk: successful addition still
 reveals that an account is addable. Anyone allowed to create an Organization can
@@ -328,14 +339,34 @@ Record this product tradeoff without claiming that generic errors solve it entir
 | Invalid request fields, types, enums, or pagination values | 422 | validation_error |
 | Permitted operation blocked by current business state | 409 | state_conflict |
 | Membership already exists, active or inactive | 409 | membership_exists |
+| Authorized membership lookup target is missing or outside the path Organization | 404 | membership_not_found |
+| Assignment target is missing, foreign, inactive, globally inactive, or has an ineligible role | 400 | assignee_not_eligible |
+| Ownership-transfer target is missing, foreign, inactive, globally inactive, or is not an admin | 400 | ownership_target_not_eligible |
 | Email does not identify an addable active User | 400 | user_not_addable |
 | Registration uses an already registered canonical email | 409 | email_already_exists |
 
-Protected bearer 401 responses include `WWW-Authenticate: Bearer`. Resolve membership
-before exposing Organization suspension. Missing/foreign/invisible Tickets share a
-public response; this concealment supplements actual scoped authorization checks.
-Role denial and state conflict are distinct; finalize precedence for requests that
-violate both, including unlisted transitions, before writing error assertions.
+The new target errors use fixed messages: membership_not_found is
+`Membership not found.`; assignee_not_eligible is
+`The specified assignee is not eligible.`; ownership_target_not_eligible is
+`The specified ownership target is not eligible.`. They use `details: []` and never
+include a submitted identifier or the hidden reason for ineligibility.
+
+Protected bearer 401 responses include `WWW-Authenticate: Bearer`. After transport and
+schema validation, business checks use this precedence: current authentication;
+active actor membership/Organization concealment; Organization active state for child
+operations; resource scope/visibility; operation permission; current resource state;
+then referenced-target eligibility. Missing/foreign/invisible Tickets share a public
+response. Missing/foreign membership path targets also share one response. Assignment
+and ownership targets use their generic eligibility errors rather than disclosing
+which target condition failed.
+
+This ordering means a caller who lacks operation permission receives 403 even when the
+visible resource is also in a conflicting state; an authorized caller blocked only by
+state receives 409. Validation that the framework completes before entering the
+business handler remains 422. Recognized lock/deadlock/serialization contention can
+produce the accepted 503 before a business outcome is knowable; other unexpected
+infrastructure failures remain 500. Every rejected mutation rolls back and returns no
+success projection.
 
 The [shared error/logging contract](error-logging-contract.md), reviewed on
 18 September, accepts `400 invalid_json` and `415 unsupported_media_type`, defines
@@ -366,6 +397,24 @@ Use a consistent error envelope with `details: []` for non-field failures. Known
 field paths use body/query/path prefixes; never reflect unknown client field names.
 See the shared error/logging contract for the reviewed disclosure boundaries.
 Do not include raw request bodies, passwords, tokens, hashes, or database details.
+
+## Timestamp Policy
+
+Ticket and Comment timestamps are database-generated `timestamptz` values using
+PostgreSQL `statement_timestamp()`. API responses serialize them in RFC 3339 UTC form
+with `Z`; fractional seconds may contain up to PostgreSQL's six-digit microsecond
+precision. Clients must not submit these fields.
+
+Ticket creation sets `created_at` and `updated_at` from the same insertion statement.
+A successful business change to Ticket priority, status, or assignment refreshes
+`updated_at` in the same database statement that changes the field. A successful
+no-op, rejected/rolled-back request, membership mutation, and Comment insertion do
+not refresh the Ticket timestamp. Comments are append-only and have `created_at` only.
+
+These values describe database statement time, not strict transaction commit order,
+an event log, or an optimistic-lock version. Every operation still uses the accepted
+locking and fresh-state checks; clients must not use timestamps as authorization or
+concurrency tokens.
 
 ## Pagination and Filtering
 
@@ -424,29 +473,35 @@ the ordinary 200 empty collection envelope, not a resource-existence error.
 | Globally deactivate own User | No endpoint this month. Existing cross-Organization ownership/assignment preconditions remain domain rules for future implementation. |
 | Create/read/delete Attachment metadata | No metadata API this month. Domain/relational design remains; file upload/download/storage is also excluded. Metadata can have independent value, but is not required for this release's core workflow. |
 
+The Attachment table is also excluded from the Month 03 executable Ticket migration.
+Keep its domain and relational design for forward planning, then introduce its table
+with the first scheduled metadata/upload feature after filename, media type, size,
+authorization, retention and physical-storage failure behavior are reviewed. No empty
+table is created merely to mirror a deferred entity.
+
 Comment edit/delete, internal notes, on-behalf-of Ticket creation, refresh tokens,
 email delivery, frontend, background jobs, Docker, and AI retain their existing exclusions.
 
-## Remaining Review and Test Handoff
+## Finalized Review and Test Handoff
 
 - Ticket creation field rules and examples are recorded in the reviewed
   [validation contract](ticket-creation-validation.md). Identity inputs and token
   behavior are recorded in the [identity contract](identity-authentication-contract.md).
-  Organization name and membership/Comment input bounds are reviewed above. Finalize
-  missing target memberships, unexpected server errors, and overlapping-failure
-  precedence.
+  Organization name and membership/Comment input bounds, missing target behavior,
+  unexpected server errors and overlapping-failure precedence are reviewed above.
 - Collection filters, deterministic ordering and single-snapshot count/items behavior
   are reviewed above. Organization creation/list and ownership-transfer nested
-  responses are also reviewed. Finalize remaining business error details and
-  overlapping-failure conventions.
-- Define same-assignee/same-role updates and repeated reactivation/deactivation
-  cases without weakening current authorization.
+  responses are also reviewed. Business error details and overlapping-failure
+  conventions are reviewed above.
+- Same-assignee/same-role updates and repeated reactivation/deactivation behavior are
+  explicitly defined above without weakening current authorization.
 - Implement the accepted [concurrency contract](concurrency-contract.md) for
   claims, ownership, role changes, deactivation, and reopening. It specifies a
   2-second per-lock wait, full rollback and 503 concurrency_busy for recognized
   contention failures, with no automatic retry. This is accepted behavior awaiting
-  implementation; endpoint-specific no-op and overlapping-error decisions remain #3.
-- Decide when the deferred Attachment table becomes an executable migration.
+  implementation; endpoint-specific no-op and overlapping-error decisions are fixed
+  above and must be preserved by those implementations.
+- The timestamp policy and deferred Attachment migration timing are reviewed above.
 - Follow the [26 published issues](issue-plan.md) and their prerequisites. Publication
   does not resolve design decisions; completion needs the corresponding evidence.
 
@@ -454,7 +509,8 @@ Future tests must verify response projections, forbidden/system fields, stale-to
 account checks, tenant and requester scoping, no-op authorization and unchanged
 timestamps, suspended-Organization exceptions, reactivation privilege boundaries,
 rollback, filtering/count consistency, paging bounds, and safe error output.
-No application tests or schema changes were executed for this documentation baseline.
+No application tests or schema changes are required for this documentation decision.
+Dependent implementations must add the listed behavior and database tests.
 
 ## References
 
