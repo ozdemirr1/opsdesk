@@ -44,7 +44,9 @@ implements the first identity slice with strict request validation, canonical em
 storage, Argon2id password hashing, explicit transaction handling, and a safe duplicate
 email response. `POST /auth/login` now authenticates active Users with the same
 canonical inputs and issues a 30-minute HS256 access token containing only the reviewed
-identity/time claims. Protected-token validation, current-user resolution,
+identity/time claims. `GET /users/me` validates the bearer token with an exact
+algorithm/claim contract, reloads the current User from PostgreSQL, and returns only
+the public profile for an active persisted identity. Organization authorization,
 Organization/Ticket endpoints, and Ticket tables are not implemented.
 File-content upload and storage remain outside the Month 03 scope.
 
@@ -90,8 +92,8 @@ uv run uvicorn opsdesk.main:create_app --factory --reload --no-access-log
 Open [Swagger UI](http://127.0.0.1:8000/docs),
 [ReDoc](http://127.0.0.1:8000/redoc), or the
 [OpenAPI document](http://127.0.0.1:8000/openapi.json). The schema includes the
-`POST /users` registration and `POST /auth/login` operations. Stop the server with
-Ctrl+C.
+`POST /users` registration, `POST /auth/login`, and protected `GET /users/me`
+operations. Stop the server with Ctrl+C.
 
 Run linting, formatting checks, and tests:
 
