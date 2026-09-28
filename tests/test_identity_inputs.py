@@ -4,7 +4,12 @@ import pytest
 from pydantic import ValidationError
 
 from opsdesk.identity.normalization import normalize_email, normalize_password
-from opsdesk.identity.schemas import RegisterUserRequest, UserProfile
+from opsdesk.identity.schemas import (
+    AccessTokenResponse,
+    LoginRequest,
+    RegisterUserRequest,
+    UserProfile,
+)
 
 
 def test_email_normalization_trims_and_lowercases():
@@ -131,3 +136,51 @@ def test_user_profile_projects_only_public_attributes():
     assert "password" not in dumped_data
     assert "password_hash" not in dumped_data
     assert dumped_data == {"user_id": 1, "email": "test@example.com", "is_active": True}
+
+
+def test_login_request_reuses_identity_normalization():
+    request = LoginRequest(
+        email="  USER@EXAMPLE.COM  ",
+        password="e\u0301" + "a" * 14,
+    )
+
+    assert request.email == "user@example.com"
+    assert request.password == "\u00e9" + "a" * 14
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"email": "user@example.com"},
+        {"password": "river valley lantern"},
+        {
+            "email": 123,
+            "password": "river valley lantern",
+        },
+        {
+            "email": "user@example.com",
+            "password": "river valley lantern",
+            "role": "owner",
+        },
+    ],
+)
+def test_login_request_rejects_invalid_or_extra_fields(payload):
+    with pytest.raises(ValidationError):
+        LoginRequest(**payload)
+
+
+def test_access_token_response_has_fixed_bearer_type():
+    response = AccessTokenResponse(
+        access_token="signed-token",
+    )
+
+    assert response.model_dump() == {
+        "access_token": "signed-token",
+        "token_type": "bearer",
+    }
+
+    with pytest.raises(ValidationError):
+        AccessTokenResponse(
+            access_token="signed-token",
+            token_type="Basic",
+        )
