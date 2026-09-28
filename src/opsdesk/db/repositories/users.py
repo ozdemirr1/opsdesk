@@ -52,3 +52,16 @@ class SqlAlchemyUserRepository:
             password_hash=row.password_hash,
             is_active=row.is_active,
         )
+
+    def get_by_id(self, user_id: int) -> User | None:
+        row = self._session.get(UserRow, user_id)
+
+        if row is None:
+            return None
+
+        return User(
+            user_id=row.user_id,
+            email=row.email,
+            password_hash=row.password_hash,
+            is_active=row.is_active,
+        )
