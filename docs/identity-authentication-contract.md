@@ -3,10 +3,10 @@
 Reviewed: 15 September 2026. Design source: [issue #2](https://github.com/ozdemirr1/opsdesk/issues/2).
 
 This is the request, storage, and token contract for registration, login, current-user
-resolution, and shared email lookup. The registration slice was implemented locally on
-24 September 2026; login, JWT validation, current-user resolution, and organization
-authorization remain design contracts. The same email identity policy applies when an
-administrator adds an existing User.
+resolution, and shared email lookup. Registration is merged, and login/access-token
+issuance was implemented locally by 28 September 2026. Protected-token validation,
+current-user resolution, and organization authorization remain design contracts. The
+same email identity policy applies when an administrator adds an existing User.
 
 ## Request and Response Boundaries
 
@@ -130,8 +130,8 @@ none, is rejected. Verify the signature before using claims as trusted identity.
 The signing secret comes from environment-backed configuration, has no fallback,
 and is generated with at least 32 cryptographically random bytes of entropy. A
 minimum-length configuration check cannot prove entropy. Do not generate or commit
-a real secret during design. Authentication composition requires valid signing
-configuration; the independent foundation application does not require it yet.
+a real secret during design. Non-test application composition requires valid signing
+configuration; tests can inject isolated synthetic settings.
 
 | Claim | Required contract |
 | --- | --- |
@@ -209,10 +209,15 @@ joined both before cleanup. PostgreSQL admitted one User, the responses were one
 and one documented 409, and a fresh Session verified one persisted User and the winning
 password hash. The final merge-candidate run passed 147 non-integration tests with 69
 database/schema tests deselected and all 67 ordinary PostgreSQL integration tests.
-Dummy-hash login behavior, the complete token rejection matrix, and
-protected-current-user behavior belong to the later login/authentication slices and
-remain planned tests. Hosted CI and pull-request review remain separate from this local
-evidence.
+On 28 September 2026, 122 focused unit/HTTP tests passed for login, token issuance,
+input handling, shared transport/errors, request diagnostics, and application wiring.
+Four PostgreSQL login tests then passed: the success path used canonical lookup, real
+Argon2id verification, a controlled UTC clock, and maintained-library signature and
+exact-claim checks; unknown email, wrong password, and inactive User shared the same
+401 response; login created no User, Organization, or Membership. The unknown-user
+path verifies an application-created dummy hash. The complete protected-token rejection
+matrix and current-user behavior remain issue #13. Full merge-candidate regression,
+hosted CI and pull-request review remain separate from this local evidence.
 
 ## References
 
