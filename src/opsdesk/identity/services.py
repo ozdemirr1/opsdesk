@@ -3,6 +3,7 @@ from typing import Protocol
 from opsdesk.identity.models import NewUser, User
 from opsdesk.identity.repositories import (
     Transaction,
+    UserByIdReader,
     UserEmailConflictError,
     UserReader,
     UserRepository,
@@ -102,3 +103,23 @@ class LoginService:
             raise InvalidCredentialsError
 
         return self._token_issuer.issue(user.user_id)
+
+
+class CurrentUserUnavailableError(Exception):
+    pass
+
+
+class CurrentUserService:
+    def __init__(
+        self,
+        repository: UserByIdReader,
+    ) -> None:
+        self._repository = repository
+
+    def resolve(self, user_id: int) -> User:
+        user = self._repository.get_by_id(user_id)
+
+        if user is None or not user.is_active:
+            raise CurrentUserUnavailableError
+
+        return user

@@ -3,10 +3,10 @@
 Reviewed: 15 September 2026. Design source: [issue #2](https://github.com/ozdemirr1/opsdesk/issues/2).
 
 This is the request, storage, and token contract for registration, login, current-user
-resolution, and shared email lookup. Registration is merged, and login/access-token
-issuance was implemented locally by 28 September 2026. Protected-token validation,
-current-user resolution, and organization authorization remain design contracts. The
-same email identity policy applies when an administrator adds an existing User.
+resolution, and shared email lookup. Registration and login/access-token issuance are
+merged. Protected-token validation and current-user resolution were implemented
+locally by 28 September 2026; organization authorization remains a design contract.
+The same email identity policy applies when an administrator adds an existing User.
 
 ## Request and Response Boundaries
 
@@ -215,9 +215,18 @@ Four PostgreSQL login tests then passed: the success path used canonical lookup,
 Argon2id verification, a controlled UTC clock, and maintained-library signature and
 exact-claim checks; unknown email, wrong password, and inactive User shared the same
 401 response; login created no User, Organization, or Membership. The unknown-user
-path verifies an application-created dummy hash. The complete protected-token rejection
-matrix and current-user behavior remain issue #13. Full merge-candidate regression,
-hosted CI and pull-request review remain separate from this local evidence.
+path verifies an application-created dummy hash.
+
+On 28 September 2026, 101 focused token-validation, current-user service/API, shared
+transport/error, diagnostics, and application tests passed. Seven PostgreSQL tests
+then verified controlled signed tokens, current persisted User lookup, safe rejection
+of malformed, wrongly signed, expired, missing-User, and newly inactive identities,
+and the complete registration-to-login-to-current-user flow. Reusing the same token
+after database deactivation produced the same safe 401 response, proving that token
+claims do not replace current persisted state. Successful and rejected authentication
+created no Organization or Membership, and protected responses exposed no password
+hash, signing secret, or complete token. Full merge-candidate regression, hosted CI,
+pull-request review, merge, and issue closure remain separate from this local evidence.
 
 ## References
 
