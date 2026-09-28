@@ -9,7 +9,8 @@ documentation, not an executable migration or proof that constraints have been t
 The [access-control matrix](access-control.md) and [Ticket lifecycle](ticket-lifecycle.md)
 supply reviewed operation rules. The [API baseline](api-contract.md) limits the
 Month 03 executable scope; the Attachment schema remains a design artifact with
-migration timing to be decided. Remaining design work is listed at the end.
+migration deferred until its first scheduled feature. Remaining implementation work
+is listed at the end.
 
 ## Conventions
 
@@ -121,8 +122,8 @@ remains a future lifecycle gate; the accepted lock order must be implemented.
 | description | text | No | CHECK char_length(description) BETWEEN 1 AND 10000; see text contract | Detailed support request |
 | status | text | No | CHECK valid status; DEFAULT 'open' | Current lifecycle state |
 | priority | text | No | CHECK valid priority; DEFAULT 'medium' | Urgency level |
-| created_at | timestamptz | No | DEFAULT now() | Creation transaction time |
-| updated_at | timestamptz | No | DEFAULT now(); explicit refresh on updates | Last application modification timestamp |
+| created_at | timestamptz | No | DEFAULT statement_timestamp() | Creation statement time |
+| updated_at | timestamptz | No | DEFAULT statement_timestamp(); explicit refresh on meaningful updates | Last Ticket-field modification statement time |
 
 ```sql
 CHECK (status IN ('open', 'in_progress', 'resolved', 'closed'))
@@ -147,11 +148,12 @@ null/non-null pair and is not appropriate for this design.
 
 ### Time and Immutable Fields
 
-Defaults apply on insertion; updated_at does not refresh automatically. Application
-persistence updates must explicitly refresh it when Ticket fields change. The exact
-update-time expression and tests will be chosen before implementing persistence.
-PostgreSQL now() represents transaction start, not wall-clock commit time, and does
-not advance within one transaction. Timestamps alone are not a strict revision counter.
+Both defaults use PostgreSQL `statement_timestamp()` in the insertion statement, so
+creation starts with equal values. `updated_at` does not refresh automatically.
+Persistence must set it to `statement_timestamp()` in the same SQL statement as every
+meaningful priority, status, or assignment change. Comment and membership writes do
+not refresh it. Rolled-back operations and successful no-ops leave it unchanged.
+Statement time is not wall-clock commit order; timestamps are not revision counters.
 
 Normal updates cannot change organization_id, requester_membership_id,
 creator_membership_id, title, description, or created_at during Month 03.
@@ -168,7 +170,7 @@ this immutability; stronger database enforcement would require a separate decisi
 | ticket_id | bigint | No | Composite Ticket FK | Fixed parent |
 | author_membership_id | bigint | No | Composite membership FK | Fixed author attribution |
 | content | text | No | CHECK char_length(content) BETWEEN 1 AND 10000; see text contract | Conversational message |
-| created_at | timestamptz | No | DEFAULT now() | Creation transaction time |
+| created_at | timestamptz | No | DEFAULT statement_timestamp() | Creation statement time |
 
 There is no updated_at: user-facing comments are append-only. No normal application
 endpoint, service, or repository operation edits/deletes them. This policy includes
@@ -185,7 +187,9 @@ Comments in closed remain readable but new comments are denied.
 ## attachments
 
 This is a planned metadata model. It does not create an upload endpoint, establish
-a storage provider, or promise physical file availability.
+a storage provider, or promise physical file availability. It is excluded from the
+Month 03 executable Ticket migration and will be migrated with its first scheduled
+feature after the remaining metadata/storage policies are reviewed.
 
 | Column | Type | Nullable | Constraint / default | Purpose |
 | --- | --- | --- | --- | --- |
@@ -196,7 +200,7 @@ a storage provider, or promise physical file availability.
 | filename | text | No | Nonblank text; limits pending | Untrusted display filename, not a storage path |
 | file_size_bytes | bigint | No | CHECK (file_size_bytes > 0) | Declared positive byte count |
 | mime_type | text | No | Nonblank text; syntax policy pending | Untrusted content-type label |
-| created_at | timestamptz | No | DEFAULT now() | Metadata creation transaction time |
+| created_at | timestamptz | No | DEFAULT statement_timestamp() | Metadata creation statement time |
 
 Duplicate filenames are allowed. Rejecting zero-byte declarations is the selected
 initial product policy, not an inherent limitation of files. Actual size, type,
@@ -283,17 +287,18 @@ be resolved before the relevant schema and API validation are implemented.
   defaults to medium, assignment at creation is forbidden, and in_progress requires
   an eligible assignee. Ticket constraints are not yet implemented; the initial
   User/Organization/Membership migration is applied to the guarded test target.
-- Resolve remaining API response/error cases and repeated operations listed in
-  the API baseline; selected no-ops never refresh updated_at. Ticket title and
-  description are fixed through Month 03 operations; FKs do not enforce this.
+- Implement the finalized API response/error precedence and repeated-operation rules;
+  selected no-ops never refresh updated_at. Ticket title and description are fixed
+  through Month 03 operations; FKs do not enforce this.
 - Implement the accepted [lock protocol](concurrency-contract.md) for ownership,
   assignment and membership changes; review global deactivation coordination before
   adding that deferred endpoint.
-- Define the updated_at update expression and verification expectations.
+- Verify database-generated statement timestamps, equal creation timestamps,
+  meaningful-update refresh and unchanged no-op timestamps in persistence tests.
 - Review access-pattern indexes after endpoint/pagination contracts; avoid adding
   speculative indexes. PostgreSQL does not automatically index referencing FK columns.
-- Keep attachment storage operations, retention, suspension, and erasure workflows
-  explicitly separate from the current structural baseline.
+- Keep the deferred Attachment table and its storage, retention, suspension, and
+  erasure workflows out of the current executable migration.
 
 Future migration/integration checks must exercise invalid roles/statuses, duplicate
 memberships, a second active owner, zero-owner application rejection, foreign-tenant
