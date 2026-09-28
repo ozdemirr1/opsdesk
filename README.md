@@ -42,8 +42,10 @@ persistence models now cover Users, Organizations, and OrganizationMemberships.
 Constraint and isolated migration-cycle tests cover this schema. `POST /users`
 implements the first identity slice with strict request validation, canonical email
 storage, Argon2id password hashing, explicit transaction handling, and a safe duplicate
-email response. Login, JWT/current-user authentication, Organization/Ticket endpoints,
-and Ticket tables are not implemented.
+email response. `POST /auth/login` now authenticates active Users with the same
+canonical inputs and issues a 30-minute HS256 access token containing only the reviewed
+identity/time claims. Protected-token validation, current-user resolution,
+Organization/Ticket endpoints, and Ticket tables are not implemented.
 File-content upload and storage remain outside the Month 03 scope.
 
 See [Product requirements](docs/requirements.md) for the initial scope,
@@ -78,8 +80,8 @@ Install runtime and development dependencies from the lockfile:
 uv sync --locked
 ```
 
-Set all five `OPSDESK_DB_` connection variables described below, then start the
-development server:
+Set all five `OPSDESK_DB_` connection variables and `OPSDESK_JWT_SECRET` as described
+below, then start the development server:
 
 ```bash
 uv run uvicorn opsdesk.main:create_app --factory --reload --no-access-log
@@ -88,7 +90,8 @@ uv run uvicorn opsdesk.main:create_app --factory --reload --no-access-log
 Open [Swagger UI](http://127.0.0.1:8000/docs),
 [ReDoc](http://127.0.0.1:8000/redoc), or the
 [OpenAPI document](http://127.0.0.1:8000/openapi.json). The schema includes the
-`POST /users` registration operation. Stop the server with Ctrl+C.
+`POST /users` registration and `POST /auth/login` operations. Stop the server with
+Ctrl+C.
 
 Run linting, formatting checks, and tests:
 
@@ -104,8 +107,8 @@ To apply formatting locally, use `uv run ruff format src tests migrations`.
 
 Application settings are validated when the application factory creates its
 configuration and use the `OPSDESK_` prefix. A non-test application also creates its
-database engine and requires all five `OPSDESK_DB_` connection variables below.
-`.env` files are not loaded automatically.
+database engine and requires all five `OPSDESK_DB_` connection variables plus the JWT
+signing secret below. `.env` files are not loaded automatically.
 
 | Environment variable | Accepted values | Default |
 | --- | --- | --- |
@@ -119,6 +122,10 @@ database engine and requires all five `OPSDESK_DB_` connection variables below.
 | `OPSDESK_DB_DATABASE` | Required non-empty database name |
 | `OPSDESK_DB_USERNAME` | Required non-empty role name |
 | `OPSDESK_DB_PASSWORD` | Required non-empty secret; never commit or log it |
+
+| Authentication environment variable | Requirement |
+| --- | --- |
+| `OPSDESK_JWT_SECRET` | Required in non-test environments; at least 32 UTF-8 bytes, no default; never commit or log it |
 
 `OPSDESK_ENVIRONMENT` labels the environment; selecting `production` does not
 implicitly disable documentation or apply deployment security settings.
@@ -404,8 +411,28 @@ stored hash verified only the winning password. The focused registration file no
 seven passing tests. The migration-cycle suite was not rerun because this slice does
 not change the schema. The final merge-candidate run passed 147 non-integration tests
 with 69 database/schema tests deselected and all 67 ordinary PostgreSQL integration
-tests. Hosted CI, pull-request review, and merge remain pending before issue #11 is
-complete.
+tests. Both hosted checks passed; PR #33 merged as `4d8a9f1`, and issue #11 is closed.
+
+
+## User Login and Access-Token Issuance
+
+`POST /auth/login` accepts exactly `email` and `password`, reusing registration's
+canonical email and NFC password handling. The service reads the current User, always
+performs maintained Argon2id verification, and checks active state before issuing a
+token. Unknown email, wrong password, and inactive User share the same
+`401 unauthenticated` response. Unknown email uses an application-created dummy hash;
+this reduces an obvious timing distinction without claiming equal request durations.
+
+PyJWT issues an HS256 token using environment-backed configuration with no fallback
+secret. The token lifetime is 1800 seconds and its payload contains only `sub`, `iat`,
+`exp`, `iss`, and `aud`; organization roles and email are deliberately absent. Tokens
+are signed, not encrypted. Bearer-token validation and `/users/me` remain issue #13.
+
+Local verification on 28 September 2026 passed 122 focused unit/HTTP regression tests.
+Four PostgreSQL login tests then verified canonical lookup, real Argon2id verification,
+controlled-time signature and exact-claim checks, the shared credential-failure
+response, and absence of User/Organization/Membership creation. Full regression,
+hosted CI, pull-request review, merge, and issue #12 closure remain pending.
 
 
 ## Shared API Errors and Request Diagnostics

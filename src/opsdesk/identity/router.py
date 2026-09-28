@@ -4,9 +4,19 @@ from fastapi import APIRouter, Depends, status
 
 from opsdesk.api.errors import ApiError
 from opsdesk.api.transport import JsonAPIRoute
-from opsdesk.identity.dependencies import get_registration_service
-from opsdesk.identity.schemas import RegisterUserRequest, UserProfile
-from opsdesk.identity.services import EmailAlreadyExistsError, RegistrationService
+from opsdesk.identity.dependencies import get_login_service, get_registration_service
+from opsdesk.identity.schemas import (
+    AccessTokenResponse,
+    LoginRequest,
+    RegisterUserRequest,
+    UserProfile,
+)
+from opsdesk.identity.services import (
+    EmailAlreadyExistsError,
+    InvalidCredentialsError,
+    LoginService,
+    RegistrationService,
+)
 
 router = APIRouter(route_class=JsonAPIRoute)
 
@@ -32,3 +42,27 @@ def register_user(
         raise ApiError("email_already_exists") from None
 
     return UserProfile.model_validate(user)
+
+
+@router.post(
+    "/auth/login",
+    response_model=AccessTokenResponse,
+)
+def login(
+    payload: LoginRequest,
+    service: Annotated[
+        LoginService,
+        Depends(get_login_service),
+    ],
+) -> AccessTokenResponse:
+    try:
+        access_token = service.login(
+            email=payload.email,
+            plain_password=payload.password,
+        )
+    except InvalidCredentialsError:
+        raise ApiError("unauthenticated") from None
+
+    return AccessTokenResponse(
+        access_token=access_token,
+    )

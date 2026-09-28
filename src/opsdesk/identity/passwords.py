@@ -1,3 +1,5 @@
+import secrets
+
 from pwdlib import PasswordHash
 
 
@@ -17,3 +19,6 @@ class PasswordHasher:
             plain_password,
             password_hash,
         )
+
+    def create_dummy_hash(self) -> str:
+        return self._password_hash.hash(secrets.token_urlsafe(32))

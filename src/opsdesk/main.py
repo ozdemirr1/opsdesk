@@ -15,15 +15,30 @@ from opsdesk.config import Settings
 from opsdesk.db.config import DatabaseSettings
 from opsdesk.db.connection import create_database_engine
 from opsdesk.db.session import create_session_factory
+from opsdesk.identity.passwords import PasswordHasher
 from opsdesk.identity.router import router as identity_router
+from opsdesk.identity.token_config import TokenSettings
+from opsdesk.identity.tokens import Clock, utc_now
 
 
 def create_app(
     settings: Settings | None = None,
     session_factory: sessionmaker[Session] | None = None,
+    token_settings: TokenSettings | None = None,
+    token_clock: Clock = utc_now,
 ) -> FastAPI:
     if settings is None:
         settings = Settings()
+
+    if token_settings is None and settings.environment != "test":
+        token_settings = TokenSettings()
+
+    login_password_hasher: PasswordHasher | None = None
+    dummy_password_hash: str | None = None
+
+    if token_settings is not None:
+        login_password_hasher = PasswordHasher()
+        dummy_password_hash = login_password_hasher.create_dummy_hash()
 
     owned_engine: Engine | None = None
 
@@ -47,7 +62,12 @@ def create_app(
         openapi_url="/openapi.json" if settings.docs_enabled else None,
         lifespan=lifespan,
     )
+
     app.state.session_factory = session_factory
+    app.state.token_settings = token_settings
+    app.state.token_clock = token_clock
+    app.state.login_password_hasher = login_password_hasher
+    app.state.dummy_password_hash = dummy_password_hash
 
     install_transport_handlers(app)
     app.include_router(identity_router)
