@@ -11,8 +11,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from opsdesk.db.config import IntegrationDatabaseSettings
 from opsdesk.db.connection import create_integration_engine
 
-REVISION = "6a3066cd5538"
-IDENTITY_TABLES = {"users", "organizations", "organization_memberships"}
+HEAD_REVISION = "31be9023cfb2"
+PRODUCT_TABLES = {
+    "users",
+    "organizations",
+    "organization_memberships",
+    "tickets",
+}
 
 pytestmark = [
     pytest.mark.integration,
@@ -40,14 +45,14 @@ def assert_expected_schema(engine):
         revision = connection.execute(
             text("SELECT version_num FROM public.alembic_version")
         ).scalar_one()
-        assert revision == REVISION
+        assert revision == HEAD_REVISION
 
         tables = set(inspect(connection).get_table_names(schema="public"))
-        assert IDENTITY_TABLES.issubset(tables)
+        assert PRODUCT_TABLES.issubset(tables)
 
 
 @pytest.mark.parametrize("body_fails", [False, True])
-def test_identity_migration_cycle_restores_schema(request, body_fails):
+def test_migration_chain_restores_schema(request, body_fails):
     settings = IntegrationDatabaseSettings()
     engine = create_integration_engine(settings)
 
@@ -75,25 +80,26 @@ def test_identity_migration_cycle_restores_schema(request, body_fails):
                 revision = connection.execute(
                     text("SELECT version_num FROM public.alembic_version")
                 ).scalar_one()
-                assert revision == REVISION
+                assert revision == HEAD_REVISION
 
                 counts = connection.execute(
                     text(
                         "SELECT "
+                        "(SELECT COUNT(*) FROM public.tickets), "
                         "(SELECT COUNT(*) FROM public.users), "
                         "(SELECT COUNT(*) FROM public.organizations), "
                         "(SELECT COUNT(*) FROM public.organization_memberships)"
                     )
                 ).one()
-                assert tuple(counts) == (0, 0, 0), (
-                    "Schema tests require empty identity tables."
+                assert tuple(counts) == (0, 0, 0, 0), (
+                    "Schema tests require empty product tables."
                 )
 
                 original_tables = set(
                     inspect(connection).get_table_names(schema="public")
                 )
                 assert original_tables <= (
-                    IDENTITY_TABLES | {"alembic_version", "integration_probe"}
+                    PRODUCT_TABLES | {"alembic_version", "integration_probe"}
                 ), "Unexpected tables in schema-test database."
 
             expectation = (
@@ -114,7 +120,7 @@ def test_identity_migration_cycle_restores_schema(request, body_fails):
                         tables = set(
                             inspect(connection).get_table_names(schema="public")
                         )
-                        assert tables == original_tables - IDENTITY_TABLES
+                        assert tables == original_tables - PRODUCT_TABLES
 
                         revisions = connection.execute(
                             text("SELECT version_num FROM public.alembic_version")
@@ -126,7 +132,7 @@ def test_identity_migration_cycle_restores_schema(request, body_fails):
                             "Synthetic failure after downgrade"
                         )
 
-                    command.upgrade(config, REVISION)
+                    command.upgrade(config, HEAD_REVISION)
                     assert_expected_schema(engine)
 
                 except Exception as exc:
@@ -136,7 +142,7 @@ def test_identity_migration_cycle_restores_schema(request, body_fails):
                 finally:
                     try:
                         with safe_schema_errors():
-                            command.upgrade(config, REVISION)
+                            command.upgrade(config, HEAD_REVISION)
                             assert_expected_schema(engine)
                     except Exception as restore_error:
                         request.session.shouldstop = (

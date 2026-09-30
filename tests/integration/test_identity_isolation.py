@@ -61,4 +61,4 @@ def test_committed_identity_records_are_visible_and_cleaned(
         revision = connection.execute(
             text("SELECT version_num FROM public.alembic_version")
         ).scalar_one()
-        assert revision == "6a3066cd5538"
+        assert revision == "31be9023cfb2"
