@@ -12,6 +12,8 @@ from opsdesk.db.connection import (
 )
 from opsdesk.db.session import create_session_factory
 
+HEAD_REVISION = "31be9023cfb2"
+
 
 @contextmanager
 def safe_database_errors():
@@ -100,11 +102,12 @@ def identity_scope(integration_engine, request):
                         text("SELECT version_num FROM public.alembic_version")
                     ).scalar_one()
 
-                    if revision != "6a3066cd5538":
+                    if revision != HEAD_REVISION:
                         raise RuntimeError(
                             "Unexpected schema revision for identity cleanup."
                         )
 
+                    connection.execute(text("DELETE FROM public.tickets"))
                     connection.execute(
                         text("DELETE FROM public.organization_memberships")
                     )

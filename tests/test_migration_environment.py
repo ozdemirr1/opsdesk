@@ -170,7 +170,12 @@ def test_migrations_release_resources_after_connection(monkeypatch, migration_fa
     assert name_filter("integration_probe", "table", {}) is False
     assert name_filter("integration_probe", "column", {}) is True
 
-    for table_name in ("users", "organizations", "organization_memberships"):
+    for table_name in (
+        "users",
+        "organizations",
+        "organization_memberships",
+        "tickets",
+    ):
         assert name_filter(table_name, "table", {}) is True
 
     assert name_filter("another_table", "table", {}) is True

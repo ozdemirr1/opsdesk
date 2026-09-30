@@ -20,7 +20,7 @@ def test_initial_identity_schema_exists(integration_engine):
         revision = connection.execute(
             text("SELECT version_num FROM public.alembic_version")
         ).scalar_one()
-        assert revision == "6a3066cd5538"
+        assert revision == "31be9023cfb2"
 
         inspector = inspect(connection)
         actual_tables = set(inspector.get_table_names(schema="public"))
