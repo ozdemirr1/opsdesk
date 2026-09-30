@@ -37,17 +37,19 @@ Backend foundation implementation is underway. The repository now contains a
 FastAPI application factory, validated application settings, and tests covering
 application startup/shutdown, documentation visibility, and configuration behavior.
 Synchronous database configuration, engine/session factories, and guarded local
-PostgreSQL integration tests are implemented. The initial Alembic migration and
-persistence models now cover Users, Organizations, and OrganizationMemberships.
-Constraint and isolated migration-cycle tests cover this schema. `POST /users`
+PostgreSQL integration tests are implemented. Alembic migrations and persistence
+models now cover Users, Organizations, OrganizationMemberships, and Tickets.
+Constraint, catalog-inspection, and isolated migration-cycle tests cover this schema.
+`POST /users`
 implements the first identity slice with strict request validation, canonical email
 storage, Argon2id password hashing, explicit transaction handling, and a safe duplicate
 email response. `POST /auth/login` now authenticates active Users with the same
 canonical inputs and issues a 30-minute HS256 access token containing only the reviewed
 identity/time claims. `GET /users/me` validates the bearer token with an exact
 algorithm/claim contract, reloads the current User from PostgreSQL, and returns only
-the public profile for an active persisted identity. Organization authorization,
-Organization/Ticket endpoints, and Ticket tables are not implemented.
+the public profile for an active persisted identity. Organization authorization and
+Organization/Ticket endpoints are not implemented; the Ticket persistence schema is
+implemented without application CRUD behavior.
 File-content upload and storage remain outside the Month 03 scope.
 
 See [Product requirements](docs/requirements.md) for the initial scope,
@@ -310,8 +312,9 @@ connection test verifies the database, role, server address, and port.
 - The target guard runs before engine creation and probe setup/cleanup. Only
   `public.integration_probe` is created for these infrastructure tests. Its rows
   are deleted before and after each isolated probe scope in separate committed
-  transactions. Identity scopes separately delete only `organization_memberships`,
-  `users`, then `organizations`, after checking revision `6a3066cd5538`.
+  transactions. Product-data scopes separately delete only `tickets`,
+  `organization_memberships`, `users`, then `organizations`, after checking revision
+  `31be9023cfb2`.
   Data cleanup preserves `alembic_version`; it does not reset identity sequences.
 - Tests close their Sessions before cleanup. Real commits are checked from separate
   Sessions; uncommitted writes, exception cleanup, and pool return are also tested.
@@ -342,7 +345,7 @@ The workflow now selects all non-integration tests. Hosted execution evidence mu
 be checked for the pushed commit; PostgreSQL CI remains #25.
 
 
-## Initial Identity Schema and Migration Verification
+## Identity and Ticket Schema Verification
 
 Revision `6a3066cd5538` creates `users`, `organizations`, and
 `organization_memberships`. It includes BIGINT GENERATED ALWAYS AS IDENTITY keys,
@@ -351,6 +354,13 @@ pair/composite uniqueness, role validation, RESTRICT foreign keys, and the parti
 unique active-owner index. The index enforces at most one active owner, not at least
 one; it does not check global User activity or authorize an operation. Full email
 syntax and Organization-name normalization remain application-contract concerns.
+
+Revision `31be9023cfb2` creates `tickets` with tenant-consistent requester, creator,
+and optional assignee references. Named CHECK constraints bound title, description,
+status, and priority; all parent references use `ON DELETE RESTRICT`. The nullable
+assignee composite foreign key uses `MATCH SIMPLE`. Database constraints establish
+existence and tenant consistency, while activity, role eligibility, authorization,
+and lifecycle transitions remain application-service responsibilities.
 
 Online Alembic commands currently use only `IntegrationDatabaseSettings` and the
 exact guarded product test target. This is not a development/production migration

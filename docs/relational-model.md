@@ -3,9 +3,10 @@
 Relational baseline: Week 09 Wednesday, 9 September 2026.
 Policy alignment: Friday, 11 September 2026.
 
-This document translates the [domain model](domain-model.md) into a proposed
-PostgreSQL schema. The [ERD](erd.md) illustrates the relationships. It is design
-documentation, not an executable migration or proof that constraints have been tested.
+This document translates the [domain model](domain-model.md) into a PostgreSQL schema
+baseline. The [ERD](erd.md) illustrates the relationships. Users, Organizations,
+OrganizationMemberships, and Tickets are implemented and tested; Comments and
+Attachment metadata remain design documentation until their scheduled migrations.
 The [access-control matrix](access-control.md) and [Ticket lifecycle](ticket-lifecycle.md)
 supply reviewed operation rules. The [API baseline](api-contract.md) limits the
 Month 03 executable scope; the Attachment schema remains a design artifact with
@@ -254,7 +255,8 @@ Ticket input uses the reviewed [creation validation contract](ticket-creation-va
 trim edges with Python str.strip(), count Unicode code points, preserve internal
 formatting under the field rules, and reject forbidden characters before trimming.
 Persisted title and description length constraints are respectively 1..255 and
-1..10000. Application input checks remain necessary; no migration has been applied.
+1..10000. Application input checks remain necessary; revision `31be9023cfb2` applies
+the database boundaries without implementing request normalization.
 
 The reviewed Comment contract normalizes line endings in the application, preserves
 internal LF/TAB formatting, rejects other C0 controls and persists 1..10000 Unicode
@@ -281,29 +283,32 @@ be resolved before the relevant schema and API validation are implemented.
 ## Remaining Design Work
 
 - Initial identity canonical-storage constraints are implemented in revision
-  `6a3066cd5538` and verified locally. Identity, Organization name, membership input,
-  and Comment content bounds are reviewed; the Comment table is not implemented yet.
-- Translate the reviewed matrices into migration and service checks; priority
-  defaults to medium, assignment at creation is forbidden, and in_progress requires
-  an eligible assignee. Ticket constraints are not yet implemented; the initial
-  User/Organization/Membership migration is applied to the guarded test target.
+  `6a3066cd5538`; Ticket storage constraints are implemented in revision
+  `31be9023cfb2`. Both revisions are verified on the guarded test target. Comment
+  content bounds are reviewed, but the Comment table is not implemented yet.
+- Translate the reviewed matrices into service checks. The database supplies medium
+  priority by default and enforces participant existence and tenant consistency;
+  assignment-at-creation, active membership, eligible roles, and the requirement that
+  in-progress Tickets have an assignee remain application rules.
 - Implement the finalized API response/error precedence and repeated-operation rules;
   selected no-ops never refresh updated_at. Ticket title and description are fixed
   through Month 03 operations; FKs do not enforce this.
 - Implement the accepted [lock protocol](concurrency-contract.md) for ownership,
   assignment and membership changes; review global deactivation coordination before
   adding that deferred endpoint.
-- Verify database-generated statement timestamps, equal creation timestamps,
-  meaningful-update refresh and unchanged no-op timestamps in persistence tests.
+- Implement service-owned `updated_at` refresh for meaningful updates and preserve it
+  for accepted no-ops. Persistence tests prove equal creation timestamps and that the
+  database does not refresh `updated_at` automatically.
 - Review access-pattern indexes after endpoint/pagination contracts; avoid adding
   speculative indexes. PostgreSQL does not automatically index referencing FK columns.
 - Keep the deferred Attachment table and its storage, retention, suspension, and
   erasure workflows out of the current executable migration.
 
-Future migration/integration checks must exercise invalid roles/statuses, duplicate
-memberships, a second active owner, zero-owner application rejection, foreign-tenant
-participants, unassigned Tickets, restricted parent deletion, and whitespace inputs.
-These checks have not been executed. The complete Week 09 gate still precedes CRUD.
+Current migration/integration checks exercise identity constraints, invalid Ticket
+status/priority values, foreign-tenant and nonexistent participants, nullable
+assignment, required fields, text-length boundaries, defaults, and restricted
+membership deletion. Zero-owner prevention, role eligibility, assignment rules,
+transitions, and normalized whitespace remain service-level work for their features.
 
 ## References
 
