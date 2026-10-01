@@ -100,7 +100,10 @@ neither trims text nor rejects every whitespace-only value. As with Ticket field
 any additional database whitespace guard requires shared Unicode edge-case review;
 PostgreSQL POSIX whitespace classes must not be assumed identical to Python's.
 The initial identity migration and PostgreSQL constraint tests now verify these
-storage bounds; the Organization endpoint and input normalizer remain unimplemented.
+storage bounds. The Organization input normalizer, strict request schema, service,
+SQLAlchemy adapter, and HTTP endpoint are implemented on the Week 12 feature branch.
+Real PostgreSQL atomicity and contention evidence remains required before the
+endpoint is considered complete and merged.
 
 ### Organization Response Structures
 
