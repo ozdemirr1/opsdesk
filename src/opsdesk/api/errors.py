@@ -14,6 +14,10 @@ ERROR_DEFINITIONS: dict[str, tuple[int, str]] = {
     "email_already_exists": (409, "Email already exists."),
     "invalid_json": (400, "Request body is not valid JSON."),
     "unsupported_media_type": (415, "Content-Type must be application/json."),
+    "concurrency_busy": (
+        503,
+        "The operation is temporarily busy. Please try again.",
+    ),
     "internal_error": (500, "An unexpected error occurred."),
     "not_found": (404, "Resource not found."),
     "method_not_allowed": (405, "Method not allowed."),
