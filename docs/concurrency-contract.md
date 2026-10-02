@@ -112,8 +112,11 @@ business conflict uses the existing endpoint contract, not concurrency_busy.
 
 The executable error catalog, SQLSTATE translation, transaction-local lock timeout,
 rollback mapping, and handler tests are now present on the Organization-creation
-feature branch. Real PostgreSQL contention evidence and merge remain pending. The
-standard envelope uses details: []; no Retry-After value is promised.
+feature branch. A guarded local PostgreSQL test now uses independent connections and
+`pg_blocking_pids` to observe the User-row wait, proves the fixed timeout response and
+rollback, and shows that a different User can still create an Organization. Merge
+remains pending. The standard envelope uses details: []; no Retry-After value is
+promised.
 
 ## Verification and measurement plan
 

@@ -104,5 +104,7 @@ Use a transaction-local 2-second lock_timeout per lock acquisition, with no
 automatic retry and no promised Retry-After header. Known business conflicts keep
 their existing mappings; other unexpected database failures remain generic 500.
 The first executable implementation and fast handler tests now exist on the
-Organization-creation feature branch. The existing #10 evidence does not cover it;
-real PostgreSQL contention evidence and feature-branch CI/merge remain pending.
+Organization-creation feature branch. Guarded local PostgreSQL evidence observes the
+real blocker, fixed timeout response, rollback, and safe progress for an independent
+User. The existing #10 evidence does not cover this later feature; hosted CI, review,
+and merge remain pending.

@@ -53,10 +53,14 @@ rechecks that User, and creates the active Organization plus initial active owne
 membership in one explicit transaction. Recognized PostgreSQL lock timeout, deadlock,
 and serialization failures map to the fixed `503 concurrency_busy` response; other
 database failures remain unexpected errors. Fast service, repository, and HTTP tests
-cover this checkpoint. Real PostgreSQL success, rollback, and contention evidence
-remains required before merge. Organization list/detail and Ticket application
-endpoints are not implemented; the Ticket persistence schema is implemented without
-application CRUD behavior.
+cover this behavior. Guarded local PostgreSQL tests prove fresh-session persistence,
+roles in unrelated Organizations, duplicate display names, rollback after intermediate
+and commit-boundary failures, preservation of unknown constraint errors, real lock
+waiting observed through `pg_blocking_pids`, fixed 503 timeout handling, and progress
+for an independent User. The merge candidate passed 283 non-integration and 138
+integration tests. Hosted CI, pull-request review, merge, and issue closure remain
+pending. Organization list/detail and Ticket application endpoints are not implemented;
+the Ticket persistence schema is implemented without application CRUD behavior.
 File-content upload and storage remain outside the Month 03 scope.
 
 See [Product requirements](docs/requirements.md) for the initial scope,
