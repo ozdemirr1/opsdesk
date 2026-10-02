@@ -24,6 +24,7 @@ from opsdesk.main import create_app
         ("internal_error", 500),
         ("not_found", 404),
         ("method_not_allowed", 405),
+        ("concurrency_busy", 503),
     ],
 )
 def test_api_error_http_contract(code, status_code):

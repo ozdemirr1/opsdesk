@@ -47,9 +47,20 @@ email response. `POST /auth/login` now authenticates active Users with the same
 canonical inputs and issues a 30-minute HS256 access token containing only the reviewed
 identity/time claims. `GET /users/me` validates the bearer token with an exact
 algorithm/claim contract, reloads the current User from PostgreSQL, and returns only
-the public profile for an active persisted identity. Organization authorization and
-Organization/Ticket endpoints are not implemented; the Ticket persistence schema is
-implemented without application CRUD behavior.
+the public profile for an active persisted identity. `POST /organizations` now
+validates a name-only request, derives the actor from authenticated identity, locks and
+rechecks that User, and creates the active Organization plus initial active owner
+membership in one explicit transaction. Recognized PostgreSQL lock timeout, deadlock,
+and serialization failures map to the fixed `503 concurrency_busy` response; other
+database failures remain unexpected errors. Fast service, repository, and HTTP tests
+cover this behavior. Guarded local PostgreSQL tests prove fresh-session persistence,
+roles in unrelated Organizations, duplicate display names, rollback after intermediate
+and commit-boundary failures, preservation of unknown constraint errors, real lock
+waiting observed through `pg_blocking_pids`, fixed 503 timeout handling, and progress
+for an independent User. The merge candidate passed 283 non-integration and 138
+integration tests. Hosted CI, pull-request review, merge, and issue closure remain
+pending. Organization list/detail and Ticket application endpoints are not implemented;
+the Ticket persistence schema is implemented without application CRUD behavior.
 File-content upload and storage remain outside the Month 03 scope.
 
 See [Product requirements](docs/requirements.md) for the initial scope,
@@ -94,8 +105,8 @@ uv run uvicorn opsdesk.main:create_app --factory --reload --no-access-log
 Open [Swagger UI](http://127.0.0.1:8000/docs),
 [ReDoc](http://127.0.0.1:8000/redoc), or the
 [OpenAPI document](http://127.0.0.1:8000/openapi.json). The schema includes the
-`POST /users` registration, `POST /auth/login`, and protected `GET /users/me`
-operations. Stop the server with Ctrl+C.
+`POST /users` registration, `POST /auth/login`, protected `GET /users/me`, and
+protected `POST /organizations` operations. Stop the server with Ctrl+C.
 
 Run linting, formatting checks, and tests:
 

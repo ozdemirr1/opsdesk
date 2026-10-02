@@ -110,9 +110,13 @@ mutation after a connection failure with an uncertain commit outcome. A future
 retry feature needs a separate bounded/idempotency design. A freshly observed
 business conflict uses the existing endpoint contract, not concurrency_busy.
 
-The public code is accepted but is not yet present in the executable error catalog.
-Add it and its handler tests with the first feature implementing this protocol.
-Use the standard error envelope with details: []; no Retry-After value is promised.
+The executable error catalog, SQLSTATE translation, transaction-local lock timeout,
+rollback mapping, and handler tests are now present on the Organization-creation
+feature branch. A guarded local PostgreSQL test now uses independent connections and
+`pg_blocking_pids` to observe the User-row wait, proves the fixed timeout response and
+rollback, and shows that a different User can still create an Organization. Merge
+remains pending. The standard envelope uses details: []; no Retry-After value is
+promised.
 
 ## Verification and measurement plan
 
