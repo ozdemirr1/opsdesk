@@ -41,3 +41,17 @@ class OrganizationMembership:
 class OrganizationCreation:
     organization: Organization
     own_membership: OrganizationMembership
+
+
+@dataclass(frozen=True, slots=True)
+class OrganizationListItem:
+    organization: Organization
+    own_membership: OrganizationMembership
+
+
+@dataclass(frozen=True, slots=True)
+class OrganizationList:
+    items: tuple[OrganizationListItem, ...]
+    total_count: int
+    limit: int
+    offset: int

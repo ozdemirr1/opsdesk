@@ -5,6 +5,7 @@ from opsdesk.organizations.models import (
     NewOrganization,
     NewOrganizationMembership,
     Organization,
+    OrganizationList,
     OrganizationMembership,
 )
 
@@ -34,3 +35,21 @@ class OrganizationTransaction(Protocol):
     def commit(self) -> None: ...
 
     def rollback(self) -> None: ...
+
+
+class OrganizationReadRepository(Protocol):
+    def list_for_user(
+        self,
+        *,
+        user_id: int,
+        is_active: bool | None,
+        limit: int,
+        offset: int,
+    ) -> OrganizationList: ...
+
+    def get_for_user(
+        self,
+        *,
+        user_id: int,
+        organization_id: int,
+    ) -> Organization | None: ...
