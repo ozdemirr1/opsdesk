@@ -57,10 +57,18 @@ cover this behavior. Guarded local PostgreSQL tests prove fresh-session persiste
 roles in unrelated Organizations, duplicate display names, rollback after intermediate
 and commit-boundary failures, preservation of unknown constraint errors, real lock
 waiting observed through `pg_blocking_pids`, fixed 503 timeout handling, and progress
-for an independent User. The merge candidate passed 283 non-integration and 138
-integration tests. Hosted CI, pull-request review, merge, and issue closure remain
-pending. Organization list/detail and Ticket application endpoints are not implemented;
-the Ticket persistence schema is implemented without application CRUD behavior.
+for an independent User. Organization creation passed 283 non-integration and 138 integration tests,
+then merged through PR #38 with issue #14 closed. Protected `GET /organizations` and
+`GET /organizations/{organization_id}` now expose only Organizations reachable through
+the caller's active membership. Active and suspended Organizations remain visible;
+inactive and foreign memberships remain outside the result. List responses implement
+the reviewed exact filter, bounded pagination, stable ID ordering, minimal own-membership
+projection, and same-statement count/page snapshot. Missing and inaccessible detail
+targets share `403 organization_access_denied`. The Organization-read merge candidate
+passed 337 non-integration, 147 PostgreSQL integration, and 3 schema tests with Alembic
+at `31be9023cfb2 (head)` and no metadata drift. Hosted CI, review, merge, and issue #15
+closure remain pending. Ticket application endpoints are not implemented; the Ticket
+persistence schema exists without application CRUD behavior.
 File-content upload and storage remain outside the Month 03 scope.
 
 See [Product requirements](docs/requirements.md) for the initial scope,
@@ -104,9 +112,9 @@ uv run uvicorn opsdesk.main:create_app --factory --reload --no-access-log
 
 Open [Swagger UI](http://127.0.0.1:8000/docs),
 [ReDoc](http://127.0.0.1:8000/redoc), or the
-[OpenAPI document](http://127.0.0.1:8000/openapi.json). The schema includes the
-`POST /users` registration, `POST /auth/login`, protected `GET /users/me`, and
-protected `POST /organizations` operations. Stop the server with Ctrl+C.
+[OpenAPI document](http://127.0.0.1:8000/openapi.json). The schema includes `POST /users` registration, `POST /auth/login`,
+protected `GET /users/me`, protected `POST /organizations`, membership-scoped
+`GET /organizations`, and `GET /organizations/{organization_id}` operations. Stop the server with Ctrl+C.
 
 Run linting, formatting checks, and tests:
 
