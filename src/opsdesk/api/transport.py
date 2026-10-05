@@ -50,6 +50,27 @@ class JsonAPIRoute(APIRoute):
         return handler
 
 
+def known_parameter_aliases(dependant, source: str) -> set[str]:
+    aliases = {
+        parameter.alias
+        for parameter in getattr(
+            dependant,
+            f"{source}_params",
+            [],
+        )
+    }
+
+    for dependency in getattr(dependant, "dependencies", []):
+        aliases.update(
+            known_parameter_aliases(
+                dependency,
+                source,
+            )
+        )
+
+    return aliases
+
+
 def safe_validation_field(request: Request, location: tuple) -> str:
     if not location or location[0] not in {"body", "query", "path"}:
         return "request"
@@ -74,9 +95,12 @@ def safe_validation_field(request: Request, location: tuple) -> str:
         for name, field in model_fields.items():
             known_fields.add(field.alias or name)
     else:
-        parameters = getattr(route.dependant, f"{source}_params", [])
-        for parameter in parameters:
-            known_fields.add(parameter.alias)
+        known_fields.update(
+            known_parameter_aliases(
+                route.dependant,
+                source,
+            )
+        )
 
     field_name = location[1]
     if isinstance(field_name, str) and field_name in known_fields:
