@@ -64,11 +64,18 @@ the caller's active membership. Active and suspended Organizations remain visibl
 inactive and foreign memberships remain outside the result. List responses implement
 the reviewed exact filter, bounded pagination, stable ID ordering, minimal own-membership
 projection, and same-statement count/page snapshot. Missing and inaccessible detail
-targets share `403 organization_access_denied`. The Organization-read merge candidate
-passed 337 non-integration, 147 PostgreSQL integration, and 3 schema tests with Alembic
-at `31be9023cfb2 (head)` and no metadata drift. Hosted CI, review, merge, and issue #15
-closure remain pending. Ticket application endpoints are not implemented; the Ticket
-persistence schema exists without application CRUD behavior.
+targets share `403 organization_access_denied`. Organization reads passed 337 non-integration, 147 PostgreSQL integration,
+and 3 schema tests, then merged through PR #39 with issue #15 closed. Protected
+`POST /organizations/{organization_id}/tickets` now validates the reviewed input,
+derives requester and creator from the caller's current active membership, and creates
+an open, unassigned Ticket in one coordinated transaction. The adapter locks the
+Organization, current User, and own membership in the accepted order, rechecks current
+state, and commits once. Recognized contention maps to the fixed 503 response; other
+database failures remain unexpected. The Ticket-creation merge candidate passed 439
+non-integration, 157 PostgreSQL integration, and 3 schema tests with Alembic at
+`31be9023cfb2 (head)` and no metadata drift. Hosted CI, review, merge, and issue #18
+closure remain pending. Ticket listing, detail, workflow, assignment, and Comment
+endpoints remain unimplemented.
 File-content upload and storage remain outside the Month 03 scope.
 
 See [Product requirements](docs/requirements.md) for the initial scope,
@@ -114,7 +121,8 @@ Open [Swagger UI](http://127.0.0.1:8000/docs),
 [ReDoc](http://127.0.0.1:8000/redoc), or the
 [OpenAPI document](http://127.0.0.1:8000/openapi.json). The schema includes `POST /users` registration, `POST /auth/login`,
 protected `GET /users/me`, protected `POST /organizations`, membership-scoped
-`GET /organizations`, and `GET /organizations/{organization_id}` operations. Stop the server with Ctrl+C.
+`GET /organizations`, `GET /organizations/{organization_id}`, and authenticated
+`POST /organizations/{organization_id}/tickets` operations. Stop the server with Ctrl+C.
 
 Run linting, formatting checks, and tests:
 
@@ -510,5 +518,6 @@ from local verification.
 The accepted [transaction and locking contract](docs/concurrency-contract.md)
 coordinates Organization mutations, defines ordered locks and fresh validation,
 and specifies a 2-second per-lock wait with 503 concurrency_busy and no automatic
-retry. This is documented design; executable locking, contention responses,
-lock-wait measurement, and business concurrency tests are not implemented yet.
+retry. Organization creation and Ticket creation now execute their applicable locking
+protocols and include real contention tests with fixed 503 responses. Other listed
+mutations and separate lock-wait metrics remain future implementation work.

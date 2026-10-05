@@ -3,8 +3,9 @@
 Reviewed: 15 September 2026. Design source: [issue #1](https://github.com/ozdemirr1/opsdesk/issues/1).
 
 This document records the reviewed request policy for
-`POST /organizations/{organization_id}/tickets`. It does not implement the endpoint,
-apply a migration, or report passing application tests.
+`POST /organizations/{organization_id}/tickets`. Implementation and verification
+evidence is tracked in the F01 issue record; this contract remains the authoritative
+input policy.
 
 ## Accepted Shape
 
@@ -63,8 +64,8 @@ empty strings, surrounding whitespace, unknown values, and non-string types prod
 ## Reviewed Request Examples
 
 The examples below assume valid authentication, active User/membership/Organization,
-and operation permission. Accepted validation produces `201 Created` only if the
-future endpoint also commits successfully. Rejected requests create no Ticket.
+and operation permission. Accepted validation produces `201 Created` only when the
+endpoint also commits successfully. Rejected requests create no Ticket.
 
 ### Trimmed text and omitted priority
 
@@ -143,10 +144,10 @@ not executable test results.
 
 ## Persistence Handoff
 
-Issue #8 must apply the agreed limits to persisted text: title length 1..255 and
-description length 1..10000, with required columns. Preserve text types; length limits
-do not require changing the columns to varchar. These are planned schema constraints,
-not an applied migration. No SQL CHECK should silently normalize or truncate input.
+Issue #8 applied the agreed persisted-text limits: title length 1..255 and
+description length 1..10000, with required text columns and named constraints.
+Application validation still performs the reviewed normalization; no database
+constraint silently normalizes or truncates input.
 
 Application normalization is authoritative for this request. A PostgreSQL POSIX
 whitespace expression must not be assumed identical to Python's whitespace set;
