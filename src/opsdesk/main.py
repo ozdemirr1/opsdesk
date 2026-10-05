@@ -20,6 +20,7 @@ from opsdesk.identity.router import router as identity_router
 from opsdesk.identity.token_config import TokenSettings
 from opsdesk.identity.tokens import Clock, utc_now
 from opsdesk.organizations.router import router as organizations_router
+from opsdesk.tickets.router import router as tickets_router
 
 
 def create_app(
@@ -73,6 +74,7 @@ def create_app(
     install_transport_handlers(app)
     app.include_router(identity_router)
     app.include_router(organizations_router)
+    app.include_router(tickets_router)
 
     app.add_exception_handler(ApiError, handle_api_error)
 

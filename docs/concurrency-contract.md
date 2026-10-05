@@ -4,8 +4,8 @@ Drafted: 21 September 2026. Acceptance recorded: 22 September 2026. Design issue
 
 Accepted with Furkan: cooperating Organization row locking, the lock order below,
 a 2-second per-lock wait limit, fixed 503 concurrency_busy, and no automatic retry.
-This is a design contract. Executable locks, contention mapping, metrics and business
-concurrency tests remain implementation work; GitHub closure/merge is not claimed.
+Organization creation and Ticket creation now implement their applicable portions;
+remaining mutations and separate lock-wait metrics retain their implementation work.
 
 ## Transaction boundary and scope
 
@@ -111,11 +111,13 @@ retry feature needs a separate bounded/idempotency design. A freshly observed
 business conflict uses the existing endpoint contract, not concurrency_busy.
 
 The executable error catalog, SQLSTATE translation, transaction-local lock timeout,
-rollback mapping, and handler tests are now present on the Organization-creation
-feature branch. A guarded local PostgreSQL test now uses independent connections and
-`pg_blocking_pids` to observe the User-row wait, proves the fixed timeout response and
-rollback, and shows that a different User can still create an Organization. Merge
-remains pending. The standard envelope uses details: []; no Retry-After value is
+rollback mapping, and handler tests first shipped with Organization creation through
+PR #38. Its guarded PostgreSQL test observes the User-row wait with independent
+connections and `pg_blocking_pids`. Ticket creation now locks Organization, User, and
+own membership in the accepted order before fresh validation and insertion. Its local
+PostgreSQL evidence observes the Organization-row wait, proves fixed 503 rollback, and
+shows that a different Organization can still create a Ticket. Hosted Ticket CI,
+review, and merge remain pending. The standard envelope uses details: []; no Retry-After value is
 promised.
 
 ## Verification and measurement plan
