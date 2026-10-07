@@ -10,6 +10,52 @@ header {
   padding-bottom: 1rem;
 }
 
+/* Navigation section */
+.screen-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.screen-nav button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ced4da;
+  background-color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.screen-nav button:hover {
+  background-color: #f8f9fa;
+}
+
+/* Selected screen state */
+.screen-nav button[aria-pressed="true"] {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+/* Keyboard focus */
+.screen-nav button:focus-visible {
+  outline: 3px solid rgba(13, 110, 253, 0.5);
+  outline-offset: 2px;
+}
+
 main {
   padding: 1rem 0;
+}
+
+.mock-note {
+  font-style: italic;
+  color: #6c757d;
+  margin-bottom: 1.5rem;
+}
+
+main h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
 }
