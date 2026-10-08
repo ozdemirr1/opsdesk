@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import AppHeader from './components/AppHeader';
+import TicketList from './components/TicketList';
+import { mockTickets } from './data/mockTickets';
 import './App.css';
 
 type Screen = 'tickets' | 'login' | 'register';
@@ -44,7 +46,7 @@ function App() {
         {activeScreen === 'tickets' && (
           <section>
             <h2>Tickets</h2>
-            <p>Your support tickets will appear here.</p>
+            <TicketList tickets={mockTickets} />
           </section>
         )}
 

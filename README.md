@@ -101,8 +101,9 @@ published scope. Publication does not imply completed design tasks or implementa
 
 The `frontend/` directory starts the React + TypeScript interface in this product
 monorepo. It contains typed header props, local Tickets/Login/Register screen
-selection, minimal CSS with keyboard focus styles, and three frontend behavior tests.
-Login/register demo forms and a mock Ticket list are planned next; real API
+selection, a typed mock Ticket list with an empty state, minimal CSS with keyboard
+focus styles, and five frontend behavior tests. Login/register demo forms are planned
+next; real API
 integration, token storage, protected routes, and Tailwind remain later work.
 
 See the [frontend README](frontend/README.md) for setup, source layout, build/lint

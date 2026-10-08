@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 
-test('renders Tickets heading initially, no Login/Register headings, and Tickets button is selected', () => {
+test('renders Tickets heading and list initially, no Login/Register headings, and Tickets button is selected', () => {
   render(<App />)
 
   // Check headings
@@ -11,11 +11,14 @@ test('renders Tickets heading initially, no Login/Register headings, and Tickets
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Register', level: 2 })).not.toBeInTheDocument()
 
+  // Check initial list presence
+  expect(screen.getByRole('list', { name: 'Ticket list' })).toBeInTheDocument()
+
   // Check the selected button
   expect(screen.getByRole('button', { name: 'Tickets' })).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('navigates to Login screen and returns to Tickets screen', async () => {
+test('navigates to Login screen and returns to Tickets screen showing the list again', async () => {
   const user = userEvent.setup()
   render(<App />)
 
@@ -27,12 +30,14 @@ test('navigates to Login screen and returns to Tickets screen', async () => {
 
   expect(screen.getByRole('heading', { name: 'Login', level: 2 })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Tickets', level: 2 })).not.toBeInTheDocument()
+  expect(screen.queryByRole('list', { name: 'Ticket list' })).not.toBeInTheDocument()
   expect(loginBtn).toHaveAttribute('aria-pressed', 'true')
 
   // Click the Tickets button again
   await user.click(ticketsBtn)
 
   expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument()
+  expect(screen.getByRole('list', { name: 'Ticket list' })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument()
   expect(ticketsBtn).toHaveAttribute('aria-pressed', 'true')
 })
@@ -51,6 +56,7 @@ test('shows only Register heading when navigated to Register, and other buttons 
   expect(screen.getByRole('heading', { name: 'Register', level: 2 })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Tickets', level: 2 })).not.toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument()
+  expect(screen.queryByRole('list', { name: 'Ticket list' })).not.toBeInTheDocument()
 
   // Check button states
   expect(registerBtn).toHaveAttribute('aria-pressed', 'true')
