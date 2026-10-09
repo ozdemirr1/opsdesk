@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import AppHeader from './components/AppHeader';
 import TicketList from './components/TicketList';
+import LoginForm from './components/LoginForm';
 import { mockTickets } from './data/mockTickets';
 import './App.css';
 
@@ -53,7 +54,7 @@ function App() {
         {activeScreen === 'login' && (
           <section>
             <h2>Login</h2>
-            <p>Sign in to your workspace.</p>
+            <LoginForm /> {/* Replaced placeholder text with LoginForm */}
           </section>
         )}
 

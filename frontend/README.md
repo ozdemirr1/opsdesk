@@ -6,7 +6,7 @@ inside the product monorepo. Vite provides the development server and build tool
 ## Current scope — Week 13
 
 Implemented: an application shell with a typed `AppHeader` and local selection
-between a mock Ticket list and Login/Register placeholders. `App` holds one typed screen
+between a mock Ticket list, a controlled Login demo, and a Register placeholder. `App` holds one typed screen
 state, button handlers select the screen, and conditional rendering displays only
 its content. Buttons expose selection through `aria-pressed` and include visible
 keyboard focus. Selection resets on a full page reload; it is not routing or login.
@@ -17,8 +17,15 @@ shows its title, ID, status, and priority. TicketSummary is a frontend display m
 not the complete backend response contract. Ticket details wrap on narrow screens;
 the unmarked list retains an explicit list role for Safari accessibility.
 
-Planned this week: controlled login/register demo forms and their behavior tests.
-Those forms are not implemented yet.
+The Login demo owns controlled email/password inputs and transient feedback. Submit
+checks required email, a basic email shape, then a non-empty password. These bounded
+UX checks do not implement the backend's complete validation contract or authenticate
+a User. Invalid input shows an alert; editing either field clears stale feedback.
+Valid demo input shows `Demo only: no sign-in request was sent.`, clears the password,
+and retains email. Passwords are not trimmed, echoed, logged, or persisted. Leaving
+the Login screen unmounts the form and discards its local state.
+
+Planned next: the controlled Register demo and its behavior tests.
 Real API calls, token storage, protected routes, Tailwind, and deployment are later
 work. The current shell needs no backend, database, environment variables, or secrets.
 
@@ -62,6 +69,9 @@ npm run lint
   check that old content disappears, selected state changes, and keyboard focus is
   visible. Use Tab and Enter/Space to operate the buttons. Confirm all three Ticket
   rows and their fields, no key warnings, and readable narrow-screen wrapping.
+- Login smoke check: submit empty and malformed input, correct it, and submit via
+  both button and Enter. Verify alert/status feedback, retained email, cleared
+  password, and disappearance of stale feedback after editing. Use synthetic values.
 
 Vitest runs React Testing Library tests in jsdom. user-event simulates awaited user
 interactions; jest-dom supplies DOM assertions. `src/test/setup.ts` cleans up each
@@ -69,10 +79,14 @@ rendered tree after its test. Three App tests cover initial selection, Login and
 return to Tickets, and Register selection with other content/buttons inactive,
 including removal/restoration of the named Ticket list. Two TicketList tests use
 independent fixtures to verify populated row count and field association via within(),
-and an empty-state message with no list/items. There are five frontend tests in total.
+and an empty-state message with no list/items. Seven LoginForm tests cover editable
+inputs, missing email/password, malformed email, demo success with password clearing,
+error clearing on email edit, and success clearing on password edit. App navigation
+also verifies that Login controls appear and disappear with screen selection.
+There are twelve frontend tests in total.
 Tests query accessible roles and names rather than inspecting component state.
 jsdom does not establish visual layout correctness; retain browser smoke checks.
-Future forms require their own behavior tests.
+The planned Register form will require its own behavior tests.
 The repository's existing Backend CI does not run these frontend checks yet.
 
 ## Source layout
@@ -86,6 +100,8 @@ The repository's existing Backend CI does not run these frontend checks yet.
 - `src/components/AppHeader.tsx`: typed, presentational header component.
 - `src/components/TicketList.tsx`: props-driven populated/empty Ticket rendering.
 - `src/components/TicketList.test.tsx`: isolated list behavior tests.
+- `src/components/LoginForm.tsx`: controlled local Login demo and validation feedback.
+- `src/components/LoginForm.test.tsx`: isolated form interaction tests.
 - `src/types/ticket.ts`: Ticket status, priority, and summary types.
 - `src/data/mockTickets.ts`: synthetic display data passed to the list by App.
 - `src/index.css`: global typography, colors, and box sizing.

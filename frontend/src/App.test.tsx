@@ -31,6 +31,11 @@ test('navigates to Login screen and returns to Tickets screen showing the list a
   expect(screen.getByRole('heading', { name: 'Login', level: 2 })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Tickets', level: 2 })).not.toBeInTheDocument()
   expect(screen.queryByRole('list', { name: 'Ticket list' })).not.toBeInTheDocument()
+
+  // Verify form fields are rendered on the Login screen
+  expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+  expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+
   expect(loginBtn).toHaveAttribute('aria-pressed', 'true')
 
   // Click the Tickets button again
@@ -39,6 +44,11 @@ test('navigates to Login screen and returns to Tickets screen showing the list a
   expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument()
   expect(screen.getByRole('list', { name: 'Ticket list' })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument()
+
+  // Verify form fields are removed from the DOM
+  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument()
+  expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument()
+
   expect(ticketsBtn).toHaveAttribute('aria-pressed', 'true')
 })
 
