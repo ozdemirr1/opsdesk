@@ -4,6 +4,7 @@ import TicketList from './components/TicketList';
 import LoginForm from './components/LoginForm';
 import { mockTickets } from './data/mockTickets';
 import './App.css';
+import RegisterForm from './components/RegisterForm';
 
 type Screen = 'tickets' | 'login' | 'register';
 
@@ -54,14 +55,14 @@ function App() {
         {activeScreen === 'login' && (
           <section>
             <h2>Login</h2>
-            <LoginForm /> {/* Replaced placeholder text with LoginForm */}
+            <LoginForm />
           </section>
         )}
 
         {activeScreen === 'register' && (
           <section>
             <h2>Register</h2>
-            <p>Create your account.</p>
+            <RegisterForm />
           </section>
         )}
       </main>
