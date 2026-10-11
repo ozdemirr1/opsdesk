@@ -97,6 +97,20 @@ sequence. GitHub tracks current work status; local issue files preserve the init
 published scope. Publication does not imply completed design tasks or implementation.
 
 
+## Frontend — Week 13
+
+The `frontend/` directory starts the React + TypeScript interface in this product
+monorepo. It contains typed header props, local Tickets/Login/Register screen
+selection, a typed mock Ticket list with an empty state, minimal CSS with keyboard
+focus styles, and controlled Login/Register demos with local validation and transient
+feedback. Twenty-three frontend behavior tests cover navigation, lists, both forms,
+and Register state reset after screen changes. Real API integration, token storage,
+protected routes, and Tailwind remain later work.
+
+See the [frontend README](frontend/README.md) for setup, source layout, build/lint
+commands, and verification boundaries. The current shell runs independently of the
+backend and database. Existing Backend CI does not validate the frontend yet.
+
 ## Local Development
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) before running
