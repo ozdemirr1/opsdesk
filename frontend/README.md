@@ -51,7 +51,11 @@ the dependency versions recorded in `package-lock.json`; use `npm install` when
 intentionally updating dependencies and review the lockfile change.
 
 The initial setup used Node.js 25.2.1 and npm 11.6.2. These are recorded setup
-versions, not a pinned or long-term runtime policy. The current lockfile resolves
+versions. Frontend CI uses Node.js 24 LTS, compatible with the current locked tools;
+use Node.js 24 for an aligned local environment. The initial Node.js 25 setup is
+historical and that release line is now EOL. A local run on a different Node version
+does not establish Node.js 24 compatibility; inspect the hosted result.
+The current lockfile resolves
 React/React DOM 19.3.0, TypeScript 6.0.3, and Vite 8.3.3. Version ranges in
 `package.json` may differ from exact resolved versions. Check the
 [Vite guide](https://vite.dev/guide/) for runtime requirements when changing tooling.
@@ -100,7 +104,22 @@ alert before switching screens, then verifies empty fields and absent feedback o
 return. There are twenty-three frontend tests across four test files in total.
 Tests query accessible roles and names rather than inspecting component state.
 jsdom does not establish visual layout correctness; retain browser smoke checks.
-The repository's existing Backend CI does not run these frontend checks yet.
+## Continuous integration
+
+`.github/workflows/frontend-ci.yml` defines `Frontend CI` for pushes and pull requests.
+One Ubuntu job uses Node.js 24, installs with `npm ci`, and runs tests, build, and
+lint as separate steps inside `frontend/`. Any failed step fails the job. The job
+has a ten-minute timeout and read-only repository-content permissions; checkout
+does not retain Git credentials. No backend service, database, or secret is required.
+
+setup-node caches npm package data using `frontend/package-lock.json` as the cache
+dependency path. It does not cache `node_modules`; `npm ci` is still required after
+a cache hit. `defaults.run.working-directory` applies to shell steps, while the
+action's lockfile input is relative to the repository root.
+
+Inspect Frontend CI at the actual pushed commit in GitHub Actions. A workflow file
+or passing local checks alone do not establish hosted success. Existing Backend CI
+is independent; neither job proves real API integration, visual layout, or deployment.
 
 ## Source layout
 

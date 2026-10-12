@@ -109,7 +109,10 @@ protected routes, and Tailwind remain later work.
 
 See the [frontend README](frontend/README.md) for setup, source layout, build/lint
 commands, and verification boundaries. The current shell runs independently of the
-backend and database. Existing Backend CI does not validate the frontend yet.
+backend and database. A separate `Frontend CI` workflow now configures Node.js 24,
+lockfile installation, tests, build, and lint on pushes and pull requests. Backend CI
+remains independent. Check each workflow's result at the pushed commit; configuration
+alone does not prove a successful hosted run.
 
 ## Local Development
 
