@@ -97,14 +97,17 @@ sequence. GitHub tracks current work status; local issue files preserve the init
 published scope. Publication does not imply completed design tasks or implementation.
 
 
-## Frontend — Week 13
+## Frontend — Week 14
 
 The `frontend/` directory starts the React + TypeScript interface in this product
 monorepo. It contains typed header props, local Tickets/Login/Register screen
 selection, a typed mock Ticket list with an empty state, minimal CSS with keyboard
 focus styles, and controlled Login/Register demos with local validation and transient
-feedback. Twenty-three frontend behavior tests cover navigation, lists, both forms,
-and Register state reset after screen changes. Real API integration, token storage,
+feedback. Forty-one frontend tests cover the UI demos and the new API request/error
+boundary. The request helper reads public API configuration, distinguishes HTTP,
+network, JSON-decoding and cancellation outcomes, and uses safe error messages.
+A local browser probe through the Vite proxy reached GET /users/me and correctly
+handled its unauthenticated 401 response. Form-to-API wiring, authenticated sessions,
 protected routes, and Tailwind remain later work.
 
 See the [frontend README](frontend/README.md) for setup, source layout, build/lint
@@ -320,8 +323,9 @@ and [psql](https://www.postgresql.org/docs/18/app-psql.html).
 `DatabaseSettings` uses `OPSDESK_DB_`; `IntegrationDatabaseSettings` uses
 `OPSDESK_TEST_DB_`. Both require `HOST`, `PORT`, `DATABASE`, `USERNAME`, and
 `PASSWORD` when instantiated. Port must be in 1..65535; other values must be
-non-empty. Neither configuration loads `.env` automatically. These settings are
-separate from the application factory's current database-free startup.
+non-empty. Neither configuration loads `.env` automatically. Normal development startup requires
+the development database settings and JWT secret; test-mode factory construction
+has separate dependency-injection behavior.
 
 In a local **zsh** terminal, configure the integration suite:
 
