@@ -141,6 +141,7 @@ def test_migrations_release_resources_after_connection(monkeypatch, migration_fa
 
     migration_context = MagicMock()
     migration_context.config = Config()
+    migration_context.get_x_argument.return_value = {}
     migration_context.is_offline_mode.return_value = False
     transaction_scope = migration_context.begin_transaction.return_value
     transaction_scope.__exit__.return_value = False

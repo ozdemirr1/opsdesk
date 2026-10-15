@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { FormEvent, ChangeEvent } from 'react';
+import { registerUser } from '../api/identity';
 
 type Feedback = {
   kind: 'error' | 'success';
@@ -10,29 +11,43 @@ export default function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  // Handle email changes and clear previous feedback
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Abort pending request on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current !== null) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
     setEmail(e.currentTarget.value);
     if (feedback) setFeedback(null);
   };
 
-  // Handle password changes and clear previous feedback
   const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
     setPassword(e.currentTarget.value);
     if (feedback) setFeedback(null);
   };
 
-  // Handle confirm password changes and clear previous feedback
   const handleConfirmPasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
     setConfirmPassword(e.currentTarget.value);
     if (feedback) setFeedback(null);
   };
 
-  // Handle form submission
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Prevent concurrent submissions if a request is already in-flight
+    if (abortControllerRef.current !== null) {
+      return;
+    }
 
     const trimmedEmail = email.trim();
 
@@ -42,9 +57,12 @@ export default function RegisterForm() {
       return;
     }
 
-    // 2. Validation: Simple email format check
+    // 2. Validation: ASCII-only, max 254 chars, basic format check
+    const isAscii = Array.from(trimmedEmail).every(
+      (character) => character.charCodeAt(0) <= 127
+    );
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
+    if (!isAscii || trimmedEmail.length > 254 || !emailRegex.test(trimmedEmail)) {
       setFeedback({ kind: 'error', message: 'Enter a valid email address.' });
       return;
     }
@@ -55,22 +73,76 @@ export default function RegisterForm() {
       return;
     }
 
-    // 4. Validation: Empty confirm password
+    // Normalize password using NFC and calculate Unicode code point length
+    const normalizedPassword = password.normalize('NFC');
+    const passwordLength = Array.from(normalizedPassword).length;
+
+    // 4. Validation: Password length (15 to 128 Unicode code points)
+    if (passwordLength < 15 || passwordLength > 128) {
+      setFeedback({
+        kind: 'error',
+        message: 'Password must be between 15 and 128 characters.',
+      });
+      return;
+    }
+
+    // 5. Validation: Empty confirm password
     if (confirmPassword === '') {
       setFeedback({ kind: 'error', message: 'Confirm your password.' });
       return;
     }
 
-    // 5. Validation: Passwords mismatch
-    if (password !== confirmPassword) {
+    // 6. Validation: Normalized password mismatch
+    const normalizedConfirmPassword = confirmPassword.normalize('NFC');
+    if (normalizedPassword !== normalizedConfirmPassword) {
       setFeedback({ kind: 'error', message: 'Passwords do not match.' });
       return;
     }
 
-    // Success state for demo
-    setFeedback({ kind: 'success', message: 'Demo only: no account was created.' });
-    setPassword('');
-    setConfirmPassword('');
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setFeedback(null);
+    setIsSubmitting(true);
+
+    const result = await registerUser(
+      { email: trimmedEmail, password: normalizedPassword },
+      controller.signal
+    );
+
+    // If controller changed or was aborted (e.g. unmounted), do not update state
+    if (abortControllerRef.current !== controller || controller.signal.aborted) {
+      return;
+    }
+
+    abortControllerRef.current = null;
+    setIsSubmitting(false);
+
+    if (result.ok) {
+      setFeedback({
+        kind: 'success',
+        message: 'Account created. You are not signed in.',
+      });
+      setPassword('');
+      setConfirmPassword('');
+      return;
+    }
+
+    if (result.kind === 'http') {
+      setFeedback({
+        kind: 'error',
+        message: result.message,
+      });
+      return;
+    }
+
+    if (result.kind === 'network' || result.kind === 'invalid_response') {
+      setFeedback({
+        kind: 'error',
+        message:
+          'Registration could not be confirmed. The account may have been created.',
+      });
+      return;
+    }
   };
 
   return (
@@ -85,6 +157,7 @@ export default function RegisterForm() {
           name="email"
           autoComplete="email"
           required
+          disabled={isSubmitting}
           value={email}
           onChange={handleEmailChange}
         />
@@ -100,6 +173,7 @@ export default function RegisterForm() {
           name="password"
           autoComplete="new-password"
           required
+          disabled={isSubmitting}
           value={password}
           onChange={handlePasswordChange}
         />
@@ -115,13 +189,14 @@ export default function RegisterForm() {
           name="confirm-password"
           autoComplete="new-password"
           required
+          disabled={isSubmitting}
           value={confirmPassword}
           onChange={handleConfirmPasswordChange}
         />
       </div>
 
-      <button type="submit" className="submit-btn">
-        Create demo account
+      <button type="submit" className="submit-btn" disabled={isSubmitting}>
+        {isSubmitting ? 'Creating account...' : 'Create account'}
       </button>
 
       {feedback && (

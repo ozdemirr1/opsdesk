@@ -99,23 +99,24 @@ published scope. Publication does not imply completed design tasks or implementa
 
 ## Frontend — Week 14
 
-The `frontend/` directory starts the React + TypeScript interface in this product
-monorepo. It contains typed header props, local Tickets/Login/Register screen
-selection, a typed mock Ticket list with an empty state, minimal CSS with keyboard
-focus styles, and controlled Login/Register demos with local validation and transient
-feedback. Forty-one frontend tests cover the UI demos and the new API request/error
-boundary. The request helper reads public API configuration, distinguishes HTTP,
-network, JSON-decoding and cancellation outcomes, and uses safe error messages.
-A local browser probe through the Vite proxy reached GET /users/me and correctly
-handled its unauthenticated 401 response. Form-to-API wiring, authenticated sessions,
-protected routes, and Tailwind remain later work.
+The `frontend/` directory contains the React + TypeScript interface with typed
+header props, local Tickets/Login/Register selection, a typed mock Ticket list,
+minimal CSS and a controlled Login demo. Registration now connects to `POST /users`:
+it validates input, sends only email/password, checks HTTP 201 and the public profile
+at runtime, and handles pending requests, cancellation, uncertain outcomes and safe
+HTTP errors. Success clears password fields without signing the user in.
 
-See the [frontend README](frontend/README.md) for setup, source layout, build/lint
-commands, and verification boundaries. The current shell runs independently of the
-backend and database. A separate `Frontend CI` workflow now configures Node.js 24,
-lockfile installation, tests, build, and lint on pushes and pull requests. Backend CI
-remains independent. Check each workflow's result at the pushed commit; configuration
-alone does not prove a successful hosted run.
+Sixty-eight frontend tests pass locally, along with build/lint. Safari verification
+showed a created profile and successful form feedback, followed by the duplicate-email
+error and matching UI message. Development schema setup and migration checks are
+complete. Login and Tickets remain demos; sessions, protected routes, Tailwind and
+hosted deployment remain later work.
+
+See the [frontend README](frontend/README.md) for setup, source layout, test commands
+and browser checks. Real registration requires the configured backend and migrated
+development database. Frontend CI uses Node.js 24, lockfile installation, tests,
+build and lint; Backend CI is separate. Check both results at the actual pushed
+commit. Today's local evidence does not establish hosted CI for uncommitted changes.
 
 ## Local Development
 
@@ -130,7 +131,8 @@ Install runtime and development dependencies from the lockfile:
 uv sync --locked
 ```
 
-Set all five `OPSDESK_DB_` connection variables and `OPSDESK_JWT_SECRET` as described
+First complete the development schema setup below. Then set all five
+`OPSDESK_DB_` connection variables and `OPSDESK_JWT_SECRET` as described
 below, then start the development server:
 
 ```bash
@@ -318,6 +320,47 @@ References: [CREATE DATABASE](https://www.postgresql.org/docs/18/sql-createdatab
 and [psql](https://www.postgresql.org/docs/18/app-psql.html).
 
 
+### Development schema setup
+
+Creating the database and starting the API do not create application tables.
+Run migrations before the first registration request and after pulling new
+migration revisions. Keep PostgreSQL running. From the repository root, in zsh:
+
+```zsh
+export OPSDESK_DB_HOST=127.0.0.1
+export OPSDESK_DB_PORT=5432
+export OPSDESK_DB_DATABASE=opsdesk_product_dev
+export OPSDESK_DB_USERNAME=opsdesk_product_app
+read -rs "OPSDESK_DB_PASSWORD?Development database password: "
+printf '\n'
+export OPSDESK_DB_PASSWORD
+uv run alembic -x target=development upgrade head
+uv run alembic -x target=development current
+uv run alembic -x target=development check
+```
+
+Current schema head is `31be9023cfb2`. `upgrade head` applies only pending
+revisions; repeating it at head does not recreate tables or delete records.
+`current` reports the revision; `check` compares the schema with model metadata.
+The schema contains users, organizations, organization_memberships, tickets,
+and Alembic's revision table. Do not use `create_all()` or manual table DDL.
+
+Development migrations require the exact local database, application role,
+host and port shown above. They verify the connected identity before DDL and run
+in a transaction using the public schema. Unknown target names are rejected.
+Without `-x target=development`, online migrations still use the guarded test
+settings. Destructive integration/schema tests remain restricted to
+`opsdesk_product_test`; never point them at development.
+
+Only the migration-specific settings allow an omitted password to use existing
+libpq authentication (for example a configured password file). This does not
+change PostgreSQL authentication policy or prove password authentication worked.
+The API still requires all five development settings, including a nonempty
+password. Settings are terminal-local and do not load `.env` automatically.
+Start the API from the terminal containing those settings and a JWT secret.
+A token-free 401 or an application startup message does not verify database access;
+a successful registration request is a separate end-to-end check.
+
 ### Database configuration and test execution
 
 `DatabaseSettings` uses `OPSDESK_DB_`; `IntegrationDatabaseSettings` uses
@@ -410,9 +453,10 @@ assignee composite foreign key uses `MATCH SIMPLE`. Database constraints establi
 existence and tenant consistency, while activity, role eligibility, authorization,
 and lifecycle transitions remain application-service responsibilities.
 
-Online Alembic commands currently use only `IntegrationDatabaseSettings` and the
-exact guarded product test target. This is not a development/production migration
-configuration. Offline SQL generation requires no database settings or connection:
+Online Alembic commands default to `IntegrationDatabaseSettings` and the exact
+guarded product test target. Explicit `-x target=development` selects the separate
+guarded local development path described above. A production migration target is
+not provided. Offline SQL generation requires no database settings or connection:
 
 ```bash
 uv run alembic upgrade head --sql

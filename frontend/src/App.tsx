@@ -18,7 +18,7 @@ function App() {
         subtitle="Support ticket workspace"
       />
 
-      <nav aria-label="Demo screens" className="screen-nav">
+      <nav aria-label="Screens" className="screen-nav">
         <button
           type="button"
           onClick={() => setActiveScreen('tickets')}
@@ -43,7 +43,9 @@ function App() {
       </nav>
 
       <main>
-        <p className="mock-note">Demo screens use mock data.</p>
+        <p className="mock-note">
+          Tickets and login screens use mock data. Registration connects to the live API.
+        </p>
 
         {activeScreen === 'tickets' && (
           <section>
