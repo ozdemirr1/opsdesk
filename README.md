@@ -100,23 +100,29 @@ published scope. Publication does not imply completed design tasks or implementa
 ## Frontend — Week 14
 
 The `frontend/` directory contains the React + TypeScript interface with typed
-header props, local Tickets/Login/Register selection, a typed mock Ticket list,
-minimal CSS and a controlled Login demo. Registration now connects to `POST /users`:
-it validates input, sends only email/password, checks HTTP 201 and the public profile
-at runtime, and handles pending requests, cancellation, uncertain outcomes and safe
-HTTP errors. Success clears password fields without signing the user in.
+header props, local Tickets/Login/Register selection, a typed mock Ticket list and
+minimal CSS. Registration connects to `POST /users`, accepting only HTTP 201 plus a
+runtime-checked public profile. It handles validation, pending requests, cancellation,
+uncertain outcomes and safe errors without automatically signing the user in.
 
-Sixty-eight frontend tests pass locally, along with build/lint. Safari verification
-showed a created profile and successful form feedback, followed by the duplicate-email
-error and matching UI message. Development schema setup and migration checks are
-complete. Login and Tickets remain demos; sessions, protected routes, Tailwind and
-hosted deployment remain later work.
+Login connects to `POST /auth/login`, checks HTTP 200 and the bearer response, then
+fetches `GET /users/me`. Only a checked active profile establishes the in-memory
+session above the screens. Pending controls, duplicate prevention and stale-result
+checks span both requests. Navigation preserves the session; a full reload clears
+it. Tokens are not persisted in browser storage. Logout and expired-session handling
+remain pending; Tickets still use explicitly labelled mock data.
+
+Ninety-eight frontend tests pass locally, along with build/lint and whitespace
+checks. Safari and backend logs confirm registration 201/duplicate-email 409, failed
+login 401 and successful login/current-user 200. Screen navigation and reload checks
+match the in-memory lifecycle. Development migrations are verified; hosted deployment,
+protected routes and Tailwind remain later work.
 
 See the [frontend README](frontend/README.md) for setup, source layout, test commands
-and browser checks. Real registration requires the configured backend and migrated
+and browser checks. Real identity flows require the configured backend and migrated
 development database. Frontend CI uses Node.js 24, lockfile installation, tests,
 build and lint; Backend CI is separate. Check both results at the actual pushed
-commit. Today's local evidence does not establish hosted CI for uncommitted changes.
+commit. Local evidence does not establish hosted CI for uncommitted changes.
 
 ## Local Development
 

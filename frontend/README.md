@@ -6,10 +6,11 @@ inside the product monorepo. Vite provides the development server and build tool
 ## Current scope — Week 14
 
 Implemented: an application shell with a typed `AppHeader` and local selection
-between a mock Ticket list, a controlled Login demo and real API registration. `App` holds one typed
-screen state, button handlers select the screen, and conditional rendering displays only
-its content. Buttons expose selection through `aria-pressed` and include visible
-keyboard focus. Selection resets on a full page reload; it is not routing or login.
+between a mock Ticket list and real API registration/login. `App` owns typed screen
+selection and a separate in-memory session. Button handlers select a screen and
+conditional rendering displays its content. Buttons expose selection through `aria-pressed` and include visible
+keyboard focus. Screen selection is local navigation; a full reload resets both
+selection and the in-memory session.
 
 The Ticket list receives typed summaries through props, renders three synthetic
 records with stable ticketId keys, and supports an explicit empty state. Each row
@@ -17,13 +18,21 @@ shows its title, ID, status, and priority. TicketSummary is a frontend display m
 not the complete backend response contract. Ticket details wrap on narrow screens;
 the unmarked list retains an explicit list role for Safari accessibility.
 
-The Login demo owns controlled email/password inputs and transient feedback. Submit
-checks required email, a basic email shape, then a non-empty password. These bounded
-UX checks do not implement the backend's complete validation contract or authenticate
-a User. Invalid input shows an alert; editing either field clears stale feedback.
-Valid demo input shows `Demo only: no sign-in request was sent.`, clears the password,
-and retains email. Passwords are not trimmed, echoed, logged, or persisted. Leaving
-the Login screen unmounts the form and discards its local state.
+Login sends `POST /auth/login` with explicit email/password input. The adapter
+requires HTTP 200 and a runtime-checked nonempty bearer token, then the form calls
+`GET /users/me` with that token. Authenticated UI requires HTTP 200, a checked public
+profile and `is_active: true`. A token-shaped response alone does not establish a
+verified session. Login uses bounded email validation and NFC-normalized passwords
+of 15–128 Unicode code points; passwords are not trimmed, logged or persisted.
+
+Controls stay disabled across both requests. An immediate request ref prevents
+repeated submission, the same AbortSignal reaches both requests, and ownership checks
+ignore stale results after unmount. Aborted outcomes do not show an error. Retrying
+clears old feedback before waiting; a login 401 shows `Email or password is incorrect.`
+The password clears after successful token retrieval. Only a checked active profile
+allows the token/profile pair to enter App state and replace the form with signed-in
+feedback. Screen changes preserve that session; a full reload clears it. No browser
+storage or refresh tokens are used. Logout and expired-session handling remain pending.
 
 Registration sends `POST /users` through the local proxy. The form owns email,
 password and UI-only confirmation. It trims email, checks bounded ASCII/email input,
@@ -41,8 +50,8 @@ While pending, controls are disabled and an immediate request guard prevents dup
 submissions. Leaving the screen aborts the request; stale results cannot update a new
 form. Aborting the browser request does not guarantee a server-side rollback. Success
 shows `Account created. You are not signed in.`, preserves email and clears both
-passwords. No automatic login, token storage or session is implemented. Editing a field
-clears feedback. Known HTTP errors use fixed frontend messages, including the duplicate
+passwords. Registration does not automatically start a session; the separate Login
+flow handles authentication. Editing a field clears feedback. Known HTTP errors use fixed frontend messages, including the duplicate
 email message; arbitrary server messages are not displayed.
 
 The shared request helper distinguishes HTTP, network, invalid-response and aborted
@@ -50,12 +59,14 @@ outcomes, including cancellation during body reading. Success data is unknown un
 an endpoint adapter validates it. JSON bodies are required; 204 support is outside
 this helper's current contract.
 
-Local Safari checks on 15 October showed the returned public profile, success message
-and cleared password fields, followed by `email_already_exists` and the matching UI
-message on repeat submission. The screenshots show response bodies rather than HTTP
-status headers. The success adapter requires 201; the duplicate-email contract is 409.
-This verifies local registration behavior. Login and Tickets remain demos; sessions,
-protected routes, Tailwind and hosted deployment remain later work.
+Local Safari checks on 15 October showed registration success and duplicate-email
+feedback; backend logs confirmed HTTP 201 and 409. On 16 October, browser checks and
+backend logs demonstrated failed login (401), creation of a fresh synthetic account
+(201), successful login (200) and current-user retrieval (200). All supplied request
+logs reported `unexpected_error: false`. Signed-in feedback survived Tickets → Login
+navigation without another login request; a full reload restored the empty Login form.
+These checks establish local integration. Tickets remain explicitly labelled mock
+data; protected routes, Tailwind and hosted deployment remain later work.
 
 ## Setup and development
 
@@ -97,7 +108,8 @@ to browser code: never put database credentials or JWT signing secrets there.
 `.env.local` is ignored; `.env.example` is committed. Restart Vite after changes.
 
 The development proxy forwards `/api/users/me` to `http://127.0.0.1:8000/users/me`,
-removing the `/api` prefix; `/api/users` similarly forwards to `/users`. Complete
+removing the `/api` prefix; `/api/users` and `/api/auth/login` similarly forward to
+`/users` and `/auth/login`. Complete
 the product README's development database migrations before testing registration.
 Start the backend using its development configuration, then run `npm run dev` in a second terminal. Backend environment
 variables belong to its terminal; they do not automatically carry to new terminals.
@@ -144,9 +156,13 @@ npm run lint
   check that old content disappears, selected state changes, and keyboard focus is
   visible. Use Tab and Enter/Space to operate the buttons. Confirm all three Ticket
   rows and their fields, no key warnings, and readable narrow-screen wrapping.
-- Login smoke check: submit empty and malformed input, correct it, and submit via
-  both button and Enter. Verify alert/status feedback, retained email, cleared
-  password, and disappearance of stale feedback after editing. Use synthetic values.
+- Login smoke check with both development servers running: use a synthetic account.
+  Wrong credentials that pass form validation should return 401 with the fixed login
+  message and no current-user request. Correct credentials should produce login 200,
+  then current-user 200 and signed-in feedback. Switch Tickets → Login: the session
+  should remain without another login. Reload: the Login form should return empty.
+  Record status codes and public profile/UI evidence only; never share the login
+  response body, Authorization header or screenshots containing complete tokens.
 - Register smoke check with both development servers running: use a fresh synthetic
   email and a test-only password meeting the policy. Submit and inspect Network for
   POST /api/users, HTTP 201 and the public profile. Confirm the success message,
@@ -156,14 +172,19 @@ npm run lint
 
 Vitest runs React Testing Library tests in jsdom with awaited user-event interactions
 and jest-dom assertions. `src/test/setup.ts` cleans up rendered trees after each test.
-The local suite has 68 passing tests across seven files: App (3), TicketList (2),
-LoginForm (7), RegisterForm (25), API errors (9), request client (9), identity (13).
+The local suite has 98 passing tests across seven files: App (4), TicketList (2),
+LoginForm (16), RegisterForm (25), API errors (9), request client (9), identity (33).
 Registration tests cover validation boundaries and Unicode normalization, pending
 controls/duplicate prevention, verified success, HTTP/uncertain outcomes, recovery,
 Enter submission, feedback clearing and cancellation/stale results. Identity tests
-cover runtime profiles, exact status, payload filtering and propagated failures.
+cover runtime profiles/tokens, exact statuses, payload filtering, bearer headers and
+propagated network/abort failures. Login tests cover the complete two-request pending
+interval, inactive profiles, retry feedback, silent cancellation and late results.
+App tests cover session survival across navigation and reset on a fresh mount.
+Async completion assertions await React updates; identity mocks reset per test.
 Mocks do not prove real database access; the separate browser check supplies local
-integration evidence. Build and lint passed with the connected registration form.
+integration evidence. Build, lint and whitespace checks passed with connected login
+and registration; hosted CI must still be checked after publication.
 Tests query accessible roles and names rather than inspecting component state.
 jsdom does not establish visual layout correctness; retain browser smoke checks.
 ## Continuous integration
@@ -187,8 +208,8 @@ is independent; neither job proves real API integration, visual layout, or deplo
 
 - `index.html`: document title, language, and React mount element.
 - `src/main.tsx`: React entry point and global stylesheet import.
-- `src/App.tsx`: composes the page, supplies header props, and owns screen selection.
-- `src/App.test.tsx`: user-visible screen-selection behavior tests.
+- `src/App.tsx`: composes the page, supplies header props, and owns screen selection plus the in-memory session.
+- `src/App.test.tsx`: screen-selection and session lifecycle behavior tests.
 - `src/test/setup.ts`: DOM matchers and per-test cleanup.
 - `vite.config.ts`: React plugin, local API proxy and jsdom test configuration.
 - `.env.example`: public API prefix example, without secrets.
@@ -198,12 +219,13 @@ is independent; neither job proves real API integration, visual layout, or deplo
 - `src/components/AppHeader.tsx`: typed, presentational header component.
 - `src/components/TicketList.tsx`: props-driven populated/empty Ticket rendering.
 - `src/components/TicketList.test.tsx`: isolated list behavior tests.
-- `src/components/LoginForm.tsx`: controlled local Login demo and validation feedback.
+- `src/components/LoginForm.tsx`: controlled login/current-user flow, validation and cancellation.
 - `src/components/LoginForm.test.tsx`: isolated form interaction tests.
 - `src/components/RegisterForm.tsx`: real registration, pending/error/success and cancellation.
 - `src/components/RegisterForm.test.tsx`: validation, correction, and feedback tests.
-- `src/api/identity.ts` and its tests: registration payload and runtime profile validation.
+- `src/api/identity.ts` and its tests: registration/login/current-user adapters and runtime response guards.
 - `src/types/user.ts`: public UserProfile contract.
+- `src/types/session.ts`: in-memory token and checked UserProfile pair.
 - `src/types/ticket.ts`: Ticket status, priority, and summary types.
 - `src/data/mockTickets.ts`: synthetic display data passed to the list by App.
 - `src/index.css`: global typography, colors, and box sizing.

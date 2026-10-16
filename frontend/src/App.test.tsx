@@ -1,7 +1,22 @@
-import { expect, test } from 'vitest';
+import { beforeEach, expect, test, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
+import { loginUser, getCurrentUser } from './api/identity';
+
+vi.mock('./api/identity', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/identity')>();
+  return {
+    ...actual,
+    loginUser: vi.fn(),
+    getCurrentUser: vi.fn(),
+  };
+});
+
+beforeEach(() => {
+  vi.mocked(loginUser).mockReset();
+  vi.mocked(getCurrentUser).mockReset();
+});
 
 test('renders Tickets heading and list initially, no Login/Register headings, and Tickets button is selected', () => {
   render(<App />);
@@ -109,4 +124,64 @@ test('shows only Register heading when navigated to Register, and form fields re
   expect(screen.getByLabelText(/^Confirm password/i)).toHaveValue('');
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
+});
+
+test('preserves authenticated session across screen transitions and does not leak to a new App instance', async () => {
+  const user = userEvent.setup();
+
+  vi.mocked(loginUser).mockResolvedValue({
+    ok: true,
+    status: 200,
+    data: { access_token: 'test-token-123', token_type: 'bearer' },
+  });
+
+  vi.mocked(getCurrentUser).mockResolvedValue({
+    ok: true,
+    status: 200,
+    data: { user_id: 1, email: 'operator@example.com', is_active: true },
+  });
+
+  const { unmount } = render(<App />);
+
+  const loginBtn = screen.getByRole('button', { name: 'Login' });
+  const ticketsBtn = screen.getByRole('button', { name: 'Tickets' });
+
+  // Navigate to Login screen
+  await user.click(loginBtn);
+
+  // Fill in credentials and submit
+  const emailInput = screen.getByLabelText(/email/i);
+  const passwordInput = screen.getByLabelText(/password/i);
+  const submitBtn = screen.getByRole('button', { name: 'Sign in' });
+
+  await user.type(emailInput, 'operator@example.com');
+  await user.type(passwordInput, 'validPassword123');
+  await user.click(submitBtn);
+
+  // Verify status replaces form
+  const statusEl = await screen.findByRole('status');
+  expect(statusEl).toHaveTextContent('Signed in as operator@example.com');
+  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+
+  // Switch to Tickets screen and verify status text is not displayed there
+  await user.click(ticketsBtn);
+  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
+  expect(screen.queryByText('Signed in as operator@example.com')).not.toBeInTheDocument();
+
+  // Return to Login screen: session should be preserved
+  await user.click(loginBtn);
+  expect(screen.getByRole('status')).toHaveTextContent('Signed in as operator@example.com');
+  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+
+  // Mount a fresh App instance: should start without session
+  unmount();
+  render(<App />);
+
+  const freshLoginBtn = screen.getByRole('button', { name: 'Login' });
+  await user.click(freshLoginBtn);
+
+  expect(screen.queryByText(/Signed in as/i)).not.toBeInTheDocument();
+  expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
 });

@@ -2,14 +2,16 @@ import { useState } from 'react';
 import AppHeader from './components/AppHeader';
 import TicketList from './components/TicketList';
 import LoginForm from './components/LoginForm';
-import { mockTickets } from './data/mockTickets';
-import './App.css';
 import RegisterForm from './components/RegisterForm';
+import { mockTickets } from './data/mockTickets';
+import type { Session } from './types/session';
+import './App.css';
 
 type Screen = 'tickets' | 'login' | 'register';
 
 function App() {
   const [activeScreen, setActiveScreen] = useState<Screen>('tickets');
+  const [session, setSession] = useState<Session | null>(null);
 
   return (
     <>
@@ -44,7 +46,7 @@ function App() {
 
       <main>
         <p className="mock-note">
-          Tickets and login screens use mock data. Registration connects to the live API.
+          Tickets use mock data. Registration and login connect to the live API.
         </p>
 
         {activeScreen === 'tickets' && (
@@ -57,7 +59,11 @@ function App() {
         {activeScreen === 'login' && (
           <section>
             <h2>Login</h2>
-            <LoginForm />
+            {session ? (
+              <p role="status">Signed in as {session.user.email}</p>
+            ) : (
+              <LoginForm onAuthenticated={setSession} />
+            )}
           </section>
         )}
 
