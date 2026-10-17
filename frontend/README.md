@@ -32,7 +32,19 @@ clears old feedback before waiting; a login 401 shows `Email or password is inco
 The password clears after successful token retrieval. Only a checked active profile
 allows the token/profile pair to enter App state and replace the form with signed-in
 feedback. Screen changes preserve that session; a full reload clears it. No browser
-storage or refresh tokens are used. Logout and expired-session handling remain pending.
+storage or refresh tokens are used.
+
+Sign out is available across screens while authenticated. It clears the session,
+cancels a pending check and opens an empty Login form without an API logout call.
+It does not revoke an already issued JWT. Check session explicitly calls /users/me:
+a checked active profile updates the displayed user; HTTP 401 or an inactive profile
+clears the session and shows `Your session is no longer valid. Please sign in again.`
+Network, HTTP 500 and malformed responses preserve the session and show a fixed
+retry message. Aborted outcomes are silent. The check button is disabled while
+pending, but Sign out stays available. Request ownership, abort and current-token
+checks prevent stale results from changing a cleared or replaced session. App unmount
+also cancels the check. Successful login clears the old session warning. There is no
+automatic expiry timer; invalidity is discovered when the protected check is made.
 
 Registration sends `POST /users` through the local proxy. The form owns email,
 password and UI-only confirmation. It trims email, checks bounded ASCII/email input,
@@ -67,6 +79,15 @@ logs reported `unexpected_error: false`. Signed-in feedback survived Tickets →
 navigation without another login request; a full reload restored the empty Login form.
 These checks establish local integration. Tickets remain explicitly labelled mock
 data; protected routes, Tailwind and hosted deployment remain later work.
+
+On 17 October, Safari/backend evidence showed a valid session check returning 200.
+Changing the local development signing secret and restarting the backend while keeping
+the browser session produced /users/me 401, removed session controls and displayed the
+Login form with the expected warning. Subsequent login and profile requests returned
+200 and the warning disappeared. This tests invalid signatures, not time-based expiry.
+Explicit Sign out/navigation behavior is covered by component tests and learner
+manual confirmation: Sign out opened an empty Login form, Tickets displayed three
+mock records, and returning to Login kept the inputs empty without restoring a session.
 
 ## Setup and development
 
@@ -163,6 +184,13 @@ npm run lint
   should remain without another login. Reload: the Login form should return empty.
   Record status codes and public profile/UI evidence only; never share the login
   response body, Authorization header or screenshots containing complete tokens.
+- Session smoke check: while signed in, Check session should return 200 and retain
+  the profile. Sign out from Tickets should open an empty Login form; navigating away
+  and back must not restore the session. Sign in again. In local development only,
+  restart the backend with a newly generated signing secret without refreshing the
+  browser. Check session should return 401 and clear the session. Sign in again and
+  verify login/profile 200 plus removal of the warning. Do not change a shared or
+  production signing key for this check; do not record tokens or signing secrets.
 - Register smoke check with both development servers running: use a fresh synthetic
   email and a test-only password meeting the policy. Submit and inspect Network for
   POST /api/users, HTTP 201 and the public profile. Confirm the success message,
@@ -172,7 +200,7 @@ npm run lint
 
 Vitest runs React Testing Library tests in jsdom with awaited user-event interactions
 and jest-dom assertions. `src/test/setup.ts` cleans up rendered trees after each test.
-The local suite has 98 passing tests across seven files: App (4), TicketList (2),
+The local suite has 110 passing tests across seven files: App (16), TicketList (2),
 LoginForm (16), RegisterForm (25), API errors (9), request client (9), identity (33).
 Registration tests cover validation boundaries and Unicode normalization, pending
 controls/duplicate prevention, verified success, HTTP/uncertain outcomes, recovery,
@@ -180,7 +208,9 @@ Enter submission, feedback clearing and cancellation/stale results. Identity tes
 cover runtime profiles/tokens, exact statuses, payload filtering, bearer headers and
 propagated network/abort failures. Login tests cover the complete two-request pending
 interval, inactive profiles, retry feedback, silent cancellation and late results.
-App tests cover session survival across navigation and reset on a fresh mount.
+App tests cover navigation, reload/reset, explicit logout/re-login, active profile
+updates, 401/inactive cleanup, network/500/invalid-response preservation, silent aborts,
+cancellation on logout/unmount, late 200 after logout and late 401 after a new login.
 Async completion assertions await React updates; identity mocks reset per test.
 Mocks do not prove real database access; the separate browser check supplies local
 integration evidence. Build, lint and whitespace checks passed with connected login

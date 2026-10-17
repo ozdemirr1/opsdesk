@@ -109,13 +109,20 @@ Login connects to `POST /auth/login`, checks HTTP 200 and the bearer response, t
 fetches `GET /users/me`. Only a checked active profile establishes the in-memory
 session above the screens. Pending controls, duplicate prevention and stale-result
 checks span both requests. Navigation preserves the session; a full reload clears
-it. Tokens are not persisted in browser storage. Logout and expired-session handling
-remain pending; Tickets still use explicitly labelled mock data.
+it. Tokens are not persisted in browser storage. Sign out clears the local session
+and cancels pending checks. Check session revalidates against /users/me: 401 or an
+inactive profile clears the session; network/server/invalid-response failures preserve
+it with safe feedback. Late results cannot restore or overwrite a replaced session.
+This is request-driven validation, not an automatic expiry timer or server-side JWT
+revocation. Tickets still use explicitly labelled mock data.
 
-Ninety-eight frontend tests pass locally, along with build/lint and whitespace
+110 frontend tests pass locally, along with build/lint and whitespace
 checks. Safari and backend logs confirm registration 201/duplicate-email 409, failed
 login 401 and successful login/current-user 200. Screen navigation and reload checks
-match the in-memory lifecycle. Development migrations are verified; hosted deployment,
+match the in-memory lifecycle. On 17 October, a real session check returned 200;
+a local signing-key change produced 401 and cleared the UI session. Subsequent login
+and current-user requests returned 200 with the old warning removed. This validates
+invalid-token handling, not elapsed-time expiry. Development migrations are verified; hosted deployment,
 protected routes and Tailwind remain later work.
 
 See the [frontend README](frontend/README.md) for setup, source layout, test commands
