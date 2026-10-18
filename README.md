@@ -361,8 +361,8 @@ and Alembic's revision table. Do not use `create_all()` or manual table DDL.
 Development migrations require the exact local database, application role,
 host and port shown above. They verify the connected identity before DDL and run
 in a transaction using the public schema. Unknown target names are rejected.
-Without `-x target=development`, online migrations still use the guarded test
-settings. Destructive integration/schema tests remain restricted to
+Without an explicit target, online migrations use the guarded test settings.
+Explicit targets are `test`, `development`, and `hosted`. Destructive integration/schema tests remain restricted to
 `opsdesk_product_test`; never point them at development.
 
 Only the migration-specific settings allow an omitted password to use existing
@@ -467,9 +467,10 @@ existence and tenant consistency, while activity, role eligibility, authorizatio
 and lifecycle transitions remain application-service responsibilities.
 
 Online Alembic commands default to `IntegrationDatabaseSettings` and the exact
-guarded product test target. Explicit `-x target=development` selects the separate
-guarded local development path described above. A production migration target is
-not provided. Offline SQL generation requires no database settings or connection:
+guarded product test target. Explicit `-x target=development` selects the guarded
+local development path. Explicit `-x target=hosted` selects the Railway demo
+migration path documented below. Offline SQL generation requires no database
+settings or connection:
 
 ```bash
 uv run alembic upgrade head --sql
@@ -599,3 +600,43 @@ and specifies a 2-second per-lock wait with 503 concurrency_busy and no automati
 retry. Organization creation and Ticket creation now execute their applicable locking
 protocols and include real contention tests with fixed 503 responses. Other listed
 mutations and separate lock-wait metrics remain future implementation work.
+
+
+## Railway demo migrations
+
+The hosted migration target is explicitly selected with `-x target=hosted`.
+It requires these environment variables:
+
+- `OPSDESK_MIGRATION_HOST`
+- `OPSDESK_MIGRATION_PORT`
+- `OPSDESK_MIGRATION_DATABASE`
+- `OPSDESK_MIGRATION_USERNAME`
+- `OPSDESK_MIGRATION_PASSWORD`
+
+The target accepts a Railway private service hostname, port `5432`,
+database `opsdesk_demo`, and role `opsdesk_migrator`.
+It checks the connected database, role, server port, and privileged role
+attributes before running migrations inside a transaction.
+
+The connection requires TLS and has a 10-second connection timeout.
+`sslmode=require` does not verify the server hostname; this configuration
+is restricted to Railway's private network.
+
+Run inside the Railway environment, after provisioning the database and roles:
+
+```bash
+uv run --locked --no-dev alembic -x target=hosted upgrade head
+```
+
+Application connections use the separate `OPSDESK_DB_*` settings with
+`opsdesk_app`. The application role must not own the schema or receive
+migration-role membership. Grant required table and sequence permissions
+after migrations; do not grant application write access to `alembic_version`.
+
+If both credential sets are configured on the same Railway service, they
+are available to that service's processes; separate prefixes do not provide
+secret isolation.
+
+Local validation: 487 non-integration tests passed; 160 database tests were
+deselected. Ruff lint and format checks passed.
+Hosted migrations and application smoke tests are not yet verified.
