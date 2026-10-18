@@ -97,19 +97,39 @@ sequence. GitHub tracks current work status; local issue files preserve the init
 published scope. Publication does not imply completed design tasks or implementation.
 
 
-## Frontend — Week 13
+## Frontend — Week 14
 
-The `frontend/` directory starts the React + TypeScript interface in this product
-monorepo. It contains typed header props, local Tickets/Login/Register screen
-selection, a typed mock Ticket list with an empty state, minimal CSS with keyboard
-focus styles, and controlled Login/Register demos with local validation and transient
-feedback. Twenty-three frontend behavior tests cover navigation, lists, both forms,
-and Register state reset after screen changes. Real API integration, token storage,
-protected routes, and Tailwind remain later work.
+The `frontend/` directory contains the React + TypeScript interface with typed
+header props, local Tickets/Login/Register selection, a typed mock Ticket list and
+minimal CSS. Registration connects to `POST /users`, accepting only HTTP 201 plus a
+runtime-checked public profile. It handles validation, pending requests, cancellation,
+uncertain outcomes and safe errors without automatically signing the user in.
 
-See the [frontend README](frontend/README.md) for setup, source layout, build/lint
-commands, and verification boundaries. The current shell runs independently of the
-backend and database. Existing Backend CI does not validate the frontend yet.
+Login connects to `POST /auth/login`, checks HTTP 200 and the bearer response, then
+fetches `GET /users/me`. Only a checked active profile establishes the in-memory
+session above the screens. Pending controls, duplicate prevention and stale-result
+checks span both requests. Navigation preserves the session; a full reload clears
+it. Tokens are not persisted in browser storage. Sign out clears the local session
+and cancels pending checks. Check session revalidates against /users/me: 401 or an
+inactive profile clears the session; network/server/invalid-response failures preserve
+it with safe feedback. Late results cannot restore or overwrite a replaced session.
+This is request-driven validation, not an automatic expiry timer or server-side JWT
+revocation. Tickets still use explicitly labelled mock data.
+
+110 frontend tests pass locally, along with build/lint and whitespace
+checks. Safari and backend logs confirm registration 201/duplicate-email 409, failed
+login 401 and successful login/current-user 200. Screen navigation and reload checks
+match the in-memory lifecycle. On 17 October, a real session check returned 200;
+a local signing-key change produced 401 and cleared the UI session. Subsequent login
+and current-user requests returned 200 with the old warning removed. This validates
+invalid-token handling, not elapsed-time expiry. Development migrations are verified; hosted deployment,
+protected routes and Tailwind remain later work.
+
+See the [frontend README](frontend/README.md) for setup, source layout, test commands
+and browser checks. Real identity flows require the configured backend and migrated
+development database. Frontend CI uses Node.js 24, lockfile installation, tests,
+build and lint; Backend CI is separate. Check both results at the actual pushed
+commit. Local evidence does not establish hosted CI for uncommitted changes.
 
 ## Local Development
 
@@ -124,7 +144,8 @@ Install runtime and development dependencies from the lockfile:
 uv sync --locked
 ```
 
-Set all five `OPSDESK_DB_` connection variables and `OPSDESK_JWT_SECRET` as described
+First complete the development schema setup below. Then set all five
+`OPSDESK_DB_` connection variables and `OPSDESK_JWT_SECRET` as described
 below, then start the development server:
 
 ```bash
@@ -312,13 +333,55 @@ References: [CREATE DATABASE](https://www.postgresql.org/docs/18/sql-createdatab
 and [psql](https://www.postgresql.org/docs/18/app-psql.html).
 
 
+### Development schema setup
+
+Creating the database and starting the API do not create application tables.
+Run migrations before the first registration request and after pulling new
+migration revisions. Keep PostgreSQL running. From the repository root, in zsh:
+
+```zsh
+export OPSDESK_DB_HOST=127.0.0.1
+export OPSDESK_DB_PORT=5432
+export OPSDESK_DB_DATABASE=opsdesk_product_dev
+export OPSDESK_DB_USERNAME=opsdesk_product_app
+read -rs "OPSDESK_DB_PASSWORD?Development database password: "
+printf '\n'
+export OPSDESK_DB_PASSWORD
+uv run alembic -x target=development upgrade head
+uv run alembic -x target=development current
+uv run alembic -x target=development check
+```
+
+Current schema head is `31be9023cfb2`. `upgrade head` applies only pending
+revisions; repeating it at head does not recreate tables or delete records.
+`current` reports the revision; `check` compares the schema with model metadata.
+The schema contains users, organizations, organization_memberships, tickets,
+and Alembic's revision table. Do not use `create_all()` or manual table DDL.
+
+Development migrations require the exact local database, application role,
+host and port shown above. They verify the connected identity before DDL and run
+in a transaction using the public schema. Unknown target names are rejected.
+Without `-x target=development`, online migrations still use the guarded test
+settings. Destructive integration/schema tests remain restricted to
+`opsdesk_product_test`; never point them at development.
+
+Only the migration-specific settings allow an omitted password to use existing
+libpq authentication (for example a configured password file). This does not
+change PostgreSQL authentication policy or prove password authentication worked.
+The API still requires all five development settings, including a nonempty
+password. Settings are terminal-local and do not load `.env` automatically.
+Start the API from the terminal containing those settings and a JWT secret.
+A token-free 401 or an application startup message does not verify database access;
+a successful registration request is a separate end-to-end check.
+
 ### Database configuration and test execution
 
 `DatabaseSettings` uses `OPSDESK_DB_`; `IntegrationDatabaseSettings` uses
 `OPSDESK_TEST_DB_`. Both require `HOST`, `PORT`, `DATABASE`, `USERNAME`, and
 `PASSWORD` when instantiated. Port must be in 1..65535; other values must be
-non-empty. Neither configuration loads `.env` automatically. These settings are
-separate from the application factory's current database-free startup.
+non-empty. Neither configuration loads `.env` automatically. Normal development startup requires
+the development database settings and JWT secret; test-mode factory construction
+has separate dependency-injection behavior.
 
 In a local **zsh** terminal, configure the integration suite:
 
@@ -403,9 +466,10 @@ assignee composite foreign key uses `MATCH SIMPLE`. Database constraints establi
 existence and tenant consistency, while activity, role eligibility, authorization,
 and lifecycle transitions remain application-service responsibilities.
 
-Online Alembic commands currently use only `IntegrationDatabaseSettings` and the
-exact guarded product test target. This is not a development/production migration
-configuration. Offline SQL generation requires no database settings or connection:
+Online Alembic commands default to `IntegrationDatabaseSettings` and the exact
+guarded product test target. Explicit `-x target=development` selects the separate
+guarded local development path described above. A production migration target is
+not provided. Offline SQL generation requires no database settings or connection:
 
 ```bash
 uv run alembic upgrade head --sql

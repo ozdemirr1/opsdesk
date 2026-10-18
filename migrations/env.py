@@ -5,6 +5,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from opsdesk.db.config import IntegrationDatabaseSettings
 from opsdesk.db.connection import create_integration_engine
+from opsdesk.db.development import (
+    DevelopmentMigrationSettings,
+    create_development_migration_engine,
+    verify_development_connection,
+)
 from opsdesk.db.models import Base
 
 # this is the Alembic Config object, which provides
@@ -46,20 +51,27 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations against the guarded local test database."""
-    settings = IntegrationDatabaseSettings()
-    engine = create_integration_engine(settings)
+    """Default to test; development requires an explicit CLI target."""
+    target = context.get_x_argument(as_dictionary=True).get("target", "test")
+    if target == "test":
+        engine = create_integration_engine(IntegrationDatabaseSettings())
+    elif target == "development":
+        engine = create_development_migration_engine(DevelopmentMigrationSettings())
+    else:
+        raise ValueError("Unknown migration target; use test or development.")
 
     try:
         with engine.connect() as connection:
-            context.configure(
-                connection=connection,
-                target_metadata=target_metadata,
-                include_name=include_name,
-            )
-
-            with context.begin_transaction():
-                context.run_migrations()
+            with connection.begin():
+                if target == "development":
+                    verify_development_connection(connection)
+                context.configure(
+                    connection=connection,
+                    target_metadata=target_metadata,
+                    include_name=include_name,
+                )
+                with context.begin_transaction():
+                    context.run_migrations()
     except SQLAlchemyError:
         raise RuntimeError("Migration database operation failed.") from None
     finally:
