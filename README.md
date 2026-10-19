@@ -637,6 +637,39 @@ If both credential sets are configured on the same Railway service, they
 are available to that service's processes; separate prefixes do not provide
 secret isolation.
 
-Local validation: 487 non-integration tests passed; 160 database tests were
-deselected. Ruff lint and format checks passed.
-Hosted migrations and application smoke tests are not yet verified.
+Verification checkpoint — 19 October 2026:
+
+- Hosted migrations reached revision `31be9023cfb2`.
+- Container-local HTTP checks passed on deployed commit `cec7ce7`:
+  registration 201, duplicate registration 409, invalid login 401,
+  valid login 200, current User 200, unauthenticated current User 401.
+- Local validation after adding health endpoints and connection timeouts:
+  500 non-integration tests passed; 160 integration tests were deselected.
+  Ruff lint, format and whitespace checks passed.
+- Hosted health checks, public HTTP access and frontend browser verification
+  remain pending.
+
+## Application health checks
+
+- `GET /health/live` returns 200 with `{"status": "ok"}` without database access.
+- `GET /health/ready` executes `SELECT 1` using the application session factory.
+  It returns 200 with `{"status": "ready"}` on success, or a generic
+  `service_unavailable` error with HTTP 503 when the database check fails.
+- Both endpoints work without authentication. Database error details are not
+  returned to the caller.
+- Readiness checks database connectivity, not schema completeness or all
+  application permissions.
+
+Runtime connection settings:
+
+| Variable | Default | Accepted range |
+| --- | --- | --- |
+| `OPSDESK_DB_CONNECT_TIMEOUT_SECONDS` | 5 seconds | 2–30 seconds |
+| `OPSDESK_DB_POOL_TIMEOUT_SECONDS` | 5 seconds | 1–30 seconds |
+
+These settings limit connection establishment and pool acquisition separately.
+They do not impose an overall HTTP request or SQL execution deadline.
+The separate hosted migration engine retains its own connection settings.
+
+Use `/health/ready` as the Railway deployment healthcheck path.
+Railway deployment healthchecks are not continuous uptime monitoring.

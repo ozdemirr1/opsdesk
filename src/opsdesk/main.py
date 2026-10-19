@@ -6,6 +6,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from opsdesk.api.errors import ApiError, handle_api_error
+from opsdesk.api.health import router as health_router
 from opsdesk.api.middleware import (
     RequestDiagnosticsMiddleware,
     configure_request_logging,
@@ -75,6 +76,7 @@ def create_app(
     app.include_router(identity_router)
     app.include_router(organizations_router)
     app.include_router(tickets_router)
+    app.include_router(health_router)
 
     app.add_exception_handler(ApiError, handle_api_error)
 

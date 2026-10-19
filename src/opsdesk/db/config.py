@@ -15,6 +15,8 @@ class DatabaseSettings(BaseSettings):
     database: str = Field(min_length=1)
     username: str = Field(min_length=1)
     password: SecretStr = Field(min_length=1)
+    connect_timeout_seconds: int = Field(default=5, ge=2, le=30)
+    pool_timeout_seconds: int = Field(default=5, ge=1, le=30)
 
 
 class IntegrationDatabaseSettings(DatabaseSettings):
