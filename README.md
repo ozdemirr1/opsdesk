@@ -673,3 +673,22 @@ The separate hosted migration engine retains its own connection settings.
 
 Use `/health/ready` as the Railway deployment healthcheck path.
 Railway deployment healthchecks are not continuous uptime monitoring.
+
+## Combined frontend and API preview
+
+Railpack builds the Python application and the React frontend in one image.
+Node.js 24 is used during the frontend build. FastAPI serves the generated
+`frontend/dist` files at `/`, `/favicon.svg`, and `/assets`.
+
+The frontend is built with `VITE_API_BASE_URL=/`, so API requests use the
+same origin as the panel. Local Vite development retains its `/api` proxy.
+
+Frontend serving is optional and enabled through
+`OPSDESK_FRONTEND_DIST_DIR`. When enabled, an incomplete frontend build
+prevents application startup.
+
+Tickets remain mock data. Registration, login, and session checks use the API.
+
+Local verification: 506 non-integration backend tests passed, and the
+same-origin frontend production build succeeded. Hosted browser verification
+is pending.
