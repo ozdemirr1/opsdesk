@@ -18,7 +18,7 @@ beforeEach(() => {
   vi.mocked(getCurrentUser).mockReset();
 });
 
-test('renders Tickets heading and list initially, no Login/Register headings, and Tickets button is selected', () => {
+test('renders Tickets heading and table initially, no Login/Register headings, and Tickets button is selected', () => {
   render(<App />);
 
   // Check headings
@@ -26,8 +26,8 @@ test('renders Tickets heading and list initially, no Login/Register headings, an
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Register', level: 2 })).not.toBeInTheDocument();
 
-  // Check initial list presence
-  expect(screen.getByRole('list', { name: 'Ticket list' })).toBeInTheDocument();
+  // Check initial table presence
+  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
 
   // Check the selected button
   expect(screen.getByRole('button', { name: 'Tickets' })).toHaveAttribute('aria-pressed', 'true');
@@ -37,7 +37,7 @@ test('renders Tickets heading and list initially, no Login/Register headings, an
   expect(screen.queryByRole('button', { name: 'Check session' })).not.toBeInTheDocument();
 });
 
-test('navigates to Login screen and returns to Tickets screen showing the list again', async () => {
+test('navigates to Login screen and returns to Tickets screen showing the table again', async () => {
   const user = userEvent.setup();
   render(<App />);
 
@@ -49,7 +49,7 @@ test('navigates to Login screen and returns to Tickets screen showing the list a
 
   expect(screen.getByRole('heading', { name: 'Login', level: 2 })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Tickets', level: 2 })).not.toBeInTheDocument();
-  expect(screen.queryByRole('list', { name: 'Ticket list' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('table', { name: 'Ticket list' })).not.toBeInTheDocument();
 
   // Verify form fields are rendered on the Login screen
   expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
@@ -61,7 +61,7 @@ test('navigates to Login screen and returns to Tickets screen showing the list a
   await user.click(ticketsBtn);
 
   expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  expect(screen.getByRole('list', { name: 'Ticket list' })).toBeInTheDocument();
+  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
 
   // Verify form fields are removed from the DOM
@@ -85,7 +85,7 @@ test('shows only Register heading when navigated to Register, and form fields re
   expect(screen.getByRole('heading', { name: 'Register', level: 2 })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Tickets', level: 2 })).not.toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
-  expect(screen.queryByRole('list', { name: 'Ticket list' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('table', { name: 'Ticket list' })).not.toBeInTheDocument();
 
   // Form fields should be visible
   const emailInput = screen.getByLabelText(/email/i);
@@ -114,7 +114,7 @@ test('shows only Register heading when navigated to Register, and form fields re
   await user.click(ticketsBtn);
 
   expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  expect(screen.getByRole('list', { name: 'Ticket list' })).toBeInTheDocument();
+  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
   expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/^Password/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/^Confirm password/i)).not.toBeInTheDocument();

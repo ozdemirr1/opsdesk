@@ -97,7 +97,16 @@ sequence. GitHub tracks current work status; local issue files preserve the init
 published scope. Publication does not imply completed design tasks or implementation.
 
 
-## Frontend — Week 14
+## Week 15 dashboard increment
+
+The mock Tickets screen now uses a semantic `TicketTable` with ID, title, status
+and priority columns. `StatusBadge` shows readable labels for all four statuses.
+Both components receive typed props; data and session ownership remain in `App`.
+Empty data has an explicit message. The mock-data notice is preserved.
+Search/filter, detail/comments and real Ticket-list integration remain pending.
+This local increment is separate from the already hosted identity preview.
+
+## Frontend — Week 14 foundation
 
 The `frontend/` directory contains the React + TypeScript interface with typed
 header props, local Tickets/Login/Register selection, a typed mock Ticket list and
