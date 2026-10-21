@@ -1,37 +1,94 @@
 import { useState } from 'react';
-import type { TicketSummary } from '../types/ticket';
+import type { TicketStatus, TicketSummary } from '../types/ticket';
 import TicketTable from './TicketTable';
 
 type TicketDashboardProps = {
   tickets: TicketSummary[];
 };
 
+type FilterStatus = TicketStatus | 'all';
+
+type StatusOption = {
+  value: FilterStatus;
+  label: string;
+};
+
+const STATUS_OPTIONS: readonly StatusOption[] = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'open', label: 'Open' },
+  { value: 'in_progress', label: 'In progress' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'closed', label: 'Closed' },
+];
+
+function isFilterStatus(value: string): value is FilterStatus {
+  return STATUS_OPTIONS.some((option) => option.value === value);
+}
+
 export default function TicketDashboard({ tickets }: TicketDashboardProps) {
   const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<FilterStatus>('all');
 
-  // Normalize search query by trimming leading/trailing whitespace and converting to lowercase
+  // Normalize search query by trimming whitespace and converting to lowercase
   const normalizedQuery = query.trim().toLowerCase();
 
-  // Filter tickets whose title contains the normalized query
-  const visibleTickets = tickets.filter((ticket) =>
-    ticket.title.toLowerCase().includes(normalizedQuery)
-  );
+  // Combine title search and status filtering with AND condition
+  const visibleTickets = tickets.filter((ticket) => {
+    const matchesTitle = ticket.title.toLowerCase().includes(normalizedQuery);
+    const matchesStatus = status === 'all' || ticket.status === status;
+    return matchesTitle && matchesStatus;
+  });
 
   const hasNoMatches = tickets.length > 0 && visibleTickets.length === 0;
 
+  const handleClearFilters = () => {
+    setQuery('');
+    setStatus('all');
+  };
+
   return (
     <div>
-      <div className="ticket-search">
-        <label htmlFor="ticket-search">Search tickets</label>
-        <input
-          id="ticket-search"
-          type="search"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-          }}
-        />
+      <div className="ticket-controls">
+        <div className="ticket-search">
+          <label htmlFor="ticket-search">Search tickets</label>
+          <input
+            id="ticket-search"
+            type="search"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
+          />
+        </div>
+
+        <div className="ticket-status-filter">
+          <label htmlFor="ticket-status">Status</label>
+          <select
+            id="ticket-status"
+            value={status}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (isFilterStatus(value)) {
+                setStatus(value);
+              }
+            }}
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button type="button" onClick={handleClearFilters}>
+          Clear filters
+        </button>
       </div>
+
+      <p className="ticket-result-count">
+        Showing {visibleTickets.length} of {tickets.length} tickets
+      </p>
 
       {hasNoMatches ? (
         <p>No matching tickets.</p>

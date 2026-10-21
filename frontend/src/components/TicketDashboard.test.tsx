@@ -18,6 +18,8 @@ function displayedIds() {
 test('starts with an empty search and all supplied tickets', () => {
   render(<TicketDashboard tickets={tickets} />);
   expect(screen.getByRole('searchbox', { name: 'Search tickets' })).toHaveValue('');
+  expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('all');
+  expect(screen.getByText('Showing 3 of 3 tickets')).toBeVisible();
   expect(displayedIds()).toEqual(['#501', '#502', '#503']);
   expect(screen.queryByText('No matching tickets.')).not.toBeInTheDocument();
 });
@@ -73,4 +75,56 @@ test('applies the current search to changed ticket props', async () => {
   expect(screen.getByRole('searchbox', { name: 'Search tickets' })).toHaveValue('email');
   expect(displayedIds()).toEqual(['#504']);
   expect(screen.queryByText('EMAIL notifications delayed')).not.toBeInTheDocument();
+});
+
+test.each([
+  ['open', '#501'],
+  ['in_progress', '#502'],
+  ['resolved', '#503'],
+  ['closed', null],
+])('filters status %s to the expected rows', async (status, expectedId) => {
+  const user = userEvent.setup();
+  render(<TicketDashboard tickets={tickets} />);
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), status);
+
+  expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue(status);
+  if (expectedId === null) {
+    expect(screen.getByText('No matching tickets.')).toBeVisible();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByText('Showing 0 of 3 tickets')).toBeVisible();
+  } else {
+    expect(displayedIds()).toEqual([expectedId]);
+    expect(screen.getByText('Showing 1 of 3 tickets')).toBeVisible();
+  }
+});
+
+test('combines title and status, then clears both filters from a no-match state', async () => {
+  const user = userEvent.setup();
+  render(<TicketDashboard tickets={tickets} />);
+  const search = screen.getByRole('searchbox', { name: 'Search tickets' });
+  const status = screen.getByRole('combobox', { name: 'Status' });
+
+  await user.type(search, '  email  ');
+  await user.selectOptions(status, 'in_progress');
+  expect(displayedIds()).toEqual(['#502']);
+  expect(screen.getByText('Showing 1 of 3 tickets')).toBeVisible();
+
+  await user.selectOptions(status, 'open');
+  expect(screen.getByText('No matching tickets.')).toBeVisible();
+  expect(screen.getByText('Showing 0 of 3 tickets')).toBeVisible();
+
+  await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+  expect(search).toHaveValue('');
+  expect(status).toHaveValue('all');
+  expect(displayedIds()).toEqual(['#501', '#502', '#503']);
+  expect(screen.getByText('Showing 3 of 3 tickets')).toBeVisible();
+});
+
+test('keeps the empty-source message when a status is selected', async () => {
+  const user = userEvent.setup();
+  render(<TicketDashboard tickets={[]} />);
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'closed');
+  expect(screen.getByText('No tickets yet.')).toBeVisible();
+  expect(screen.queryByText('No matching tickets.')).not.toBeInTheDocument();
+  expect(screen.getByText('Showing 0 of 0 tickets')).toBeVisible();
 });

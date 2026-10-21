@@ -19,18 +19,20 @@ without a table. StatusBadge maps all four TicketStatus values to readable label
 color is supplementary. The table container supports keyboard focus and horizontal
 scrolling on narrow screens. Neither component owns state or calls an API.
 TicketSummary remains a frontend display model, not the backend response contract.
-TicketDashboard owns the title-search input and derives matching rows from its
-typed tickets prop. Matching ignores case and surrounding query whitespace while
-preserving the entered text. The labelled search field sits above the table
-with a visible focus indicator and a width that fits narrow screens. Clearing the
-search restores all rows. A nonempty source with no matches shows
-`No matching tickets.`; an empty source retains
-`No tickets yet.`. Leaving Tickets unmounts the dashboard and resets the search
-on return; App continues to own the session.
-Status filtering, details, comments and real Ticket API integration remain pending.
+TicketDashboard owns title search and status selection, deriving matching rows
+from its typed tickets prop. Title matching ignores case and surrounding query
+whitespace while preserving the entered text. A checked value guard accepts only
+listed statuses or All statuses. Both conditions apply together; Clear filters
+resets them. The labelled controls wrap on narrow screens and have visible keyboard
+focus. A visible count shows matching and total tickets. A nonempty source with no
+matches shows `No matching tickets.`; an empty source retains `No tickets yet.`.
+Leaving Tickets unmounts the dashboard and resets both controls on return; App
+continues to own the session. Details, comments and real Ticket API integration
+remain pending.
 The identity preview is hosted on Railway. The table increment was pushed as
 `30e5d03`; its deployment was blocked by a provider pause on 21 October. The title
-search increment has passed local checks and awaits public deployment.
+search increment was pushed as `3a5b11b`; publication of the newer status-filter
+increment has not been verified.
 
 Login sends `POST /auth/login` with explicit email/password input. The adapter
 requires HTTP 200 and a runtime-checked nonempty bearer token, then the form calls
@@ -111,6 +113,15 @@ case/whitespace/substring matching, clearing, no matches, empty source and chang
 props. A new App test verifies search reset after Login → Tickets navigation and
 preserves the mock-data notice. Existing identity/session tests also passed.
 Learner-provided Chrome screenshots confirmed case-insensitive matches, a no-match message and clearing back to all three mock rows. A later screenshot confirmed the revised search-field spacing and layout on desktop. These local checks do not establish public deployment.
+
+## 21 October status-filter verification
+
+The status filter and search combine over the labelled mock collection. Node.js 24
+checks passed 129 frontend tests across nine files, TypeScript/Vite build, ESLint
+and whitespace checks. New cases cover each status, search plus status, no matches,
+Clear filters, empty source and navigation reset. A local browser check confirmed
+`email` plus Open gives zero matches and Clear filters restores all three rows.
+These checks do not establish a public release.
 
 ## Setup and development
 
