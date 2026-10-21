@@ -103,7 +103,10 @@ The mock Tickets screen now uses a semantic `TicketTable` with ID, title, status
 and priority columns. `StatusBadge` shows readable labels for all four statuses.
 Both components receive typed props; data and session ownership remain in `App`.
 Empty data has an explicit message. The mock-data notice is preserved.
-Search/filter, detail/comments and real Ticket-list integration remain pending.
+TicketDashboard adds case-insensitive title search over the supplied mock records,
+with distinct empty-source/no-match messages and search reset on screen return.
+The 21 October local frontend suite passed 123 tests; build and lint passed.
+Status filtering, detail/comments and real Ticket-list integration remain pending.
 This local increment is separate from the already hosted identity preview.
 
 ## Frontend — Week 14 foundation

@@ -19,9 +19,18 @@ without a table. StatusBadge maps all four TicketStatus values to readable label
 color is supplementary. The table container supports keyboard focus and horizontal
 scrolling on narrow screens. Neither component owns state or calls an API.
 TicketSummary remains a frontend display model, not the backend response contract.
-Search/filter, details, comments and real Ticket API integration remain pending.
-The identity preview is already hosted on Railway; this table change requires a
-separate commit, push and deployment before it is part of that public preview.
+TicketDashboard owns the title-search input and derives matching rows from its
+typed tickets prop. Matching ignores case and surrounding query whitespace while
+preserving the entered text. The labelled search field sits above the table
+with a visible focus indicator and a width that fits narrow screens. Clearing the
+search restores all rows. A nonempty source with no matches shows
+`No matching tickets.`; an empty source retains
+`No tickets yet.`. Leaving Tickets unmounts the dashboard and resets the search
+on return; App continues to own the session.
+Status filtering, details, comments and real Ticket API integration remain pending.
+The identity preview is hosted on Railway. The table increment was pushed as
+`30e5d03`; its deployment was blocked by a provider pause on 21 October. The title
+search increment has passed local checks and awaits public deployment.
 
 Login sends `POST /auth/login` with explicit email/password input. The adapter
 requires HTTP 200 and a runtime-checked nonempty bearer token, then the form calls
@@ -93,6 +102,15 @@ Login form with the expected warning. Subsequent login and profile requests retu
 Explicit Sign out/navigation behavior is covered by component tests and learner
 manual confirmation: Sign out opened an empty Login form, Tickets displayed three
 mock records, and returning to Login kept the inputs empty without restoring a session.
+
+## 21 October title-search verification
+
+Node.js 24 checks passed 123 frontend tests across nine files, TypeScript/Vite
+build, ESLint and whitespace checks. Six TicketDashboard cases cover initial rows,
+case/whitespace/substring matching, clearing, no matches, empty source and changed
+props. A new App test verifies search reset after Login → Tickets navigation and
+preserves the mock-data notice. Existing identity/session tests also passed.
+Learner-provided Chrome screenshots confirmed case-insensitive matches, a no-match message and clearing back to all three mock rows. A later screenshot confirmed the revised search-field spacing and layout on desktop. These local checks do not establish public deployment.
 
 ## Setup and development
 
@@ -263,6 +281,8 @@ is independent; neither job proves real API integration, visual layout, or deplo
 - `src/api/errors.ts` and its tests: runtime error guards and safe message mapping.
 - `src/api/client.ts` and its tests: JSON requests and explicit error/cancellation outcomes.
 - `src/components/AppHeader.tsx`: typed, presentational header component.
+- `src/components/TicketDashboard.tsx`: local title-search state and derived rows.
+- `src/components/TicketDashboard.test.tsx`: user-input and changed-data behavior.
 - `src/components/TicketTable.tsx`: semantic table and empty state from typed props.
 - `src/components/TicketTable.test.tsx`: headers, row data and changed/empty props.
 - `src/components/StatusBadge.tsx`: readable labels for the four Ticket statuses.

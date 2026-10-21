@@ -60,6 +60,39 @@ main h2 {
   margin-bottom: 0.5rem;
 }
 
+/* Ticket search control */
+.ticket-search {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.ticket-search label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #212529;
+}
+
+.ticket-search input {
+  box-sizing: border-box;
+  width: min(100%, 22rem);
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  background-color: white;
+  color: #212529;
+  font: inherit;
+}
+
+.ticket-search input:focus-visible {
+  outline: 3px solid rgba(13, 110, 253, 0.35);
+  outline-offset: 1px;
+  border-color: #0d6efd;
+}
+
 /* Ticket table and readable status labels */
 .ticket-table-container {
   overflow-x: auto;

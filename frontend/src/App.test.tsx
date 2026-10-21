@@ -775,3 +775,20 @@ test('ignores delayed 401 response from previous session arriving after re-login
   expect(screen.getByRole('button', { name: 'Check session' })).toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
+
+test('resets ticket search when leaving and returning to Tickets', async () => {
+  const user = userEvent.setup();
+  render(<App />);
+  await user.type(screen.getByRole('searchbox', { name: 'Search tickets' }), 'EMAIL');
+  expect(screen.getByRole('rowheader', { name: '#102' })).toBeVisible();
+  expect(screen.queryByRole('rowheader', { name: '#101' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('rowheader', { name: '#103' })).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: 'Login' }));
+  expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Tickets' }));
+  expect(screen.getByRole('searchbox', { name: 'Search tickets' })).toHaveValue('');
+  expect(screen.getAllByRole('rowheader')).toHaveLength(3);
+  expect(screen.getByText('Tickets use mock data. Registration and login connect to the live API.'))
+    .toBeVisible();
+});
