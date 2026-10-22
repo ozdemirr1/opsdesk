@@ -7,4 +7,5 @@ export type TicketSummary = {
   title: string;
   status: TicketStatus;
   priority: TicketPriority;
+  description?: string;
 };

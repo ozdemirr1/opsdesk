@@ -128,3 +128,86 @@ test('keeps the empty-source message when a status is selected', async () => {
   expect(screen.queryByText('No matching tickets.')).not.toBeInTheDocument();
   expect(screen.getByText('Showing 0 of 0 tickets')).toBeVisible();
 });
+
+test('keeps the filtered table visible beside fixture details and closes with filters preserved', async () => {
+  const user = userEvent.setup();
+  render(<TicketDashboard tickets={tickets} />);
+
+  await user.type(screen.getByRole('searchbox', { name: 'Search tickets' }), 'email');
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'in_progress');
+  await user.click(screen.getByRole('button', {
+    name: 'View ticket #502: EMAIL notifications delayed',
+  }));
+
+  const detail = screen.getByRole('region', { name: 'Mock ticket details' });
+  expect(detail).toBeVisible();
+  expect(within(detail).getByRole('heading', { name: 'EMAIL notifications delayed' }))
+    .toBeVisible();
+  expect(within(detail).getByText('#502')).toBeVisible();
+  expect(within(detail).getByText('In progress')).toBeVisible();
+  expect(within(detail).getByText('medium')).toBeVisible();
+  expect(within(detail).getByText('No description provided.')).toBeVisible();
+  expect(displayedIds()).toEqual(['#502']);
+  expect(screen.getByRole('button', {
+    name: 'View ticket #502: EMAIL notifications delayed',
+  })).toHaveAttribute('aria-expanded', 'true');
+
+  await user.click(screen.getByRole('button', { name: 'Close details' }));
+
+  expect(screen.queryByRole('region', { name: 'Mock ticket details' }))
+    .not.toBeInTheDocument();
+  expect(screen.getByRole('searchbox', { name: 'Search tickets' })).toHaveValue('email');
+  expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('in_progress');
+  expect(displayedIds()).toEqual(['#502']);
+});
+
+test('opens and closes ticket details with the keyboard', async () => {
+  const user = userEvent.setup();
+  render(<TicketDashboard tickets={tickets} />);
+
+  screen.getByRole('button', { name: 'View ticket #501: Cannot access workspace' })
+    .focus();
+  await user.keyboard('{Enter}');
+  expect(screen.getByRole('region', { name: 'Mock ticket details' })).toBeVisible();
+
+  expect(screen.getByRole('button', { name: 'Close details' })).toHaveFocus();
+  await user.keyboard('{Enter}');
+  expect(displayedIds()).toEqual(['#501', '#502', '#503']);
+  expect(screen.getByRole('button', {
+    name: 'View ticket #501: Cannot access workspace',
+  })).toHaveFocus();
+});
+
+test('switches details between rows and closes details when the filter changes', async () => {
+  const user = userEvent.setup();
+  render(<TicketDashboard tickets={tickets} />);
+
+  await user.click(screen.getByRole('button', {
+    name: 'View ticket #501: Cannot access workspace',
+  }));
+  await user.click(screen.getByRole('button', {
+    name: 'View ticket #502: EMAIL notifications delayed',
+  }));
+  const detail = screen.getByRole('region', { name: 'Mock ticket details' });
+  expect(within(detail).getByRole('heading', { name: 'EMAIL notifications delayed' }))
+    .toBeVisible();
+  expect(displayedIds()).toEqual(['#501', '#502', '#503']);
+
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'open');
+  expect(screen.queryByRole('region', { name: 'Mock ticket details' }))
+    .not.toBeInTheDocument();
+  expect(displayedIds()).toEqual(['#501']);
+});
+
+test('shows an available fixture description', async () => {
+  const user = userEvent.setup();
+  render(<TicketDashboard tickets={[{
+    ...tickets[0],
+    description: 'The requester cannot open the workspace.',
+  }]} />);
+
+  await user.click(screen.getByRole('button', {
+    name: 'View ticket #501: Cannot access workspace',
+  }));
+  expect(screen.getByText('The requester cannot open the workspace.')).toBeVisible();
+});

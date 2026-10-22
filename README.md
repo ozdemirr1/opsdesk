@@ -106,8 +106,11 @@ Empty data has an explicit message. The mock-data notice is preserved.
 TicketDashboard combines case-insensitive title search and a checked status
 selection over the supplied mock records. It shows the visible/total count,
 distinguishes empty source from no matches, and resets both controls on screen
-return. The 21 October local frontend suite passed 129 tests; build and lint passed.
-Detail/comments and real Ticket-list integration remain pending.
+return. Selecting a row now keeps the table visible and opens a fixture-backed
+detail card below it with ID, title, status, priority and optional description.
+Close details preserves the current filters and returns focus to the selected
+row; leaving Tickets resets both selection and filters. This is conditional
+rendering, not URL routing. Comments and real Ticket-list integration remain pending.
 This local increment is separate from the already hosted identity preview.
 
 ## Frontend — Week 14 foundation

@@ -65,7 +65,7 @@ test('navigates to Login screen and returns to Tickets screen showing the table 
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
 
   // Verify form fields are removed from the DOM
-  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/^Email/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
 
   expect(ticketsBtn).toHaveAttribute('aria-pressed', 'true');
@@ -115,7 +115,7 @@ test('shows only Register heading when navigated to Register, and form fields re
 
   expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
   expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
-  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/^Email/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/^Password/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/^Confirm password/i)).not.toBeInTheDocument();
 
@@ -793,4 +793,21 @@ test('resets ticket search and status when leaving and returning to Tickets', as
   expect(screen.getAllByRole('rowheader')).toHaveLength(3);
   expect(screen.getByText('Tickets use mock data. Registration and login connect to the live API.'))
     .toBeVisible();
+});
+
+test('closes ticket details when leaving Tickets and returning', async () => {
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(screen.getByRole('button', {
+    name: 'View ticket #101: Cannot access workspace',
+  }));
+  expect(screen.getByRole('region', { name: 'Mock ticket details' })).toBeVisible();
+
+  await user.click(screen.getByRole('button', { name: 'Login' }));
+  await user.click(screen.getByRole('button', { name: 'Tickets' }));
+
+  expect(screen.queryByRole('region', { name: 'Mock ticket details' }))
+    .not.toBeInTheDocument();
+  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeVisible();
 });

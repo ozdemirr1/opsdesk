@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { TicketStatus, TicketSummary } from '../types/ticket';
+import TicketDetail from './TicketDetail';
 import TicketTable from './TicketTable';
 
 type TicketDashboardProps = {
@@ -28,6 +29,8 @@ function isFilterStatus(value: string): value is FilterStatus {
 export default function TicketDashboard({ tickets }: TicketDashboardProps) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<FilterStatus>('all');
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+  const [returnFocusTicketId, setReturnFocusTicketId] = useState<number | null>(null);
 
   // Normalize search query by trimming whitespace and converting to lowercase
   const normalizedQuery = query.trim().toLowerCase();
@@ -44,7 +47,12 @@ export default function TicketDashboard({ tickets }: TicketDashboardProps) {
   const handleClearFilters = () => {
     setQuery('');
     setStatus('all');
+    setSelectedTicketId(null);
+    setReturnFocusTicketId(null);
   };
+
+  const selectedTicket =
+    tickets.find((ticket) => ticket.ticketId === selectedTicketId) ?? null;
 
   return (
     <div>
@@ -57,6 +65,8 @@ export default function TicketDashboard({ tickets }: TicketDashboardProps) {
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
+              setSelectedTicketId(null);
+              setReturnFocusTicketId(null);
             }}
           />
         </div>
@@ -70,6 +80,8 @@ export default function TicketDashboard({ tickets }: TicketDashboardProps) {
               const value = event.target.value;
               if (isFilterStatus(value)) {
                 setStatus(value);
+                setSelectedTicketId(null);
+                setReturnFocusTicketId(null);
               }
             }}
           >
@@ -93,7 +105,25 @@ export default function TicketDashboard({ tickets }: TicketDashboardProps) {
       {hasNoMatches ? (
         <p>No matching tickets.</p>
       ) : (
-        <TicketTable tickets={visibleTickets} />
+        <TicketTable
+          tickets={visibleTickets}
+          onSelectTicket={(ticketId) => {
+            setReturnFocusTicketId(null);
+            setSelectedTicketId(ticketId);
+          }}
+          focusTicketId={returnFocusTicketId}
+          selectedTicketId={selectedTicketId}
+        />
+      )}
+
+      {selectedTicket && (
+        <TicketDetail
+          ticket={selectedTicket}
+          onClose={() => {
+            setReturnFocusTicketId(selectedTicket.ticketId);
+            setSelectedTicketId(null);
+          }}
+        />
       )}
     </div>
   );

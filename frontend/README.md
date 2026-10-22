@@ -27,8 +27,14 @@ resets them. The labelled controls wrap on narrow screens and have visible keybo
 focus. A visible count shows matching and total tickets. A nonempty source with no
 matches shows `No matching tickets.`; an empty source retains `No tickets yet.`.
 Leaving Tickets unmounts the dashboard and resets both controls on return; App
-continues to own the session. Details, comments and real Ticket API integration
-remain pending.
+continues to own the session. Selecting a ticket highlights its row and opens a
+bounded fixture detail card below the still-visible table with ID, title, status,
+priority and optional description. Close details preserves the current search
+and status selection, while leaving Tickets resets selection and filters. Native
+buttons support keyboard activation; focus moves to Close details on opening,
+then returns to the selected row on closing. Changing filters closes the card.
+This is local conditional rendering, not a URL route. Comments and real Ticket API
+integration remain pending.
 The identity preview is hosted on Railway. The table increment was pushed as
 `30e5d03`; its deployment was blocked by a provider pause on 21 October. The title
 search increment was pushed as `3a5b11b`; publication of the newer status-filter
@@ -292,10 +298,11 @@ is independent; neither job proves real API integration, visual layout, or deplo
 - `src/api/errors.ts` and its tests: runtime error guards and safe message mapping.
 - `src/api/client.ts` and its tests: JSON requests and explicit error/cancellation outcomes.
 - `src/components/AppHeader.tsx`: typed, presentational header component.
-- `src/components/TicketDashboard.tsx`: local title-search state and derived rows.
-- `src/components/TicketDashboard.test.tsx`: user-input and changed-data behavior.
+- `src/components/TicketDashboard.tsx`: local filters, selected ticket ID and derived rows.
+- `src/components/TicketDashboard.test.tsx`: filtering, detail and return behavior.
 - `src/components/TicketTable.tsx`: semantic table and empty state from typed props.
 - `src/components/TicketTable.test.tsx`: headers, row data and changed/empty props.
+- `src/components/TicketDetail.tsx`: fixture detail view and return action.
 - `src/components/StatusBadge.tsx`: readable labels for the four Ticket statuses.
 - `src/components/StatusBadge.test.tsx`: status labels and prop changes.
 - `src/components/LoginForm.tsx`: controlled login/current-user flow, validation and cancellation.
