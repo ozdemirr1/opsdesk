@@ -323,3 +323,15 @@ browser-exposed configuration, and never log, render, persist, or commit passwor
 or complete access tokens.
 
 See the [product README](../README.md) for backend capabilities and setup.
+
+
+## Session and dashboard reset coverage
+
+The labelled mock Ticket dashboard remains available without signing in.
+Sign out, a session-check 401, or an inactive current User returns to Login
+and removes the dashboard. Returning to Tickets starts with empty search,
+all statuses and no selected detail; session controls remain absent.
+App regression tests exercise all three paths with filters and an open detail.
+This is a public fixture preview, not authorization for real Ticket data.
+The real list/detail implementation preparation is recorded in
+[F11](../docs/issues/f11.md).
