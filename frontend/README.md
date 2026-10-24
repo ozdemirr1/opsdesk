@@ -335,3 +335,17 @@ App regression tests exercise all three paths with filters and an open detail.
 This is a public fixture preview, not authorization for real Ticket data.
 The real list/detail implementation preparation is recorded in
 [F11](../docs/issues/f11.md).
+
+
+## Ticket response adapter — 24 October 2026
+
+`src/api/tickets.ts` declares the backend TicketResponse wire shape and exposes
+`toTicketSummary` for the table/detail display model. It explicitly projects
+display fields, preserves descriptions and returns a new object without changing
+the response. Tests cover the projection, empty/multiline descriptions and source
+immutability. Run them with `npm test -- src/api/tickets.test.ts`.
+
+This module does not fetch or validate JSON. The dashboard still uses labelled
+mock Tickets. Runtime response validation (including safe integer IDs), real
+Ticket reads and Organization selection are integration prerequisites documented
+in [F11](../docs/issues/f11.md#week-15-implementation-breakdown--24-october-2026).
