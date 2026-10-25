@@ -5,7 +5,10 @@ Design baseline: Week 09 Wednesday, 9 September 2026.
 This diagram shows physical table identities and relationship columns. The
 [relational model](relational-model.md) supplies the remaining fields, composite
 key groups, deletion behavior, and limits of database enforcement.
-No schema or migration has been applied.
+Implementation checkpoint, 25 October: Users, Organizations,
+OrganizationMemberships and Tickets are migrated through `31be9023cfb2`.
+Comments and Attachments in this diagram are planned, not deployed tables.
+See [project status](project-status.md) for implementation evidence.
 
 ```mermaid
 erDiagram

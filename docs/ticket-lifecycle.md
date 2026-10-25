@@ -1,5 +1,9 @@
 # Ticket Lifecycle
 
+> Implementation checkpoint: [project status — 25 October](project-status.md).
+> Design inventories and historical handoff notes below are not a claim that all
+> listed workflows are implemented.
+
 Reviewed: Week 09 Thursday, 10 September 2026.
 Same-status contract: Friday, 11 September 2026.
 

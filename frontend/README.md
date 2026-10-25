@@ -3,6 +3,15 @@
 React + TypeScript interface for the OpsDesk support-ticket product, developed
 inside the product monorepo. Vite provides the development server and build tooling.
 
+## Current checkpoint — 25 October 2026
+
+The [live preview](https://opsdesk-production-448f.up.railway.app/) now includes
+the Week 15 table, filters and detail card at deployed source `255f937`.
+Week 15 merged in PR #43 (`122c052`). Last local verification on 24 October:
+141 tests across 10 files, production build and lint passed. Earlier counts and
+browser checks below are dated historical evidence, not fresh runs.
+See [project status](../docs/project-status.md) for CI and remaining gates.
+
 ## Current scope — Week 15
 
 Implemented: an application shell with a typed `AppHeader` and local selection
@@ -35,10 +44,9 @@ buttons support keyboard activation; focus moves to Close details on opening,
 then returns to the selected row on closing. Changing filters closes the card.
 This is local conditional rendering, not a URL route. Comments and real Ticket API
 integration remain pending.
-The identity preview is hosted on Railway. The table increment was pushed as
-`30e5d03`; its deployment was blocked by a provider pause on 21 October. The title
-search increment was pushed as `3a5b11b`; publication of the newer status-filter
-increment has not been verified.
+The provider deployment pause on 21 October delayed these increments.
+It was resolved on 25 October; the current hosted source includes table,
+search/status filters, detail selection and the adapter. Ticket data remains mock.
 
 Login sends `POST /auth/login` with explicit email/password input. The adapter
 requires HTTP 200 and a runtime-checked nonempty bearer token, then the form calls
@@ -100,7 +108,8 @@ backend logs demonstrated failed login (401), creation of a fresh synthetic acco
 logs reported `unexpected_error: false`. Signed-in feedback survived Tickets → Login
 navigation without another login request; a full reload restored the empty Login form.
 These checks establish local integration. Tickets remain explicitly labelled mock
-data; protected routes, Tailwind and hosted deployment remain later work.
+data. At that checkpoint hosting was still pending; it is now live.
+Protected real-data screens and the Tailwind pass remain future work.
 
 On 17 October, Safari/backend evidence showed a valid session check returning 200.
 Changing the local development signing secret and restarting the backend while keeping
@@ -171,7 +180,7 @@ to browser code: never put database credentials or JWT signing secrets there.
 The development proxy forwards `/api/users/me` to `http://127.0.0.1:8000/users/me`,
 removing the `/api` prefix; `/api/users` and `/api/auth/login` similarly forward to
 `/users` and `/auth/login`. Complete
-the product README's development database migrations before testing registration.
+the [development database migrations](../docs/development.md#development-schema-setup) before testing registration.
 Start the backend using its development configuration, then run `npm run dev` in a second terminal. Backend environment
 variables belong to its terminal; they do not automatically carry to new terminals.
 The backend does not automatically load an env file. Wait for
@@ -313,6 +322,7 @@ is independent; neither job proves real API integration, visual layout, or deplo
 - `src/types/user.ts`: public UserProfile contract.
 - `src/types/session.ts`: in-memory token and checked UserProfile pair.
 - `src/types/ticket.ts`: Ticket status, priority, and summary types.
+- `src/api/tickets.ts` and its tests: Ticket response/display adapter; no HTTP integration yet.
 - `src/data/mockTickets.ts`: synthetic display data passed to the table by App.
 - `src/index.css`: global typography, colors, and box sizing.
 - `src/App.css`: application spacing and layout.
@@ -322,7 +332,8 @@ ignored generated directories. Never place backend secrets in frontend source or
 browser-exposed configuration, and never log, render, persist, or commit passwords
 or complete access tokens.
 
-See the [product README](../README.md) for backend capabilities and setup.
+See the [product README](../README.md) for capabilities and the
+[development guide](../docs/development.md) for backend setup.
 
 
 ## Session and dashboard reset coverage

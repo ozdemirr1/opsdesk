@@ -103,8 +103,9 @@ use the standard envelope with `details: []`. Do not expose driver messages.
 Use a transaction-local 2-second lock_timeout per lock acquisition, with no
 automatic retry and no promised Retry-After header. Known business conflicts keep
 their existing mappings; other unexpected database failures remain generic 500.
-The first executable implementation and fast handler tests now exist on the
-Organization-creation feature branch. Guarded local PostgreSQL evidence observes the
+The first executable implementation and fast handler tests merged with
+Organization creation in PR #38; Ticket creation followed in PR #40. Guarded local PostgreSQL evidence observes the
 real blocker, fixed timeout response, rollback, and safe progress for an independent
-User. The existing #10 evidence does not cover this later feature; hosted CI, review,
-and merge remain pending.
+User. Issue #10 covered the earlier shared-error layer; these later
+concurrency features have separate merge/test evidence in
+[project status](project-status.md).
