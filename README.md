@@ -1,710 +1,84 @@
 # OpsDesk
 
-OpsDesk is a multi-tenant support ticket management API designed for B2B
-environments. Each organization has its own membership and data-access boundary.
+OpsDesk is a support-ticket application built with Python, FastAPI, PostgreSQL,
+React and TypeScript. The backend uses organization membership to separate tenant
+data. I am building it as a backend-focused portfolio project, with practical
+full-stack learning documented in my
+[bootcamp repository](https://github.com/ozdemirr1/ai-backend-bootcamp).
 
-## Problem
+## Try the live preview
 
-Support requests tracked through scattered messages are difficult to follow.
-Customers lack visibility into progress, while support teams struggle to track
-responsibility, conversations, and resolution status. OpsDesk aims to solve this
-by providing a centralized system where each organization's data remains isolated
-and actions follow explicit permission rules.
+**[Open OpsDesk](https://opsdesk-production-448f.up.railway.app/)**
 
-## Target Users
+As of **25 October 2026**, registration, login, session checking and sign-out work
+in the browser against the FastAPI backend and hosted PostgreSQL database.
+FastAPI serves the React build and API from the same origin on Railway.
 
-- **Customer:** Submits support requests and follows permitted tickets.
-- **Agent:** Handles permitted tickets and communicates with customers.
-- **Admin:** Manages support operations and permitted membership actions within
-  an organization.
-- **Owner:** Holds organization ownership and manages ownership-level actions.
+Use a made-up email such as `your-name-demo-25@example.com` and a password used
+only for this demo. Accounts may be reset; do not enter real customer/support data.
+Tokens stay in memory, so reloading requires login again. Sign-out clears the
+browser session; it is not server-side JWT revocation.
 
-## Planned Capabilities
+**The Ticket dashboard is explicitly labelled mock data.** Search, status filtering
+and details use three synthetic records. It is an early identity-flow preview;
+real Ticket UI integration, comments, workflow actions and AI are not delivered yet.
 
-The API is currently being designed to support the following core workflows:
+![Live OpsDesk mock Ticket dashboard, captured 25 October 2026](docs/images/dashboard-2026-10-25.jpg)
 
-- Global user identities linked to organization-specific memberships and roles.
-- Organization data isolation enforced by the backend.
-- Ticket lifecycle rules for `open`, `in_progress`, `resolved`, and `closed`.
-- Ticket assignment and role-based access control (RBAC), combined with
-  organization and ticket-level permission checks.
-- Permission-controlled ticket comments. Attachment metadata remains a domain-design
-  topic; its API and file storage are deferred beyond Month 03.
+Actual browser capture of deployed source `255f937`; no product mockup or generated
+interface. The preview is a learning deployment, not a production-readiness claim.
 
-## Project Status
+## Implemented and planned
 
-Backend foundation implementation is underway. The repository now contains a
-FastAPI application factory, validated application settings, and tests covering
-application startup/shutdown, documentation visibility, and configuration behavior.
-Synchronous database configuration, engine/session factories, and guarded local
-PostgreSQL integration tests are implemented. Alembic migrations and persistence
-models now cover Users, Organizations, OrganizationMemberships, and Tickets.
-Constraint, catalog-inspection, and isolated migration-cycle tests cover this schema.
-`POST /users`
-implements the first identity slice with strict request validation, canonical email
-storage, Argon2id password hashing, explicit transaction handling, and a safe duplicate
-email response. `POST /auth/login` now authenticates active Users with the same
-canonical inputs and issues a 30-minute HS256 access token containing only the reviewed
-identity/time claims. `GET /users/me` validates the bearer token with an exact
-algorithm/claim contract, reloads the current User from PostgreSQL, and returns only
-the public profile for an active persisted identity. `POST /organizations` now
-validates a name-only request, derives the actor from authenticated identity, locks and
-rechecks that User, and creates the active Organization plus initial active owner
-membership in one explicit transaction. Recognized PostgreSQL lock timeout, deadlock,
-and serialization failures map to the fixed `503 concurrency_busy` response; other
-database failures remain unexpected errors. Fast service, repository, and HTTP tests
-cover this behavior. Guarded local PostgreSQL tests prove fresh-session persistence,
-roles in unrelated Organizations, duplicate display names, rollback after intermediate
-and commit-boundary failures, preservation of unknown constraint errors, real lock
-waiting observed through `pg_blocking_pids`, fixed 503 timeout handling, and progress
-for an independent User. Organization creation passed 283 non-integration and 138 integration tests,
-then merged through PR #38 with issue #14 closed. Protected `GET /organizations` and
-`GET /organizations/{organization_id}` now expose only Organizations reachable through
-the caller's active membership. Active and suspended Organizations remain visible;
-inactive and foreign memberships remain outside the result. List responses implement
-the reviewed exact filter, bounded pagination, stable ID ordering, minimal own-membership
-projection, and same-statement count/page snapshot. Missing and inaccessible detail
-targets share `403 organization_access_denied`. Organization reads passed 337 non-integration, 147 PostgreSQL integration,
-and 3 schema tests, then merged through PR #39 with issue #15 closed. Protected
-`POST /organizations/{organization_id}/tickets` now validates the reviewed input,
-derives requester and creator from the caller's current active membership, and creates
-an open, unassigned Ticket in one coordinated transaction. The adapter locks the
-Organization, current User, and own membership in the accepted order, rechecks current
-state, and commits once. Recognized contention maps to the fixed 503 response; other
-database failures remain unexpected. The Ticket-creation merge candidate passed 439
-non-integration, 157 PostgreSQL integration, and 3 schema tests with Alembic at
-`31be9023cfb2 (head)` and no metadata drift. Hosted CI, review, merge, and issue #18
-closure remain pending. Ticket listing, detail, workflow, assignment, and Comment
-endpoints remain unimplemented.
-File-content upload and storage remain outside the Month 03 scope.
-
-See [Product requirements](docs/requirements.md) for the initial scope,
-acceptance scenarios, and unresolved design decisions.
-See [Domain model](docs/domain-model.md) for the shared vocabulary, entity
-lifecycles, invariants, and reviewed Week 09 domain policies.
-See the [relational model](docs/relational-model.md) and [ERD](docs/erd.md) for
-the proposed tables, relationship keys, constraints, and remaining design work.
-See the [access-control matrix](docs/access-control.md) and
-[Ticket lifecycle](docs/ticket-lifecycle.md) for reviewed role/resource permissions,
-state transitions, and acceptance scenarios.
-See the [API contract baseline](docs/api-contract.md) for the 22-endpoint inventory,
-response examples, errors, pagination, release exclusions, and remaining decisions.
-Business-feature implementation and unresolved decisions are tracked in the published backlog.
-
-See the [Week 09 issue plan](docs/issue-plan.md) for the 26 published GitHub issues,
-priorities/dependencies, coverage of all 22 endpoints, and the proposed Week 10
-sequence. GitHub tracks current work status; local issue files preserve the initial
-published scope. Publication does not imply completed design tasks or implementation.
-
-
-## Week 15 dashboard increment
-
-The mock Tickets screen now uses a semantic `TicketTable` with ID, title, status
-and priority columns. `StatusBadge` shows readable labels for all four statuses.
-Both components receive typed props; data and session ownership remain in `App`.
-Empty data has an explicit message. The mock-data notice is preserved.
-TicketDashboard combines case-insensitive title search and a checked status
-selection over the supplied mock records. It shows the visible/total count,
-distinguishes empty source from no matches, and resets both controls on screen
-return. Selecting a row now keeps the table visible and opens a fixture-backed
-detail card below it with ID, title, status, priority and optional description.
-Close details preserves the current filters and returns focus to the selected
-row; leaving Tickets resets both selection and filters. This is conditional
-rendering, not URL routing. Comments and real Ticket-list integration remain pending.
-This local increment is separate from the already hosted identity preview.
-
-## Frontend — Week 14 foundation
-
-The `frontend/` directory contains the React + TypeScript interface with typed
-header props, local Tickets/Login/Register selection, a typed mock Ticket list and
-minimal CSS. Registration connects to `POST /users`, accepting only HTTP 201 plus a
-runtime-checked public profile. It handles validation, pending requests, cancellation,
-uncertain outcomes and safe errors without automatically signing the user in.
-
-Login connects to `POST /auth/login`, checks HTTP 200 and the bearer response, then
-fetches `GET /users/me`. Only a checked active profile establishes the in-memory
-session above the screens. Pending controls, duplicate prevention and stale-result
-checks span both requests. Navigation preserves the session; a full reload clears
-it. Tokens are not persisted in browser storage. Sign out clears the local session
-and cancels pending checks. Check session revalidates against /users/me: 401 or an
-inactive profile clears the session; network/server/invalid-response failures preserve
-it with safe feedback. Late results cannot restore or overwrite a replaced session.
-This is request-driven validation, not an automatic expiry timer or server-side JWT
-revocation. Tickets still use explicitly labelled mock data.
-
-110 frontend tests pass locally, along with build/lint and whitespace
-checks. Safari and backend logs confirm registration 201/duplicate-email 409, failed
-login 401 and successful login/current-user 200. Screen navigation and reload checks
-match the in-memory lifecycle. On 17 October, a real session check returned 200;
-a local signing-key change produced 401 and cleared the UI session. Subsequent login
-and current-user requests returned 200 with the old warning removed. This validates
-invalid-token handling, not elapsed-time expiry. Development migrations are verified; hosted deployment,
-protected routes and Tailwind remain later work.
-
-See the [frontend README](frontend/README.md) for setup, source layout, test commands
-and browser checks. Real identity flows require the configured backend and migrated
-development database. Frontend CI uses Node.js 24, lockfile installation, tests,
-build and lint; Backend CI is separate. Check both results at the actual pushed
-commit. Local evidence does not establish hosted CI for uncommitted changes.
-
-## Local Development
-
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) before running
-these commands from the repository root. The supported Python series is 3.14;
-`.python-version` pins the development interpreter to 3.14.7. Dependencies are
-recorded in `pyproject.toml`, with resolved versions in `uv.lock`.
-
-Install runtime and development dependencies from the lockfile:
-
-```bash
-uv sync --locked
-```
-
-First complete the development schema setup below. Then set all five
-`OPSDESK_DB_` connection variables and `OPSDESK_JWT_SECRET` as described
-below, then start the development server:
-
-```bash
-uv run uvicorn opsdesk.main:create_app --factory --reload --no-access-log
-```
-
-Open [Swagger UI](http://127.0.0.1:8000/docs),
-[ReDoc](http://127.0.0.1:8000/redoc), or the
-[OpenAPI document](http://127.0.0.1:8000/openapi.json). The schema includes `POST /users` registration, `POST /auth/login`,
-protected `GET /users/me`, protected `POST /organizations`, membership-scoped
-`GET /organizations`, `GET /organizations/{organization_id}`, and authenticated
-`POST /organizations/{organization_id}/tickets` operations. Stop the server with Ctrl+C.
-
-Run linting, formatting checks, and tests:
-
-```bash
-uv run ruff check src tests migrations
-uv run ruff format --check src tests migrations
-uv run pytest -q
-```
-
-To apply formatting locally, use `uv run ruff format src tests migrations`.
-
-## Configuration
-
-Application settings are validated when the application factory creates its
-configuration and use the `OPSDESK_` prefix. A non-test application also creates its
-database engine and requires all five `OPSDESK_DB_` connection variables plus the JWT
-signing secret below. `.env` files are not loaded automatically.
-
-| Environment variable | Accepted values | Default |
+| Area | Implemented now | Remaining work |
 | --- | --- | --- |
-| `OPSDESK_ENVIRONMENT` | `development`, `test`, `production` | `development` |
-| `OPSDESK_DOCS_ENABLED` | Boolean values parsed by Pydantic; use `true` or `false` | `true` |
-
-| Database environment variable | Requirement |
-| --- | --- |
-| `OPSDESK_DB_HOST` | Required non-empty host |
-| `OPSDESK_DB_PORT` | Required integer from 1 through 65535 |
-| `OPSDESK_DB_DATABASE` | Required non-empty database name |
-| `OPSDESK_DB_USERNAME` | Required non-empty role name |
-| `OPSDESK_DB_PASSWORD` | Required non-empty secret; never commit or log it |
-
-| Authentication environment variable | Requirement |
-| --- | --- |
-| `OPSDESK_JWT_SECRET` | Required in non-test environments; at least 32 UTF-8 bytes, no default; never commit or log it |
-
-`OPSDESK_ENVIRONMENT` labels the environment; selecting `production` does not
-implicitly disable documentation or apply deployment security settings.
-`OPSDESK_DOCS_ENABLED=false` disables `/docs`, `/redoc`, and `/openapi.json`.
-For example:
-
-```bash
-OPSDESK_ENVIRONMENT=production OPSDESK_DOCS_ENABLED=false uv run uvicorn opsdesk.main:create_app --factory --no-access-log
-```
-
-This command demonstrates configuration only; it is not a production deployment
-recipe. Invalid supported setting values prevent application creation. Validation
-error text hides input values, but this is not a guarantee for every structured
-error or logging format. Never log raw configuration or credentials.
-
-Tests can pass an explicit `Settings` instance and an injected SQLAlchemy session
-factory to `create_app(...)`. Unit tests use the `test` environment without creating
-an application-owned engine; HTTP-to-PostgreSQL tests inject the guarded integration
-session factory. Explicit setting values take precedence over environment variables;
-tests that exercise environment loading control those variables with pytest's
-`monkeypatch`.
-
-
-## Continuous Integration
-
-The `Backend CI` workflow in `.github/workflows/ci.yml` is configured to run on
-pushes and pull requests. It uses an Ubuntu runner, uv 0.12.3, and the Python version
-pinned in `.python-version`. Dependency installation requires the committed lockfile.
-The workflow token has read-only repository-content permissions, and checkout does
-not retain Git credentials for subsequent commands.
-
-The job checks Ruff linting and formatting for src, tests, and migrations, then
-runs all tests not marked integration. A failed check fails the job. PostgreSQL integration tests,
-Docker builds, and deployment are outside this workflow's scope. No application
-secrets or developer `.env` file are required.
-
-Reproduce the checks locally:
-
-```bash
-uv sync --locked
-uv run --locked ruff check src tests migrations
-uv run --locked ruff format --check src tests migrations
-uv run --locked pytest -q -m "not integration"
-```
-
-Inspect actual run results in the repository's GitHub Actions tab. Workflow
-configuration and passing local checks do not establish a successful hosted run.
-
-
-### Temporary test warning filter
-
-Starlette 1.6.0 references `anyio.abc.BlockingPortal`, deprecated by the installed
-AnyIO version. The upstream development branch uses `anyio.from_thread.BlockingPortal`,
-but the latest published Starlette release checked on 16 September 2026 is still 1.6.0.
-Pytest temporarily filters only that exact `DeprecationWarning` message from
-`starlette.testclient`; other warnings remain visible. This manages test output and
-does not patch the dependency or change runtime behavior.
-
-Remove the filter when a compatible published Starlette release includes the fix,
-then run the complete test suite without the exception. Do not edit installed
-packages or downgrade dependencies solely to hide this warning.
-
-References: [Starlette releases](https://starlette.dev/release-notes/) and
-[upstream TestClient](https://github.com/Kludex/starlette/blob/main/starlette/testclient.py).
-
-
-## Product Database Targets
-
-Decision reviewed on 16 September 2026: the standalone OpsDesk project uses
-`opsdesk_product_dev` for development and `opsdesk_product_test` for integration
-tests on `127.0.0.1:5432`. The older `opsdesk_dev` and `opsdesk_test` databases
-belong to the Month 02 learning application and must not be renamed or cleaned
-by this project.
-
-Provision separate local roles: `opsdesk_product_app` owns the development
-database; `opsdesk_product_test_runner` owns the test database. Neither role
-should be a superuser or have CREATEDB/CREATEROLE privileges. Restrict access to
-the new databases to their respective owners. These are local development roles;
-production migration/runtime privilege separation is outside this setup.
-
-Keep the existing `OPSDESK_DB_` and `OPSDESK_TEST_DB_` environment prefixes.
-The integration guard must accept only the exact new test target and reject
-`opsdesk_test`, `opsdesk_dev`, and `opsdesk_product_dev`, as well as any other
-database or server target. Never log credentials or full connection URLs.
-
-Local provisioning was completed on 16 September 2026. Read-only verification
-confirmed database ownership, non-superuser roles, and denied cross-access between
-the two product roles/databases. Guard and engine tests reject the old learning
-databases. Local verification on 16 September passed 37 non-database tests and
-six explicitly enabled PostgreSQL tests, including real-commit visibility, cleanup,
-rollback, and connection release. These results do not establish business-schema
-correctness or hosted database CI.
-
-### Reproducing the local PostgreSQL setup
-
-The reviewed commands are preserved in
-[`scripts/postgresql/bootstrap_local.sql`](scripts/postgresql/bootstrap_local.sql).
-This is an administrator-run, one-time provisioning script for a fresh local
-PostgreSQL server target. It creates roles and empty databases; future application
-tables are managed through Alembic migrations, not this script.
-
-The current machine is already provisioned: do not rerun bootstrap here. The
-script aborts before creation if any named product role or database already exists.
-It never drops, renames, or resets an existing database. Provisioning is not atomic:
-if a later command fails, inspect the partial state before deciding how to resume.
-Do not run it concurrently, from CI, or with `--single-transaction`.
-
-On a fresh setup, from the repository root, connect with your local PostgreSQL
-administrator role:
-
-```bash
-psql -X -h 127.0.0.1 -p 5432 -U YOUR_LOCAL_ADMIN -d postgres \
-  -v ON_ERROR_STOP=1 -f scripts/postgresql/bootstrap_local.sql
-```
-
-Replace `YOUR_LOCAL_ADMIN` with your own administrator role. Then open an
-interactive administrator session to set two distinct passwords:
-
-```bash
-psql -X -h 127.0.0.1 -p 5432 -U YOUR_LOCAL_ADMIN -d postgres
-```
-
-At the psql prompt, run these commands individually and enter passwords only at
-the hidden prompts:
-
-```text
-\password opsdesk_product_app
-\password opsdesk_product_test_runner
-\q
-```
-
-Never put real passwords in SQL files, shell commands, logs, or Git. PostgreSQL's
-server authentication configuration also controls authentication; creating a role
-and setting its password does not by itself establish a password-authentication
-policy. Application credentials will be supplied through the corresponding
-`OPSDESK_DB_*` / `OPSDESK_TEST_DB_*` environment variables.
-
-References: [CREATE DATABASE](https://www.postgresql.org/docs/18/sql-createdatabase.html)
-and [psql](https://www.postgresql.org/docs/18/app-psql.html).
-
-
-### Development schema setup
-
-Creating the database and starting the API do not create application tables.
-Run migrations before the first registration request and after pulling new
-migration revisions. Keep PostgreSQL running. From the repository root, in zsh:
-
-```zsh
-export OPSDESK_DB_HOST=127.0.0.1
-export OPSDESK_DB_PORT=5432
-export OPSDESK_DB_DATABASE=opsdesk_product_dev
-export OPSDESK_DB_USERNAME=opsdesk_product_app
-read -rs "OPSDESK_DB_PASSWORD?Development database password: "
-printf '\n'
-export OPSDESK_DB_PASSWORD
-uv run alembic -x target=development upgrade head
-uv run alembic -x target=development current
-uv run alembic -x target=development check
-```
-
-Current schema head is `31be9023cfb2`. `upgrade head` applies only pending
-revisions; repeating it at head does not recreate tables or delete records.
-`current` reports the revision; `check` compares the schema with model metadata.
-The schema contains users, organizations, organization_memberships, tickets,
-and Alembic's revision table. Do not use `create_all()` or manual table DDL.
-
-Development migrations require the exact local database, application role,
-host and port shown above. They verify the connected identity before DDL and run
-in a transaction using the public schema. Unknown target names are rejected.
-Without an explicit target, online migrations use the guarded test settings.
-Explicit targets are `test`, `development`, and `hosted`. Destructive integration/schema tests remain restricted to
-`opsdesk_product_test`; never point them at development.
-
-Only the migration-specific settings allow an omitted password to use existing
-libpq authentication (for example a configured password file). This does not
-change PostgreSQL authentication policy or prove password authentication worked.
-The API still requires all five development settings, including a nonempty
-password. Settings are terminal-local and do not load `.env` automatically.
-Start the API from the terminal containing those settings and a JWT secret.
-A token-free 401 or an application startup message does not verify database access;
-a successful registration request is a separate end-to-end check.
-
-### Database configuration and test execution
-
-`DatabaseSettings` uses `OPSDESK_DB_`; `IntegrationDatabaseSettings` uses
-`OPSDESK_TEST_DB_`. Both require `HOST`, `PORT`, `DATABASE`, `USERNAME`, and
-`PASSWORD` when instantiated. Port must be in 1..65535; other values must be
-non-empty. Neither configuration loads `.env` automatically. Normal development startup requires
-the development database settings and JWT secret; test-mode factory construction
-has separate dependency-injection behavior.
-
-In a local **zsh** terminal, configure the integration suite:
-
-```zsh
-export OPSDESK_TEST_DB_HOST=127.0.0.1
-export OPSDESK_TEST_DB_PORT=5432
-export OPSDESK_TEST_DB_DATABASE=opsdesk_product_test
-export OPSDESK_TEST_DB_USERNAME=opsdesk_product_test_runner
-read -rs "OPSDESK_TEST_DB_PASSWORD?Test database password: "
-printf '\n'
-export OPSDESK_TEST_DB_PASSWORD
-uv run alembic upgrade head
-OPSDESK_RUN_INTEGRATION_TESTS=1 uv run pytest -q tests/integration
-```
-
-The password is entered at a hidden prompt, not embedded in shell history.
-Unset it after the session with `unset OPSDESK_TEST_DB_PASSWORD`.
-Without the explicit opt-ins, ordinary `uv run pytest -q` skips PostgreSQL data
-and schema tests. Data tests use `OPSDESK_RUN_INTEGRATION_TESTS=1`; schema tests
-use the separate `OPSDESK_RUN_SCHEMA_TESTS=1` flag described below. With opt-in enabled, missing/invalid configuration or a
-failed connection fails the run rather than silently skipping it. The real
-connection test verifies the database, role, server address, and port.
-
-### Transaction ownership and isolation
-
-- `session_scope` always closes its Session; callers explicitly commit their work.
-  Closing a Session rolls back unfinished work and returns its connection to the
-  pool. It cannot undo a completed commit. The integration engine is disposed in
-  fixture teardown.
-- Run only one suite at a time against this database. Parallel/overlapping runs
-  are unsupported; no cross-process lock is implemented.
-- The target guard runs before engine creation and probe setup/cleanup. Only
-  `public.integration_probe` is created for these infrastructure tests. Its rows
-  are deleted before and after each isolated probe scope in separate committed
-  transactions. Product-data scopes separately delete only `tickets`,
-  `organization_memberships`, `users`, then `organizations`, after checking revision
-  `31be9023cfb2`.
-  Data cleanup preserves `alembic_version`; it does not reset identity sequences.
-- Tests close their Sessions before cleanup. Real commits are checked from separate
-  Sessions; uncommitted writes, exception cleanup, and pool return are also tested.
-- Cleanup failure is surfaced and stops subsequent tests. If the body and teardown
-  both fail, an `ExceptionGroup` retains both failures. Subprocess tests exercise
-  failures before and after the body and prove the next test does not execute.
-- A forcibly terminated process may not run teardown. The next validated scope's
-  initial cleanup removes leftover rows from its reviewed allowlist. Future tables
-  require Alembic migrations and an explicit cleanup-policy update.
-
-### Database error reporting boundary
-
-Engine SQL echo is disabled and SQL parameters are hidden. Connection verification
-and probe SQLAlchemy failures are translated into fixed messages without displayed
-exception chaining. Synthetic-secret tests cover connection/statement failures,
-captured logs/output, and cleanup-failure reports.
-
-Pytest uses `--tb=native --no-showlocals`: standard Python tracebacks retain failure
-locations and exception groups without pytest's enhanced argument/local-value
-rendering. This reporting policy is part of the tested boundary. Changing to
-`--tb=long`, enabling local-value output, or adding custom exception serialization
-requires a new disclosure review. `raise ... from None` suppresses displayed
-chaining; it does not erase the original exception or sensitive objects in memory.
-These checks are not a universal guarantee for future application logs or HTTP
-errors; shared API error/logging work remains issue #10.
-
-The workflow now selects all non-integration tests. Hosted execution evidence must
-be checked for the pushed commit; PostgreSQL CI remains #25.
-
-
-## Identity and Ticket Schema Verification
-
-Revision `6a3066cd5538` creates `users`, `organizations`, and
-`organization_memberships`. It includes BIGINT GENERATED ALWAYS AS IDENTITY keys,
-required fields, active defaults, canonical-email storage constraints, membership
-pair/composite uniqueness, role validation, RESTRICT foreign keys, and the partial
-unique active-owner index. The index enforces at most one active owner, not at least
-one; it does not check global User activity or authorize an operation. Full email
-syntax and Organization-name normalization remain application-contract concerns.
-
-Revision `31be9023cfb2` creates `tickets` with tenant-consistent requester, creator,
-and optional assignee references. Named CHECK constraints bound title, description,
-status, and priority; all parent references use `ON DELETE RESTRICT`. The nullable
-assignee composite foreign key uses `MATCH SIMPLE`. Database constraints establish
-existence and tenant consistency, while activity, role eligibility, authorization,
-and lifecycle transitions remain application-service responsibilities.
-
-Online Alembic commands default to `IntegrationDatabaseSettings` and the exact
-guarded product test target. Explicit `-x target=development` selects the guarded
-local development path. Explicit `-x target=hosted` selects the Railway demo
-migration path documented below. Offline SQL generation requires no database
-settings or connection:
-
-```bash
-uv run alembic upgrade head --sql
-```
-
-After supplying the test settings above, apply the migration with
-`uv run alembic upgrade head`. Run the schema-changing suite separately, with no
-other suite using this database:
-
-```bash
-OPSDESK_RUN_SCHEMA_TESTS=1 uv run pytest -q tests/schema
-```
-
-The schema suite requires the expected database/role/server, current revision,
-empty identity tables, and no unexpected public tables. It does not delete rows to
-satisfy those preconditions. It downgrades to base, checks table removal, and
-re-upgrades to the pinned revision. A second case injects a test failure after
-removal and verifies restoration. The finally block attempts restoration; a
-restoration failure stops later tests and preserves both errors when applicable.
-Restoring schema does not restore deleted business data. Do not run this suite
-against a populated database or interrupt it deliberately.
-
-Only after the schema suite succeeds, run the ordinary data suite:
-
-```bash
-OPSDESK_RUN_INTEGRATION_TESTS=1 uv run pytest -q tests/integration
-```
-
-Local terminal evidence on 18 September 2026: two schema-cycle tests passed,
-followed by 60 PostgreSQL data tests. Coverage includes fresh-session persistence,
-cleanup on normal/exception paths, identity/unique constraints, required values,
-role vocabulary, restricted deletion, and active-owner boundaries. PostgreSQL 18
-RESTRICT deletion failures report `23001`; missing-parent inserts report `23503`.
-These historical local results do not establish hosted PostgreSQL CI.
-
-## User Registration
-
-`POST /users` accepts exactly `email` and `password`. Email input is trimmed,
-validated as a strict ASCII address, canonicalized to lowercase, and bounded to 254
-characters. Password input is normalized with Unicode NFC, preserved without trimming,
-and bounded to 15..128 code points. The server creates the User ID and active state;
-registration creates no Organization, membership, or role.
-
-The registration service hashes with Argon2id through pwdlib before persistence and
-owns the commit/rollback boundary. The SQLAlchemy repository flushes before projecting
-the response and maps only the named `uq_users_email` constraint to
-`409 email_already_exists`. Other persistence failures remain server errors. A
-successful response exposes only `user_id`, canonical `email`, and `is_active`.
-
-Local verification on 24 September 2026: Ruff lint and format checks passed; 147
-non-integration tests passed with 68 database/schema tests deselected; all 66 then-current
-PostgreSQL integration tests passed. On 26 September, a controlled HTTP race used two
-independent Sessions synchronized before insertion: one request returned 201, the other
-returned `409 email_already_exists`, and a fresh Session found exactly one User whose
-stored hash verified only the winning password. The focused registration file now has
-seven passing tests. The migration-cycle suite was not rerun because this slice does
-not change the schema. The final merge-candidate run passed 147 non-integration tests
-with 69 database/schema tests deselected and all 67 ordinary PostgreSQL integration
-tests. Both hosted checks passed; PR #33 merged as `4d8a9f1`, and issue #11 is closed.
-
-
-## User Login and Access-Token Issuance
-
-`POST /auth/login` accepts exactly `email` and `password`, reusing registration's
-canonical email and NFC password handling. The service reads the current User, always
-performs maintained Argon2id verification, and checks active state before issuing a
-token. Unknown email, wrong password, and inactive User share the same
-`401 unauthenticated` response. Unknown email uses an application-created dummy hash;
-this reduces an obvious timing distinction without claiming equal request durations.
-
-PyJWT issues an HS256 token using environment-backed configuration with no fallback
-secret. The token lifetime is 1800 seconds and its payload contains only `sub`, `iat`,
-`exp`, `iss`, and `aud`; organization roles and email are deliberately absent. Tokens
-are signed, not encrypted. Bearer-token validation and `/users/me` remain issue #13.
-
-Local verification on 28 September 2026 passed 122 focused unit/HTTP regression tests.
-Four PostgreSQL login tests then verified canonical lookup, real Argon2id verification,
-controlled-time signature and exact-claim checks, the shared credential-failure
-response, and absence of User/Organization/Membership creation. Full regression,
-hosted CI, pull-request review, merge, and issue #12 closure remain pending.
-
-
-## Shared API Errors and Request Diagnostics
-
-The [error/logging contract](docs/error-logging-contract.md) defines the reviewed
-#3 subset implemented for #10. ApiError maps known failures to fixed public messages.
-Validation errors use bounded, safe details; malformed JSON/UTF-8 maps to 400 and
-unsupported or missing media type for a present JSON-request body maps to 415.
-Framework 404/405 responses use the same envelope, with Allow and bearer challenges
-preserved where appropriate. Other unmapped framework 4xx responses retain their
-status with generic http_error. Unexpected failures before response start use a
-generic 500, including unmapped database errors.
-
-JsonAPIRoute is the factory router's default. Future separately created APIRouter
-instances must also specify route_class=JsonAPIRoute for the same body policy.
-Validation exposes only recognized top-level model/parameter names; deeper paths
-fall back to the safe known ancestor, and unknown names to the source location.
-At most 20 details are returned; Pydantic input/ctx/raw messages are not serialized.
-
-Each HTTP request gets a server UUID in X-Request-ID and request.state.request_id.
-Incoming IDs are ignored. The JSON request log contains only the server ID, bounded
-method/route template, status, duration, and response-start/unexpected-error flags.
-Unknown routes use <unmatched>; unknown methods use OTHER. No raw path/query/body,
-Authorization value, token, exception message, or SQL URL is included.
-
-Use --no-access-log in the Uvicorn commands above: Uvicorn's default access log can
-include raw paths/query strings. Its server error logging remains enabled. Errors
-after response start cannot be replaced with a new JSON response; a fixed error is
-raised and the diagnostic records the original status with unexpected_error=true.
-These controls do not secure arbitrary third-party loggers, proxies or debug tools.
-Startup configuration validation remains separately tested before middleware exists.
-
-Local verification on 21 September: Ruff passes, 41 files are formatted, and
-101 non-integration tests pass with 62 database/schema tests deselected. An actual
-Uvicorn request containing synthetic path/query/header markers returned a safe 404
-and a fresh request ID; the supplied server log matched the ID, used <unmatched>,
-and omitted those markers. This runtime check covered that request, not every
-possible server failure. At that 21 September milestone no business endpoint or
-authorization implementation was introduced. GitHub issue/PR closure remains separate
-from local verification.
-
-## Concurrency design
-
-The accepted [transaction and locking contract](docs/concurrency-contract.md)
-coordinates Organization mutations, defines ordered locks and fresh validation,
-and specifies a 2-second per-lock wait with 503 concurrency_busy and no automatic
-retry. Organization creation and Ticket creation now execute their applicable locking
-protocols and include real contention tests with fixed 503 responses. Other listed
-mutations and separate lock-wait metrics remain future implementation work.
-
-
-## Railway demo migrations
-
-The hosted migration target is explicitly selected with `-x target=hosted`.
-It requires these environment variables:
-
-- `OPSDESK_MIGRATION_HOST`
-- `OPSDESK_MIGRATION_PORT`
-- `OPSDESK_MIGRATION_DATABASE`
-- `OPSDESK_MIGRATION_USERNAME`
-- `OPSDESK_MIGRATION_PASSWORD`
-
-The target accepts a Railway private service hostname, port `5432`,
-database `opsdesk_demo`, and role `opsdesk_migrator`.
-It checks the connected database, role, server port, and privileged role
-attributes before running migrations inside a transaction.
-
-The connection requires TLS and has a 10-second connection timeout.
-`sslmode=require` does not verify the server hostname; this configuration
-is restricted to Railway's private network.
-
-Run inside the Railway environment, after provisioning the database and roles:
-
-```bash
-uv run --locked --no-dev alembic -x target=hosted upgrade head
-```
-
-Application connections use the separate `OPSDESK_DB_*` settings with
-`opsdesk_app`. The application role must not own the schema or receive
-migration-role membership. Grant required table and sequence permissions
-after migrations; do not grant application write access to `alembic_version`.
-
-If both credential sets are configured on the same Railway service, they
-are available to that service's processes; separate prefixes do not provide
-secret isolation.
-
-Verification checkpoint — 19 October 2026:
-
-- Hosted migrations reached revision `31be9023cfb2`.
-- Container-local HTTP checks passed on deployed commit `cec7ce7`:
-  registration 201, duplicate registration 409, invalid login 401,
-  valid login 200, current User 200, unauthenticated current User 401.
-- Local validation after adding health endpoints and connection timeouts:
-  500 non-integration tests passed; 160 integration tests were deselected.
-  Ruff lint, format and whitespace checks passed.
-- Hosted health checks, public HTTP access and frontend browser verification
-  remain pending.
-
-## Application health checks
-
-- `GET /health/live` returns 200 with `{"status": "ok"}` without database access.
-- `GET /health/ready` executes `SELECT 1` using the application session factory.
-  It returns 200 with `{"status": "ready"}` on success, or a generic
-  `service_unavailable` error with HTTP 503 when the database check fails.
-- Both endpoints work without authentication. Database error details are not
-  returned to the caller.
-- Readiness checks database connectivity, not schema completeness or all
-  application permissions.
-
-Runtime connection settings:
-
-| Variable | Default | Accepted range |
+| Identity | Registration, Argon2id password hashes, JWT login, persisted active User resolution; browser forms/session handling | Bounded public-demo abuse controls and further operational verification |
+| Organizations | Atomic creation with owner membership; membership-scoped list/detail API | Organization selection in the UI; membership/role/ownership mutations |
+| Tickets | Tenant-consistent schema and authenticated creation API; mock table, badges, local filters and detail card | Real list/detail API and UI, assignment, priority changes, status workflow, comments |
+| Quality and deployment | Backend/frontend CI; guarded local PostgreSQL tests; live same-origin preview and health endpoints | PostgreSQL CI, isolated restore/rollback evidence, broader release gates |
+| UI and AI | Typed components, accessible table semantics, focus handling and basic CSS | Week 16 bounded Tailwind/responsive pass; AI planned for Month 06 |
+
+The backend currently exposes seven business endpoints: `POST /users`,
+`POST /auth/login`, `GET /users/me`, `POST /organizations`, `GET /organizations`,
+`GET /organizations/{organization_id}` and
+`POST /organizations/{organization_id}/tickets`, plus two health endpoints.
+The 22-endpoint design inventory describes the target, not the implemented API.
+
+## Verification evidence
+
+These are separate, dated test groups, not a combined current-run total:
+
+| Check | Last recorded local result | Date |
 | --- | --- | --- |
-| `OPSDESK_DB_CONNECT_TIMEOUT_SECONDS` | 5 seconds | 2–30 seconds |
-| `OPSDESK_DB_POOL_TIMEOUT_SECONDS` | 5 seconds | 1–30 seconds |
+| Frontend | 141 tests across 10 files; build and lint passed | 24 October |
+| Backend non-integration | 506 passed; 160 database/schema tests deselected | 19 October |
+| PostgreSQL data integration | 157 passed | 5 October |
+| Guarded schema/migration suite | 3 passed | 5 October |
 
-These settings limit connection establishment and pool acquisition separately.
-They do not impose an overall HTTP request or SQL execution deadline.
-The separate hosted migration engine retains its own connection settings.
+Week 15 merged through [PR #43](https://github.com/ozdemirr1/opsdesk/pull/43).
+[Backend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40193369253) and
+[Frontend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40193369467)
+passed at merge commit `122c052`. Backend CI excludes PostgreSQL tests.
+The deployed source is `255f937`; both health endpoints returned 200 on 25 October.
+Full evidence, limitations and issue closures are in [project status](docs/project-status.md).
 
-Use `/health/ready` as the Railway deployment healthcheck path.
-Railway deployment healthchecks are not continuous uptime monitoring.
+## Run locally and explore the design
 
-## Combined frontend and API preview
+- [Backend setup, configuration, database targets and test commands](docs/development.md)
+- [Frontend setup, architecture and browser checks](frontend/README.md)
+- [Requirements](docs/requirements.md), [domain model](docs/domain-model.md),
+  [relational model](docs/relational-model.md) and [ERD](docs/erd.md)
+- [API contract](docs/api-contract.md), [access rules](docs/access-control.md),
+  [Ticket lifecycle](docs/ticket-lifecycle.md) and [concurrency contract](docs/concurrency-contract.md)
+- [Published backlog and original scope](docs/issue-plan.md)
+- [Week 16 integration/UI plan](https://github.com/ozdemirr1/ai-backend-bootcamp/blob/main/weekly-reports/week-16-plan.md)
 
-Railpack builds the Python application and the React frontend in one image.
-Node.js 24 is used during the frontend build. FastAPI serves the generated
-`frontend/dist` files at `/`, `/favicon.svg`, and `/assets`.
+Local product databases are `opsdesk_product_dev` and `opsdesk_product_test`.
+The older bootcamp databases `opsdesk_dev` / `opsdesk_test` are separate learning
+artifacts. Never run destructive tests against development or the hosted demo.
 
-The frontend is built with `VITE_API_BASE_URL=/`, so API requests use the
-same origin as the panel. Local Vite development retains its `/api` proxy.
-
-Frontend serving is optional and enabled through
-`OPSDESK_FRONTEND_DIST_DIR`. When enabled, an incomplete frontend build
-prevents application startup.
-
-Tickets remain mock data. Registration, login, and session checks use the API.
-
-Local verification: 506 non-integration backend tests passed, and the
-same-origin frontend production build succeeded. Hosted browser verification
-is pending.
+Next: tenant-safe Ticket reads, runtime response validation and authenticated
+Organization context, then a bounded UI pass. Docker/Redis remain Month 05;
+AI summarization, priority/category suggestions and evaluations remain Month 06.
+The broader backend release issue R01 is still open: this smaller identity preview
+does not fulfill its complete feature and operational acceptance criteria.

@@ -1,13 +1,18 @@
 # API Contract Baseline
 
+> Implementation checkpoint: [project status — 25 October](project-status.md).
+> Design inventories and historical handoff notes below are not a claim that all
+> listed workflows are implemented.
+
 Reviewed: Week 09 Friday, 11 September 2026.
 
 This document consolidates the endpoint drafts and mentoring corrections. It is a
 design baseline, not an implemented API or a complete OpenAPI specification. Read
 it with the [access-control matrix](access-control.md),
 [Ticket lifecycle](ticket-lifecycle.md), and [requirements](requirements.md).
-Unresolved details are listed explicitly at the end. The Week 09 backlog is
-published; dependent implementation still requires its specific design decisions.
+The finalized review and test handoff at the end supersede the original
+remaining-review checklist. The Week 09 backlog is published; accepted design
+does not mean every dependent endpoint is implemented.
 Ticket creation validation was reviewed on 15 September; see the linked contract.
 
 ## Shared Request and Response Rules

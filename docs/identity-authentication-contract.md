@@ -4,8 +4,10 @@ Reviewed: 15 September 2026. Design source: [issue #2](https://github.com/ozdemi
 
 This is the request, storage, and token contract for registration, login, current-user
 resolution, and shared email lookup. Registration and login/access-token issuance are
-merged. Protected-token validation and current-user resolution were implemented
-locally by 28 September 2026; organization authorization remains a design contract.
+merged. Protected-token validation/current-user resolution merged in PR #36;
+Organization creation/reads and Ticket creation implement their applicable
+authorization rules (PRs #38–#40). Remaining membership and Ticket workflows
+are planned; see [project status](project-status.md).
 The same email identity policy applies when an administrator adds an existing User.
 
 ## Request and Response Boundaries

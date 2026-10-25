@@ -1,5 +1,9 @@
 # Domain Model
 
+> Implementation checkpoint: [project status — 25 October](project-status.md).
+> Design inventories and historical handoff notes below are not a claim that all
+> listed workflows are implemented.
+
 Domain reviewed: Week 09 Tuesday, 8 September 2026.
 Relational handoff: Wednesday, 9 September 2026.
 Authorization and lifecycle review: Thursday, 10 September 2026.
@@ -259,12 +263,14 @@ Ticket visibility, priority permissions, eligible assignees, assignment changes,
 Comment posting, membership management, and ownership transfer.
 
 The API baseline records endpoint scope, errors, pagination, and selected no-op
-permissions. Exact validation, remaining response/error cases, and concurrency
-details still require review. Ticket title/description edits and deletion, global
+permissions. The bounded validation/response review and concurrency contract
+are accepted under D03/D04. Feature-specific implementation and tests remain
+separate gates. Ticket title/description edits and deletion, global
 User deactivation, Organization renaming/suspension, and metadata APIs are deferred.
 The original Ticket text remains fixed through Month 03 product operations.
 Ownership, ordinary deactivation, assignment, and reopening must
-coordinate under a transaction protocol; locking details remain pending. No reviewed
+coordinate under the accepted [transaction protocol](concurrency-contract.md);
+their executable locking and tests remain future work. No reviewed
 matrix implies an administrative bypass for an undesigned workflow.
 
 Future tests should cover:
@@ -279,6 +285,7 @@ Future tests should cover:
   and Ticket-scoped comment reading and posting across lifecycle states.
 - Attachment parent boundaries and metadata not proving file availability.
 
-These are test expectations, not executable or passing tests. No CRUD, schema,
-storage, or authorization implementation is authorized by this document alone;
-the complete Week 09 implementation gate still applies.
+These remaining scenarios are test expectations, not a claim of passing tests.
+The Week 09 design gate has been completed; existing schema and feature evidence
+is tracked in [project status](project-status.md). Future services must implement
+the applicable invariants and tests before being marked complete.

@@ -1,5 +1,9 @@
 # Relational Model
 
+> Implementation checkpoint: [project status — 25 October](project-status.md).
+> Design inventories and historical handoff notes below are not a claim that all
+> listed workflows are implemented.
+
 Relational baseline: Week 09 Wednesday, 9 September 2026.
 Policy alignment: Friday, 11 September 2026.
 

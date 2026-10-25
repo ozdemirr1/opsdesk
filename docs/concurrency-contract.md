@@ -116,9 +116,10 @@ PR #38. Its guarded PostgreSQL test observes the User-row wait with independent
 connections and `pg_blocking_pids`. Ticket creation now locks Organization, User, and
 own membership in the accepted order before fresh validation and insertion. Its local
 PostgreSQL evidence observes the Organization-row wait, proves fixed 503 rollback, and
-shows that a different Organization can still create a Ticket. Hosted Ticket CI,
-review, and merge remain pending. The standard envelope uses details: []; no Retry-After value is
-promised.
+shows that a different Organization can still create a Ticket. Ticket creation
+subsequently passed CI and merged through PR #40, closing issue #18. Other
+mutation protocols remain planned. The standard envelope uses `details: []`;
+no Retry-After value is promised.
 
 ## Verification and measurement plan
 

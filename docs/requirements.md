@@ -1,14 +1,15 @@
 # Product Requirements
 
-Status: Initial scope draft, reviewed during Month 03 / Week 09.
-Detailed domain and authorization design remains in progress.
+Scope baseline: reviewed during Month 03 / Week 09, with bounded D03/D04
+contracts accepted subsequently. This document defines the intended product,
+not a list of delivered features; see [project status](project-status.md).
 
 The [domain model](domain-model.md) records the reviewed Week 09 Tuesday
 decisions. The [relational model](relational-model.md) and [ERD](erd.md) record
 Wednesday's table and relationship design. Thursday's [access-control matrix](access-control.md)
 and [Ticket lifecycle](ticket-lifecycle.md) define reviewed permissions and transitions.
 Friday's [API contract baseline](api-contract.md) records endpoints, public errors,
-pagination, and release boundaries. Its remaining-review list precedes implementation.
+pagination, and release boundaries. Its finalized review governs implementation; unimplemented endpoints remain backlog.
 
 ## Problem
 
@@ -159,7 +160,7 @@ Thursday scenarios are recorded in the
   owner can transfer ownership to another active User with an active admin membership.
 - Each Attachment metadata record belongs directly to exactly one fixed Ticket.
 
-## Open Design Decisions
+## Accepted contracts and remaining implementation
 
 - Ticket creation validation is reviewed in its [contract](ticket-creation-validation.md).
   Email, password, and token policies are reviewed in the
@@ -175,13 +176,14 @@ Thursday scenarios are recorded in the
   from the Month 03 endpoint inventory. No blanket administrative bypass is implied.
 - Follow the published [issue backlog](issue-plan.md) and the implementation prerequisites.
 
-## Implementation Gate
+## Implementation Gate (historical entry rule)
 
-Review requirements, domain vocabulary and invariants, the relational ERD,
+The initial review gate is complete. The rule used to enter implementation was:
+review requirements, domain vocabulary and invariants, the relational ERD,
 access-control and status-transition matrices, endpoint inventory, and prioritized
 GitHub issues before starting CRUD implementation.
 
 Do not copy the Month 02 Ticket API into OpsDesk. The product begins with its own
 domain decisions and implementation. Add minimal CI when executable code and
-meaningful tests exist. The Month 03 delivery plan includes an early deployed
-backend preview; Docker remains scheduled for Month 05.
+meaningful tests exist. The original Month 03 deployment target slipped to Month 04: a narrower
+identity preview is live, while R01 remains open. Docker stays in Month 05.

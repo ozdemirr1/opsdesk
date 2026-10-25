@@ -4,7 +4,9 @@ Reviewed: Week 09 Thursday, 10 September 2026.
 API alignment: Friday, 11 September 2026.
 
 This document records Furkan's reviewed product policies. It describes expected
-behavior, not implemented or tested authorization. Read it with the
+behavior across the intended product. Identity, Organization creation/reads
+and Ticket creation implement their applicable subset; remaining workflows are
+planned. See [project status](project-status.md) for evidence. Read it with the
 [Ticket lifecycle](ticket-lifecycle.md), [domain model](domain-model.md), and
 [relational model](relational-model.md). The [API baseline](api-contract.md) records
 paths, errors, pagination, and explicit remaining contract decisions.
@@ -178,9 +180,11 @@ claims. Check current assignment for handover, current roles for membership chan
 and current admin/active status at ownership transfer. Assignment, deactivation,
 reopening, and ownership workflows must coordinate; separate checks plus writes are
 insufficient. The accepted [concurrency contract](concurrency-contract.md) defines locking,
-lock order, fresh validation, and timeout/retry policy. Feature implementations and
-real overlapping-operation tests remain pending; remaining no-op/error precedence
-decisions are tracked separately under #3.
+lock order, fresh validation, and timeout/retry policy. Organization and Ticket
+creation already implement their applicable locks
+and real contention tests (PRs #38 and #40). Assignment, ownership and eligibility
+mutations still need their own implementation and overlap tests. D03 / #3 finalized
+the bounded no-op/error precedence decisions; its closure is not feature completion.
 
 The [reviewed scenarios](ticket-lifecycle.md#acceptance-scenarios) are design evidence,
 not executed tests. Future verification must also cover cross-tenant attempts,

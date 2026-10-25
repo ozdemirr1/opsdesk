@@ -1,5 +1,9 @@
 # Week 09 Issue Plan
 
+> Implementation checkpoint: [project status — 25 October](project-status.md).
+> Design inventories and historical handoff notes below are not a claim that all
+> listed workflows are implemented.
+
 Published backlog: Sunday, 13 September 2026.
 
 Furkan published all 26 reviewed issues from source commit `3ad42fe`. The inventory
@@ -105,8 +109,11 @@ Validated cleanup also runs at the start to handle leftovers from interrupted ru
 
 B02 specifies probe-table verification without business schemas. B03/B04/F14 extend
 the cleanup allowlist with their own tables. Migration tests change schema separately
-from data tests and restore it before ordinary tests proceed. This remains a planned
-implementation, not a tested guarantee.
+from data tests and restore it before ordinary tests proceed. The initial
+probe/identity/Ticket guard and cleanup implementations are now tested; F14 must
+extend them when Comments are introduced. See the
+[development guide](development.md#transaction-ownership-and-isolation) for current
+behavior and boundaries.
 
 ## Open Decisions and Readiness
 
@@ -117,6 +124,8 @@ implementation, not a tested guarantee.
   [identity/authentication contract](identity-authentication-contract.md) for email,
   password, duplicate registration, login, and JWT decisions. Implementations still
   require their own code and test evidence; issue closure remains Furkan's task.
+Historical handoff checkpoint, 22 September 2026 (superseded by project status above):
+
 - D03 Organization name rules were reviewed on 17 September; see the
   [name contract](api-contract.md#organization-name-contract). This supplies the
   name bounds needed by B03, not completion of D03.
@@ -131,7 +140,7 @@ implementation, not a tested guarantee.
   Backlog publication and architecture review are complete. The bootcamp repository
   records the Week 09 report and Week 10 handoff; final Git closure remains pending.
 
-## Week 10 Handoff Sequence
+## Week 10 Handoff Sequence (historical plan)
 
 Capacity target: approximately 15-20 active hours, to be adjusted as work proceeds. This
 is a dependency-respecting plan, not a commitment to implement all 26 issues.
