@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -12,3 +13,4 @@ class Settings(BaseSettings):
 
     environment: Literal["development", "test", "production"] = "development"
     docs_enabled: bool = True
+    frontend_dist_dir: Path | None = None

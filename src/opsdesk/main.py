@@ -6,6 +6,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from opsdesk.api.errors import ApiError, handle_api_error
+from opsdesk.api.health import router as health_router
 from opsdesk.api.middleware import (
     RequestDiagnosticsMiddleware,
     configure_request_logging,
@@ -15,6 +16,7 @@ from opsdesk.config import Settings
 from opsdesk.db.config import DatabaseSettings
 from opsdesk.db.connection import create_database_engine
 from opsdesk.db.session import create_session_factory
+from opsdesk.frontend import mount_frontend
 from opsdesk.identity.passwords import PasswordHasher
 from opsdesk.identity.router import router as identity_router
 from opsdesk.identity.token_config import TokenSettings
@@ -75,10 +77,13 @@ def create_app(
     app.include_router(identity_router)
     app.include_router(organizations_router)
     app.include_router(tickets_router)
+    app.include_router(health_router)
 
     app.add_exception_handler(ApiError, handle_api_error)
 
     configure_request_logging()
     app.add_middleware(RequestDiagnosticsMiddleware)
+
+    mount_frontend(app, settings.frontend_dist_dir)
 
     return app

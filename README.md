@@ -97,7 +97,23 @@ sequence. GitHub tracks current work status; local issue files preserve the init
 published scope. Publication does not imply completed design tasks or implementation.
 
 
-## Frontend — Week 14
+## Week 15 dashboard increment
+
+The mock Tickets screen now uses a semantic `TicketTable` with ID, title, status
+and priority columns. `StatusBadge` shows readable labels for all four statuses.
+Both components receive typed props; data and session ownership remain in `App`.
+Empty data has an explicit message. The mock-data notice is preserved.
+TicketDashboard combines case-insensitive title search and a checked status
+selection over the supplied mock records. It shows the visible/total count,
+distinguishes empty source from no matches, and resets both controls on screen
+return. Selecting a row now keeps the table visible and opens a fixture-backed
+detail card below it with ID, title, status, priority and optional description.
+Close details preserves the current filters and returns focus to the selected
+row; leaving Tickets resets both selection and filters. This is conditional
+rendering, not URL routing. Comments and real Ticket-list integration remain pending.
+This local increment is separate from the already hosted identity preview.
+
+## Frontend — Week 14 foundation
 
 The `frontend/` directory contains the React + TypeScript interface with typed
 header props, local Tickets/Login/Register selection, a typed mock Ticket list and
@@ -361,8 +377,8 @@ and Alembic's revision table. Do not use `create_all()` or manual table DDL.
 Development migrations require the exact local database, application role,
 host and port shown above. They verify the connected identity before DDL and run
 in a transaction using the public schema. Unknown target names are rejected.
-Without `-x target=development`, online migrations still use the guarded test
-settings. Destructive integration/schema tests remain restricted to
+Without an explicit target, online migrations use the guarded test settings.
+Explicit targets are `test`, `development`, and `hosted`. Destructive integration/schema tests remain restricted to
 `opsdesk_product_test`; never point them at development.
 
 Only the migration-specific settings allow an omitted password to use existing
@@ -467,9 +483,10 @@ existence and tenant consistency, while activity, role eligibility, authorizatio
 and lifecycle transitions remain application-service responsibilities.
 
 Online Alembic commands default to `IntegrationDatabaseSettings` and the exact
-guarded product test target. Explicit `-x target=development` selects the separate
-guarded local development path described above. A production migration target is
-not provided. Offline SQL generation requires no database settings or connection:
+guarded product test target. Explicit `-x target=development` selects the guarded
+local development path. Explicit `-x target=hosted` selects the Railway demo
+migration path documented below. Offline SQL generation requires no database
+settings or connection:
 
 ```bash
 uv run alembic upgrade head --sql
@@ -599,3 +616,95 @@ and specifies a 2-second per-lock wait with 503 concurrency_busy and no automati
 retry. Organization creation and Ticket creation now execute their applicable locking
 protocols and include real contention tests with fixed 503 responses. Other listed
 mutations and separate lock-wait metrics remain future implementation work.
+
+
+## Railway demo migrations
+
+The hosted migration target is explicitly selected with `-x target=hosted`.
+It requires these environment variables:
+
+- `OPSDESK_MIGRATION_HOST`
+- `OPSDESK_MIGRATION_PORT`
+- `OPSDESK_MIGRATION_DATABASE`
+- `OPSDESK_MIGRATION_USERNAME`
+- `OPSDESK_MIGRATION_PASSWORD`
+
+The target accepts a Railway private service hostname, port `5432`,
+database `opsdesk_demo`, and role `opsdesk_migrator`.
+It checks the connected database, role, server port, and privileged role
+attributes before running migrations inside a transaction.
+
+The connection requires TLS and has a 10-second connection timeout.
+`sslmode=require` does not verify the server hostname; this configuration
+is restricted to Railway's private network.
+
+Run inside the Railway environment, after provisioning the database and roles:
+
+```bash
+uv run --locked --no-dev alembic -x target=hosted upgrade head
+```
+
+Application connections use the separate `OPSDESK_DB_*` settings with
+`opsdesk_app`. The application role must not own the schema or receive
+migration-role membership. Grant required table and sequence permissions
+after migrations; do not grant application write access to `alembic_version`.
+
+If both credential sets are configured on the same Railway service, they
+are available to that service's processes; separate prefixes do not provide
+secret isolation.
+
+Verification checkpoint — 19 October 2026:
+
+- Hosted migrations reached revision `31be9023cfb2`.
+- Container-local HTTP checks passed on deployed commit `cec7ce7`:
+  registration 201, duplicate registration 409, invalid login 401,
+  valid login 200, current User 200, unauthenticated current User 401.
+- Local validation after adding health endpoints and connection timeouts:
+  500 non-integration tests passed; 160 integration tests were deselected.
+  Ruff lint, format and whitespace checks passed.
+- Hosted health checks, public HTTP access and frontend browser verification
+  remain pending.
+
+## Application health checks
+
+- `GET /health/live` returns 200 with `{"status": "ok"}` without database access.
+- `GET /health/ready` executes `SELECT 1` using the application session factory.
+  It returns 200 with `{"status": "ready"}` on success, or a generic
+  `service_unavailable` error with HTTP 503 when the database check fails.
+- Both endpoints work without authentication. Database error details are not
+  returned to the caller.
+- Readiness checks database connectivity, not schema completeness or all
+  application permissions.
+
+Runtime connection settings:
+
+| Variable | Default | Accepted range |
+| --- | --- | --- |
+| `OPSDESK_DB_CONNECT_TIMEOUT_SECONDS` | 5 seconds | 2–30 seconds |
+| `OPSDESK_DB_POOL_TIMEOUT_SECONDS` | 5 seconds | 1–30 seconds |
+
+These settings limit connection establishment and pool acquisition separately.
+They do not impose an overall HTTP request or SQL execution deadline.
+The separate hosted migration engine retains its own connection settings.
+
+Use `/health/ready` as the Railway deployment healthcheck path.
+Railway deployment healthchecks are not continuous uptime monitoring.
+
+## Combined frontend and API preview
+
+Railpack builds the Python application and the React frontend in one image.
+Node.js 24 is used during the frontend build. FastAPI serves the generated
+`frontend/dist` files at `/`, `/favicon.svg`, and `/assets`.
+
+The frontend is built with `VITE_API_BASE_URL=/`, so API requests use the
+same origin as the panel. Local Vite development retains its `/api` proxy.
+
+Frontend serving is optional and enabled through
+`OPSDESK_FRONTEND_DIST_DIR`. When enabled, an incomplete frontend build
+prevents application startup.
+
+Tickets remain mock data. Registration, login, and session checks use the API.
+
+Local verification: 506 non-integration backend tests passed, and the
+same-origin frontend production build succeeded. Hosted browser verification
+is pending.

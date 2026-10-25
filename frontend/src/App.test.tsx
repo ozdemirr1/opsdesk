@@ -18,7 +18,7 @@ beforeEach(() => {
   vi.mocked(getCurrentUser).mockReset();
 });
 
-test('renders Tickets heading and list initially, no Login/Register headings, and Tickets button is selected', () => {
+test('renders Tickets heading and table initially, no Login/Register headings, and Tickets button is selected', () => {
   render(<App />);
 
   // Check headings
@@ -26,8 +26,8 @@ test('renders Tickets heading and list initially, no Login/Register headings, an
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Register', level: 2 })).not.toBeInTheDocument();
 
-  // Check initial list presence
-  expect(screen.getByRole('list', { name: 'Ticket list' })).toBeInTheDocument();
+  // Check initial table presence
+  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
 
   // Check the selected button
   expect(screen.getByRole('button', { name: 'Tickets' })).toHaveAttribute('aria-pressed', 'true');
@@ -37,7 +37,7 @@ test('renders Tickets heading and list initially, no Login/Register headings, an
   expect(screen.queryByRole('button', { name: 'Check session' })).not.toBeInTheDocument();
 });
 
-test('navigates to Login screen and returns to Tickets screen showing the list again', async () => {
+test('navigates to Login screen and returns to Tickets screen showing the table again', async () => {
   const user = userEvent.setup();
   render(<App />);
 
@@ -49,7 +49,7 @@ test('navigates to Login screen and returns to Tickets screen showing the list a
 
   expect(screen.getByRole('heading', { name: 'Login', level: 2 })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Tickets', level: 2 })).not.toBeInTheDocument();
-  expect(screen.queryByRole('list', { name: 'Ticket list' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('table', { name: 'Ticket list' })).not.toBeInTheDocument();
 
   // Verify form fields are rendered on the Login screen
   expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
@@ -61,11 +61,11 @@ test('navigates to Login screen and returns to Tickets screen showing the list a
   await user.click(ticketsBtn);
 
   expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  expect(screen.getByRole('list', { name: 'Ticket list' })).toBeInTheDocument();
+  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
 
   // Verify form fields are removed from the DOM
-  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/^Email/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
 
   expect(ticketsBtn).toHaveAttribute('aria-pressed', 'true');
@@ -85,7 +85,7 @@ test('shows only Register heading when navigated to Register, and form fields re
   expect(screen.getByRole('heading', { name: 'Register', level: 2 })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Tickets', level: 2 })).not.toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
-  expect(screen.queryByRole('list', { name: 'Ticket list' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('table', { name: 'Ticket list' })).not.toBeInTheDocument();
 
   // Form fields should be visible
   const emailInput = screen.getByLabelText(/email/i);
@@ -114,8 +114,8 @@ test('shows only Register heading when navigated to Register, and form fields re
   await user.click(ticketsBtn);
 
   expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  expect(screen.getByRole('list', { name: 'Ticket list' })).toBeInTheDocument();
-  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
+  expect(screen.queryByLabelText(/^Email/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/^Password/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/^Confirm password/i)).not.toBeInTheDocument();
 
@@ -775,3 +775,118 @@ test('ignores delayed 401 response from previous session arriving after re-login
   expect(screen.getByRole('button', { name: 'Check session' })).toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
+
+test('resets ticket search and status when leaving and returning to Tickets', async () => {
+  const user = userEvent.setup();
+  render(<App />);
+  await user.type(screen.getByRole('searchbox', { name: 'Search tickets' }), 'EMAIL');
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'in_progress');
+  expect(screen.getByRole('rowheader', { name: '#102' })).toBeVisible();
+  expect(screen.queryByRole('rowheader', { name: '#101' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('rowheader', { name: '#103' })).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: 'Login' }));
+  expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Tickets' }));
+  expect(screen.getByRole('searchbox', { name: 'Search tickets' })).toHaveValue('');
+  expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('all');
+  expect(screen.getAllByRole('rowheader')).toHaveLength(3);
+  expect(screen.getByText('Tickets use mock data. Registration and login connect to the live API.'))
+    .toBeVisible();
+});
+
+test('closes ticket details when leaving Tickets and returning', async () => {
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(screen.getByRole('button', {
+    name: 'View ticket #101: Cannot access workspace',
+  }));
+  expect(screen.getByRole('region', { name: 'Mock ticket details' })).toBeVisible();
+
+  await user.click(screen.getByRole('button', { name: 'Login' }));
+  await user.click(screen.getByRole('button', { name: 'Tickets' }));
+
+  expect(screen.queryByRole('region', { name: 'Mock ticket details' }))
+    .not.toBeInTheDocument();
+  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeVisible();
+});
+
+test.each(['sign-out', 'unauthorized', 'inactive-user'] as const)(
+  'clears dashboard state after %s',
+  async (reason) => {
+    const user = userEvent.setup();
+
+    vi.mocked(loginUser).mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: { access_token: 'test-session-token', token_type: 'bearer' },
+    });
+    vi.mocked(getCurrentUser).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: { user_id: 1, email: 'operator@example.com', is_active: true },
+    });
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Login' }));
+    await user.type(screen.getByLabelText(/^Email/i), 'operator@example.com');
+    await user.type(screen.getByLabelText(/^Password/i), 'validPassword123');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await screen.findByText('Signed in as operator@example.com');
+
+    // Populate all dashboard state before ending the session.
+    await user.click(screen.getByRole('button', { name: 'Tickets' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search tickets' }), 'email');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'in_progress');
+    await user.click(screen.getByRole('button', {
+      name: 'View ticket #102: Email notifications delayed',
+    }));
+    expect(screen.getByRole('region', { name: 'Mock ticket details' })).toBeVisible();
+    expect(screen.getByText('Showing 1 of 3 tickets')).toBeInTheDocument();
+
+    if (reason === 'sign-out') {
+      await user.click(screen.getByRole('button', { name: 'Sign out' }));
+    } else {
+      if (reason === 'unauthorized') {
+        vi.mocked(getCurrentUser).mockResolvedValueOnce({
+          ok: false,
+          kind: 'http',
+          status: 401,
+          message: 'Authentication required.',
+        });
+      } else {
+        vi.mocked(getCurrentUser).mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          data: { user_id: 1, email: 'operator@example.com', is_active: false },
+        });
+      }
+      await user.click(screen.getByRole('button', { name: 'Check session' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Your session is no longer valid. Please sign in again.',
+      );
+    }
+
+    expect(await screen.findByRole('button', { name: 'Sign in' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Check session' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Mock ticket details' })).not.toBeInTheDocument();
+
+    // Returning to the public mock preview must not restore the prior session or selection.
+    await user.click(screen.getByRole('button', { name: 'Tickets' }));
+    expect(screen.getByRole('searchbox', { name: 'Search tickets' })).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('all');
+    expect(screen.getByText('Showing 3 of 3 tickets')).toBeInTheDocument();
+    expect(screen.getAllByRole('rowheader')).toHaveLength(3);
+    expect(screen.queryByRole('region', { name: 'Mock ticket details' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Check session' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', {
+      name: 'View ticket #102: Email notifications delayed',
+    })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText(
+      'Tickets use mock data. Registration and login connect to the live API.',
+    )).toBeVisible();
+  },
+);

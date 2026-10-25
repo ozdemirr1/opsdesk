@@ -26,6 +26,10 @@ def create_database_engine(settings: DatabaseSettings) -> Engine:
         url,
         echo=False,
         hide_parameters=True,
+        pool_timeout=settings.pool_timeout_seconds,
+        connect_args={
+            "connect_timeout": settings.connect_timeout_seconds,
+        },
     )
 
 

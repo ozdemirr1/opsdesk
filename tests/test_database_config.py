@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from opsdesk.db.config import DatabaseSettings, IntegrationDatabaseSettings
 
 
@@ -46,3 +49,46 @@ def test_database_settings_repr_masks_password():
 
     repr_str = repr(settings)
     assert synthetic_password not in repr_str
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("connect_timeout_seconds", 0),
+        ("connect_timeout_seconds", 1),
+        ("connect_timeout_seconds", 31),
+        ("pool_timeout_seconds", -1),
+        ("pool_timeout_seconds", 0),
+        ("pool_timeout_seconds", 31),
+    ],
+)
+def test_database_settings_rejects_invalid_timeouts(field, value):
+    values = {
+        "host": "127.0.0.1",
+        "port": 5432,
+        "database": "opsdesk_product_dev",
+        "username": "dev_user",
+        "password": "synthetic-test-password",
+        field: value,
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        DatabaseSettings(**values)
+
+    assert any(error["loc"] == (field,) for error in exc_info.value.errors())
+
+
+def test_database_settings_reads_timeout_environment(monkeypatch):
+    monkeypatch.setenv("OPSDESK_DB_CONNECT_TIMEOUT_SECONDS", "7")
+    monkeypatch.setenv("OPSDESK_DB_POOL_TIMEOUT_SECONDS", "9")
+
+    settings = DatabaseSettings(
+        host="127.0.0.1",
+        port=5432,
+        database="opsdesk_product_dev",
+        username="dev_user",
+        password="synthetic-test-password",
+    )
+
+    assert settings.connect_timeout_seconds == 7
+    assert settings.pool_timeout_seconds == 9

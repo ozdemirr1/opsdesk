@@ -21,6 +21,7 @@ ERROR_DEFINITIONS: dict[str, tuple[int, str]] = {
     "internal_error": (500, "An unexpected error occurred."),
     "not_found": (404, "Resource not found."),
     "method_not_allowed": (405, "Method not allowed."),
+    "service_unavailable": (503, "Service is temporarily unavailable."),
 }
 
 

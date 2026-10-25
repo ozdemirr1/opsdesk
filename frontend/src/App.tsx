@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import AppHeader from './components/AppHeader';
-import TicketList from './components/TicketList';
+import TicketDashboard from './components/TicketDashboard';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import { getCurrentUser } from './api/identity';
@@ -191,7 +191,7 @@ function App() {
         {activeScreen === 'tickets' && (
           <section>
             <h2>Tickets</h2>
-            <TicketList tickets={mockTickets} />
+            <TicketDashboard tickets={mockTickets} />
           </section>
         )}
 

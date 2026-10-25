@@ -10,6 +10,11 @@ from opsdesk.db.development import (
     create_development_migration_engine,
     verify_development_connection,
 )
+from opsdesk.db.hosted import (
+    HostedMigrationSettings,
+    create_hosted_migration_engine,
+    verify_hosted_connection,
+)
 from opsdesk.db.models import Base
 
 # this is the Alembic Config object, which provides
@@ -51,25 +56,32 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Default to test; development requires an explicit CLI target."""
+    """Default to test; other targets require explicit selection."""
     target = context.get_x_argument(as_dictionary=True).get("target", "test")
+
     if target == "test":
         engine = create_integration_engine(IntegrationDatabaseSettings())
     elif target == "development":
         engine = create_development_migration_engine(DevelopmentMigrationSettings())
+    elif target == "hosted":
+        engine = create_hosted_migration_engine(HostedMigrationSettings())
     else:
-        raise ValueError("Unknown migration target; use test or development.")
+        raise ValueError("Unknown migration target; use test, development or hosted.")
 
     try:
         with engine.connect() as connection:
             with connection.begin():
                 if target == "development":
                     verify_development_connection(connection)
+                elif target == "hosted":
+                    verify_hosted_connection(connection)
+
                 context.configure(
                     connection=connection,
                     target_metadata=target_metadata,
                     include_name=include_name,
                 )
+
                 with context.begin_transaction():
                     context.run_migrations()
     except SQLAlchemyError:

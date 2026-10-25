@@ -3,7 +3,7 @@
 React + TypeScript interface for the OpsDesk support-ticket product, developed
 inside the product monorepo. Vite provides the development server and build tooling.
 
-## Current scope — Week 14
+## Current scope — Week 15
 
 Implemented: an application shell with a typed `AppHeader` and local selection
 between a mock Ticket list and real API registration/login. `App` owns typed screen
@@ -12,11 +12,33 @@ conditional rendering displays its content. Buttons expose selection through `ar
 keyboard focus. Screen selection is local navigation; a full reload resets both
 selection and the in-memory session.
 
-The Ticket list receives typed summaries through props, renders three synthetic
-records with stable ticketId keys, and supports an explicit empty state. Each row
-shows its title, ID, status, and priority. TicketSummary is a frontend display model,
-not the complete backend response contract. Ticket details wrap on narrow screens;
-the unmarked list retains an explicit list role for Safari accessibility.
+TicketTable receives typed summaries through props and renders three synthetic
+records with stable ticketId keys. Its caption, column headers and row headers
+identify ID, title, status and priority. An empty array displays `No tickets yet.`
+without a table. StatusBadge maps all four TicketStatus values to readable labels;
+color is supplementary. The table container supports keyboard focus and horizontal
+scrolling on narrow screens. Neither component owns state or calls an API.
+TicketSummary remains a frontend display model, not the backend response contract.
+TicketDashboard owns title search and status selection, deriving matching rows
+from its typed tickets prop. Title matching ignores case and surrounding query
+whitespace while preserving the entered text. A checked value guard accepts only
+listed statuses or All statuses. Both conditions apply together; Clear filters
+resets them. The labelled controls wrap on narrow screens and have visible keyboard
+focus. A visible count shows matching and total tickets. A nonempty source with no
+matches shows `No matching tickets.`; an empty source retains `No tickets yet.`.
+Leaving Tickets unmounts the dashboard and resets both controls on return; App
+continues to own the session. Selecting a ticket highlights its row and opens a
+bounded fixture detail card below the still-visible table with ID, title, status,
+priority and optional description. Close details preserves the current search
+and status selection, while leaving Tickets resets selection and filters. Native
+buttons support keyboard activation; focus moves to Close details on opening,
+then returns to the selected row on closing. Changing filters closes the card.
+This is local conditional rendering, not a URL route. Comments and real Ticket API
+integration remain pending.
+The identity preview is hosted on Railway. The table increment was pushed as
+`30e5d03`; its deployment was blocked by a provider pause on 21 October. The title
+search increment was pushed as `3a5b11b`; publication of the newer status-filter
+increment has not been verified.
 
 Login sends `POST /auth/login` with explicit email/password input. The adapter
 requires HTTP 200 and a runtime-checked nonempty bearer token, then the form calls
@@ -88,6 +110,24 @@ Login form with the expected warning. Subsequent login and profile requests retu
 Explicit Sign out/navigation behavior is covered by component tests and learner
 manual confirmation: Sign out opened an empty Login form, Tickets displayed three
 mock records, and returning to Login kept the inputs empty without restoring a session.
+
+## 21 October title-search verification
+
+Node.js 24 checks passed 123 frontend tests across nine files, TypeScript/Vite
+build, ESLint and whitespace checks. Six TicketDashboard cases cover initial rows,
+case/whitespace/substring matching, clearing, no matches, empty source and changed
+props. A new App test verifies search reset after Login → Tickets navigation and
+preserves the mock-data notice. Existing identity/session tests also passed.
+Learner-provided Chrome screenshots confirmed case-insensitive matches, a no-match message and clearing back to all three mock rows. A later screenshot confirmed the revised search-field spacing and layout on desktop. These local checks do not establish public deployment.
+
+## 21 October status-filter verification
+
+The status filter and search combine over the labelled mock collection. Node.js 24
+checks passed 129 frontend tests across nine files, TypeScript/Vite build, ESLint
+and whitespace checks. New cases cover each status, search plus status, no matches,
+Clear filters, empty source and navigation reset. A local browser check confirmed
+`email` plus Open gives zero matches and Clear filters restores all three rows.
+These checks do not establish a public release.
 
 ## Setup and development
 
@@ -176,7 +216,7 @@ npm run lint
   readable layout, and absence of console errors. Switch between all three screens;
   check that old content disappears, selected state changes, and keyboard focus is
   visible. Use Tab and Enter/Space to operate the buttons. Confirm all three Ticket
-  rows and their fields, no key warnings, and readable narrow-screen wrapping.
+  rows and their fields, no key warnings, and readable narrow-screen table scrolling.
 - Login smoke check with both development servers running: use a synthetic account.
   Wrong credentials that pass form validation should return 401 with the fixed login
   message and no current-user request. Correct credentials should produce login 200,
@@ -200,7 +240,7 @@ npm run lint
 
 Vitest runs React Testing Library tests in jsdom with awaited user-event interactions
 and jest-dom assertions. `src/test/setup.ts` cleans up rendered trees after each test.
-The local suite has 110 passing tests across seven files: App (16), TicketList (2),
+The previous local baseline had 110 passing tests across seven files: App (16), TicketList (2),
 LoginForm (16), RegisterForm (25), API errors (9), request client (9), identity (33).
 Registration tests cover validation boundaries and Unicode normalization, pending
 controls/duplicate prevention, verified success, HTTP/uncertain outcomes, recovery,
@@ -212,6 +252,17 @@ App tests cover navigation, reload/reset, explicit logout/re-login, active profi
 updates, 401/inactive cleanup, network/500/invalid-response preservation, silent aborts,
 cancellation on logout/unmount, late 200 after logout and late 401 after a new login.
 Async completion assertions await React updates; identity mocks reset per test.
+
+On 20 October, after the TicketTable/StatusBadge increment, Node.js 24.21.0
+verification passed 116 tests across eight files: App (16), TicketTable (3),
+StatusBadge (5), LoginForm (16), RegisterForm (25), API errors (9), request client
+(9), identity (33). TypeScript/Vite build, ESLint and `git diff --check` also passed.
+New tests cover table headers and row associations, empty/changed props and all
+four status labels. A supplied desktop screenshot shows the table and badges.
+Manual confirmation covers narrow-screen scrolling, keyboard focus and Login →
+Tickets navigation. These browser observations are separate from jsdom results.
+Deployment of this increment is verified separately after publication.
+
 Mocks do not prove real database access; the separate browser check supplies local
 integration evidence. Build, lint and whitespace checks passed with connected login
 and registration; hosted CI must still be checked after publication.
@@ -247,8 +298,13 @@ is independent; neither job proves real API integration, visual layout, or deplo
 - `src/api/errors.ts` and its tests: runtime error guards and safe message mapping.
 - `src/api/client.ts` and its tests: JSON requests and explicit error/cancellation outcomes.
 - `src/components/AppHeader.tsx`: typed, presentational header component.
-- `src/components/TicketList.tsx`: props-driven populated/empty Ticket rendering.
-- `src/components/TicketList.test.tsx`: isolated list behavior tests.
+- `src/components/TicketDashboard.tsx`: local filters, selected ticket ID and derived rows.
+- `src/components/TicketDashboard.test.tsx`: filtering, detail and return behavior.
+- `src/components/TicketTable.tsx`: semantic table and empty state from typed props.
+- `src/components/TicketTable.test.tsx`: headers, row data and changed/empty props.
+- `src/components/TicketDetail.tsx`: fixture detail view and return action.
+- `src/components/StatusBadge.tsx`: readable labels for the four Ticket statuses.
+- `src/components/StatusBadge.test.tsx`: status labels and prop changes.
 - `src/components/LoginForm.tsx`: controlled login/current-user flow, validation and cancellation.
 - `src/components/LoginForm.test.tsx`: isolated form interaction tests.
 - `src/components/RegisterForm.tsx`: real registration, pending/error/success and cancellation.
@@ -257,7 +313,7 @@ is independent; neither job proves real API integration, visual layout, or deplo
 - `src/types/user.ts`: public UserProfile contract.
 - `src/types/session.ts`: in-memory token and checked UserProfile pair.
 - `src/types/ticket.ts`: Ticket status, priority, and summary types.
-- `src/data/mockTickets.ts`: synthetic display data passed to the list by App.
+- `src/data/mockTickets.ts`: synthetic display data passed to the table by App.
 - `src/index.css`: global typography, colors, and box sizing.
 - `src/App.css`: application spacing and layout.
 
@@ -267,3 +323,29 @@ browser-exposed configuration, and never log, render, persist, or commit passwor
 or complete access tokens.
 
 See the [product README](../README.md) for backend capabilities and setup.
+
+
+## Session and dashboard reset coverage
+
+The labelled mock Ticket dashboard remains available without signing in.
+Sign out, a session-check 401, or an inactive current User returns to Login
+and removes the dashboard. Returning to Tickets starts with empty search,
+all statuses and no selected detail; session controls remain absent.
+App regression tests exercise all three paths with filters and an open detail.
+This is a public fixture preview, not authorization for real Ticket data.
+The real list/detail implementation preparation is recorded in
+[F11](../docs/issues/f11.md).
+
+
+## Ticket response adapter — 24 October 2026
+
+`src/api/tickets.ts` declares the backend TicketResponse wire shape and exposes
+`toTicketSummary` for the table/detail display model. It explicitly projects
+display fields, preserves descriptions and returns a new object without changing
+the response. Tests cover the projection, empty/multiline descriptions and source
+immutability. Run them with `npm test -- src/api/tickets.test.ts`.
+
+This module does not fetch or validate JSON. The dashboard still uses labelled
+mock Tickets. Runtime response validation (including safe integer IDs), real
+Ticket reads and Organization selection are integration prerequisites documented
+in [F11](../docs/issues/f11.md#week-15-implementation-breakdown--24-october-2026).

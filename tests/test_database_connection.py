@@ -57,6 +57,8 @@ def test_create_database_engine_passes_url_and_options(monkeypatch):
         database="opsdesk_product_dev",
         username="dev_user",
         password="dev_password",
+        connect_timeout_seconds=7,
+        pool_timeout_seconds=9,
     )
 
     engine = create_database_engine(settings)
@@ -68,7 +70,12 @@ def test_create_database_engine_passes_url_and_options(monkeypatch):
     assert url.drivername == "postgresql+psycopg"
     assert url.database == "opsdesk_product_dev"
 
-    assert call_kwargs == {"echo": False, "hide_parameters": True}
+    assert call_kwargs == {
+        "echo": False,
+        "hide_parameters": True,
+        "pool_timeout": 9,
+        "connect_args": {"connect_timeout": 7},
+    }
     assert engine is mock_create_engine.return_value
 
 
