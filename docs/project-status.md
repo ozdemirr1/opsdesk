@@ -59,11 +59,17 @@ dashboard and display adapter merged normally in
 | PostgreSQL CI | [Q03 #25](https://github.com/ozdemirr1/opsdesk/issues/25) | Dedicated isolated CI database; local passing results do not close this |
 | Full backend preview release | [R01 #26](https://github.com/ozdemirr1/opsdesk/issues/26) | Full scoped backend acceptance and operational evidence; the identity preview is narrower |
 
-The original Month 04 frontend MVP is incomplete. Week 16 reserves 12 hours for
-real reads/integration, 3 for a bounded UI slice and 3 for verification/handoff.
-Re-estimate after Tuesday; if integration expands, explicitly reduce styling scope.
-Size unresolved comments/role/workflow and operations at the 1 November handoff;
-do not automatically claim them as part of the delivered MVP. See the
+The original Month 04 frontend MVP is incomplete. On 25 October, the learner
+approved an intensive 26 October–1 November plan: 42 focused hours plus up to
+8 contingency hours, replacing the earlier 18-hour proposal. Required deliveries
+include scoped reads/title search, real Organization/list/detail integration and
+protected routes, persisted comments, a role-aware priority action, the complete
+Tailwind/responsive/sidebar/empty-state/toast/modal/accessibility package and
+verification/release/learning evidence. Re-estimate Tuesday and Friday; unmet
+acceptance gates require an explicit calendar correction, not reduced UI scope
+or a false completion claim. F12 is covered only for priority; assignment, full
+status workflow and membership administration remain separate backend backlog.
+This planning update implements none of those features. See the
 [detailed plan](https://github.com/ozdemirr1/ai-backend-bootcamp/blob/main/weekly-reports/week-16-plan.md).
 
 ## Verification and live recovery

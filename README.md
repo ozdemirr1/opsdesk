@@ -36,7 +36,7 @@ interface. The preview is a learning deployment, not a production-readiness clai
 | Organizations | Atomic creation with owner membership; membership-scoped list/detail API | Organization selection in the UI; membership/role/ownership mutations |
 | Tickets | Tenant-consistent schema and authenticated creation API; mock table, badges, local filters and detail card | Real list/detail API and UI, assignment, priority changes, status workflow, comments |
 | Quality and deployment | Backend/frontend CI; guarded local PostgreSQL tests; live same-origin preview and health endpoints | PostgreSQL CI, isolated restore/rollback evidence, broader release gates |
-| UI and AI | Typed components, accessible table semantics, focus handling and basic CSS | Week 16 bounded Tailwind/responsive pass; AI planned for Month 06 |
+| UI and AI | Typed components, accessible table semantics, focus handling and basic CSS | Week 16 full Month 04 UI package; AI planned for Month 06 |
 
 The backend currently exposes seven business endpoints: `POST /users`,
 `POST /auth/login`, `GET /users/me`, `POST /organizations`, `GET /organizations`,
@@ -78,7 +78,9 @@ The older bootcamp databases `opsdesk_dev` / `opsdesk_test` are separate learnin
 artifacts. Never run destructive tests against development or the hosted demo.
 
 Next: tenant-safe Ticket reads, runtime response validation and authenticated
-Organization context, then a bounded UI pass. Docker/Redis remain Month 05;
+Organization context, persisted comments, a role-aware priority action and the
+full Month 04 UI package. The revised Week 16 plan allocates 42 focused hours plus
+up to 8 contingency hours; these are targets, not shipped features. Docker/Redis remain Month 05;
 AI summarization, priority/category suggestions and evaluations remain Month 06.
 The broader backend release issue R01 is still open: this smaller identity preview
 does not fulfill its complete feature and operational acceptance criteria.
