@@ -64,12 +64,51 @@ membership. Comment reads follow the parent Ticket. These scopes apply in all fo
 Ticket states, including closed; posting has separate restrictions.
 
 Collection filters run inside these visibility scopes. A customer cannot use a
-status, priority, assignment or assignee filter to count or retrieve another
+title-search, status, priority, assignment or assignee filter to count or retrieve another
 requester's Ticket. A syntactically valid missing or foreign assignee filter returns
 an empty visible collection rather than confirming whether that membership exists.
 
 Organization-wide agent visibility supports a shared queue, review of unassigned
 requests, and handover context. It does not itself grant claiming or reassignment.
+
+### Ticket read decision table — 26 October 2026
+
+Implemented locally in the Week 16 read slice; see the
+[F11 evidence](issues/f11.md#week-16-local-implementation--26-october-2026). Resolve the
+actor from the validated token/current User and the role from the active
+OrganizationMembership in the path Organization on each request.
+
+| Actor/resource situation | List | Detail |
+| --- | --- | --- |
+| Active customer in active Organization | Only `requester_membership_id == actor.membership_id` within that Organization | Same requester predicate plus path Organization and Ticket ID |
+| Active agent/admin/owner in active Organization | All Tickets within that Organization, including unassigned | Same Organization plus Ticket ID |
+| Customer created/was assigned a Ticket but is not its requester | No extra visibility from creator/assignee alone | Hidden: 404 after shared guards |
+| Actor is owner in A, customer in B | B's customer scope applies when B is selected | A's ownership grants nothing in B |
+| No active actor membership, including missing Organization | 403 `organization_access_denied` | Same; do not look up a Ticket to reveal its existence |
+| Active actor membership in suspended Organization | 403 `organization_suspended` | Same; basic Organization-read exception does not extend to Tickets |
+| Missing/inactive authenticated User | 401 `unauthenticated` | Same |
+| Ticket outside path Organization, hidden or missing | Never included/counted | One common 404 `ticket_not_found` after shared guards |
+| Visible resolved/closed Ticket | Readable | Readable; no mutation permission implied |
+
+`q`, status, priority, assignment and assignee filters only narrow these scopes.
+Do not accept client `requester_membership_id`, `user_id` or `role` query overrides.
+A valid foreign assignee filter yields an empty scoped result; it must not trigger
+a target-membership lookup that discloses whether that membership exists.
+
+For example, a library member who can see only their own loans must be scoped
+before searching book titles: another member's matching book must contribute
+neither a row nor a count. OpsDesk uses Organization plus requester membership
+instead of library membership. Staff visibility is explicitly wider inside the
+same Organization; it is never global.
+
+Read authorization uses current database state, not an old frontend role snapshot.
+Ensure the read statement's visibility predicate also gates active User, active
+actor membership and active Organization, so a stale service check cannot broaden
+results if access is revoked before the read statement. Reads do not lock rows or
+promise that a response already authorized at its snapshot can be recalled after
+a concurrent revocation. Cover revocation-before-read and different-role-in-different-
+Organization cases in PostgreSQL tests. Use the shared business-error precedence
+in the [API contract](api-contract.md#ticket-read-contract--26-october-2026).
 
 ## Ticket Creation, Priority, and Commenting
 
