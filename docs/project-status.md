@@ -1,4 +1,4 @@
-# Project status — 25 October 2026
+# Project status — 26 October 2026
 
 This is a dated implementation checkpoint. The [README](../README.md) summarizes
 the product; contract documents describe intended rules. Issue files preserve
@@ -14,6 +14,9 @@ initial scope and dated implementation notes. GitHub remains the live work track
 - Atomic Organization creation and membership-scoped Organization list/detail.
 - Authenticated Ticket creation with server-derived requester/creator, tenant
   constraints, ordered locks, rollback and contention tests.
+- Local Week 16 scoped Ticket list/detail API with title search, filters and
+  same-statement count/page/access checks; unit/API and PostgreSQL tests pass.
+  These GET routes have not been deployed by this task.
 - React identity forms with runtime response guards and in-memory session state.
 - Public mock Ticket table, title/status filters, counts, detail card and focus
   return; session termination resets dashboard state. No Ticket HTTP reads yet.
@@ -51,7 +54,7 @@ dashboard and display adapter merged normally in
 
 | Work | Issue(s) | Next decision / prerequisite |
 | --- | --- | --- |
-| Ticket list/detail | [F11 #19](https://github.com/ozdemirr1/opsdesk/issues/19) | Week 16: scoped queries, service/routes, PostgreSQL authorization tests, then runtime guards and UI |
+| Ticket list/detail | [F11 #19](https://github.com/ozdemirr1/opsdesk/issues/19) | Local backend implemented/tested; review/publication/CI, hosted collation check, then runtime guards and UI |
 | Membership directory/add/reactivation | #16, #17 | Needed before meaningful membership administration UI; estimate at Month 04 handoff |
 | Priority/assignment and status workflow | #20, #21 | Current-state role checks and cooperating locks; not inert UI buttons |
 | Role/deactivation and ownership transfer | #22, #23 | Reviewed invariants and overlapping-operation tests |
@@ -69,15 +72,29 @@ verification/release/learning evidence. Re-estimate Tuesday and Friday; unmet
 acceptance gates require an explicit calendar correction, not reduced UI scope
 or a false completion claim. F12 is covered only for priority; assignment, full
 status workflow and membership administration remain separate backend backlog.
-This planning update implements none of those features. See the
+The plan itself is not completion evidence; the local read implementation below
+now covers its first backend slice. See the
 [detailed plan](https://github.com/ozdemirr1/ai-backend-bootcamp/blob/main/weekly-reports/week-16-plan.md).
 
 ## Verification and live recovery
 
-Last local groups: frontend 141 tests/10 files + build/lint on 24 October;
-backend 506 non-integration passed/160 deselected on 19 October;
-PostgreSQL 157 data tests and 3 schema tests in separate runs on 5 October.
-No fresh full regression is claimed for this documentation update.
+Fresh local baseline on 26 October at `3d0e10b`: backend 506 non-integration
+passed/160 deselected; Ruff check and format passed (112 files). Frontend 141
+tests/10 files passed with one worker; build/lint passed. The first parallel test
+run failed before running tests with ENOSPC; low disk space remains an environment
+limitation, not a fixed application bug. These figures describe the pre-change
+baseline; the completed read slice has newer backend results below.
+
+The [Ticket read/search contract](api-contract.md#ticket-read-contract--26-october-2026)
+and access decision table were prepared and then implemented on 26 October.
+Final local results: **583 non-integration tests passed / 181 deselected**,
+**178 PostgreSQL data tests passed**, Ruff lint/format passed. The new cases
+cover scoped reads, query validation, access changes and count/page consistency.
+The three schema tests were not rerun; their last result remains 5 October.
+No migration or frontend behavior changed. See the
+[F11 evidence](issues/f11.md#week-16-local-implementation--26-october-2026).
+These local results do not establish a deployed release. GitHub reports CI and
+merge state; the last verified live source is recorded below.
 
 Both [Backend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40193369253)
 and [Frontend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40193369467)
@@ -97,8 +114,12 @@ not all schema privileges or authorization. Today's duplicate-registration,
 wrong-password and reload cases were not independently rerun.
 
 Credential rotation was learner-reported on 23 October. Provider audit review,
-bounded abuse controls, current trial usage/stop-export plan and isolated
-restore/rollback evidence remain open. Recovery alone does not prove absence of
+bounded abuse controls, the stop/export plan and isolated restore/rollback
+evidence remain open. Chrome Usage inspection on 26 October showed two services
+online, $0.54 current usage ($0.5411 project detail), $4.46 remaining credit and
+22 days remaining. The panel showed a $0.00 current bill; no paid upgrade,
+configuration change or deployment was made. This balance is a point-in-time
+observation, not a cost forecast. Recovery alone does not prove absence of
 incident exposure. The conditional Azure migration is no longer needed for the
 resolved pause; no paid plan or provider change is implied.
 

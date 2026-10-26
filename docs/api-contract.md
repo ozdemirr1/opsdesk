@@ -1,10 +1,12 @@
 # API Contract Baseline
 
-> Implementation checkpoint: [project status — 25 October](project-status.md).
+> Implementation checkpoint: [project status — 26 October](project-status.md).
 > Design inventories and historical handoff notes below are not a claim that all
 > listed workflows are implemented.
 
 Reviewed: Week 09 Friday, 11 September 2026.
+Ticket read/search amendment: 26 October 2026; implemented and tested locally.
+Deployment and frontend integration remain separate gates.
 
 This document consolidates the endpoint drafts and mentoring corrections. It is a
 design baseline, not an implemented API or a complete OpenAPI specification. Read
@@ -149,7 +151,7 @@ response into a membership-directory operation.
 | Purpose | Method and path | Input | Authorization and behavior | Success |
 | --- | --- | --- | --- | --- |
 | Create for self | `POST /organizations/{organization_id}/tickets` | title, description; optional priority | All four roles; open and unassigned; requester and creator derived from actor | 201 TicketResponse |
-| List | `GET /organizations/{organization_id}/tickets` | Optional query: status, priority, assignee_membership_id; pagination | Customers: requested by self; staff: all in Organization | 200 paginated TicketResponse items |
+| List | `GET /organizations/{organization_id}/tickets` | Optional query: q, status, priority, assignment, assignee_membership_id; pagination | Customers: requested by self; staff: all in Organization | 200 paginated TicketResponse items |
 | Read | `GET /organizations/{organization_id}/tickets/{ticket_id}` | None | Same visibility scope; Ticket must belong to path Organization | 200 TicketResponse |
 | Set priority | `PUT /organizations/{organization_id}/tickets/{ticket_id}/priority` | priority | Staff, any visible same-Organization Ticket; only open/in_progress | 200 TicketResponse |
 | Set status | `PUT /organizations/{organization_id}/tickets/{ticket_id}/status` | status | Exact transition permission, state preconditions, and same-status policy | 200 TicketResponse |
@@ -176,6 +178,139 @@ returns `422 validation_error`; `assignment=assigned` with a specific assignee i
 allowed. A syntactically valid missing or foreign assignee ID yields an empty visible
 result rather than disclosing target existence. Filters are applied inside the
 caller's existing visibility scope and can never widen it.
+
+### Ticket Read Contract — 26 October 2026
+
+Week 16 contract amendment for F11. GET list/detail and server-side search now
+have a local implementation and tests; see the
+[F11 checkpoint](issues/f11.md#week-16-local-implementation--26-october-2026).
+This section adds title search and an explicit Ticket offset bound to the earlier
+collection contract. Existing Organization and membership endpoints are unchanged.
+
+#### Request parameters
+
+`GET /organizations/{organization_id}/tickets` accepts only the following query
+keys. Each may occur at most once, even if repeated values are identical.
+All supplied filters combine with AND inside the caller's visibility scope.
+
+| Key | Omitted value | Accepted supplied value |
+| --- | --- | --- |
+| `q` | No title restriction | Search text with the rules below |
+| `status` | All states | `open`, `in_progress`, `resolved`, `closed` |
+| `priority` | All priorities | `low`, `medium`, `high`, `urgent` |
+| `assignment` | Either | `assigned`, `unassigned` |
+| `assignee_membership_id` | Any assignee or none | Positive signed-bigint ID |
+| `limit` | 20 | Integer 1..100 |
+| `offset` | 0 | Integer 0..9223372036854775807 |
+
+For numeric query values, accept nonempty ASCII decimal digits only (leading
+zeros are allowed); reject signs, whitespace, decimals, exponent notation and
+out-of-range values. Path IDs use the existing `PositiveBigInt` contract, not a
+new incompatible parser. Unknown/repeated query keys, invalid enums or numbers,
+and `assignment=unassigned` with an assignee ID return `422 validation_error`.
+Empty enum/numeric values are invalid; `q` has its separate blank-input rule.
+Do not silently clamp values. The offset upper bound prevents an otherwise
+validated value exceeding PostgreSQL's signed-bigint range; it is not a practical
+performance guarantee for deep pages.
+
+`GET /organizations/{organization_id}/tickets/{ticket_id}` takes no query
+parameters; reject supplied query keys with the same safe validation envelope.
+Both successful endpoints return the existing public `TicketResponse` fields.
+Detail returns one object; list returns the common envelope. No requester/role
+selector is accepted from the client.
+
+#### Title-search semantics
+
+- Apply rules to the HTTP-decoded string; do not decode it a second time.
+- Bound the supplied decoded value to at most 255 Unicode code points **before**
+  trimming. Reject longer input, including excessive padding, with 422.
+- Reject NUL, LF, CR and TAB before trimming, matching the existing title-input
+  policy. Trim edges with Python `str.strip()`; preserve internal whitespace,
+  punctuation and Unicode. Do not add Unicode normalization or accent removal.
+- Omission, `q=` or an allowed whitespace-only value means no title restriction.
+  The literal string `null` is ordinary search text, not a missing value.
+- Search the title only for one contiguous substring, case-insensitively using
+  PostgreSQL `ILIKE` under the title column's deterministic database collation.
+  Do not search descriptions, IDs, emails or comments. Do not tokenize, rank,
+  interpret regex, transliterate or promise language-independent case folding.
+  Record/check the test and hosted collation before integration; Turkish dotted/
+  dotless-I equivalence must not be assumed from JavaScript `toLowerCase()`.
+- `%`, `_`, `!` and backslash are literal user characters. Use an explicit SQL
+  escape character `!`: escape `!` first, then `%` and `_`, wrap the result in
+  substring `%` delimiters, and bind the pattern as a query parameter with
+  `ESCAPE '!'`. Backslash is literal with that escape choice. Never interpolate
+  user text into SQL. Binding and wildcard escaping address different concerns.
+- Match inside tenant/requester scope and combine with the other filters before
+  calculating count and page. Do not fetch a page and search it in Python/React.
+- Keep search values out of request diagnostics, SQL exception responses and
+  validation output; retain existing route-template logging and safe field paths.
+
+PostgreSQL's [pattern-matching documentation](https://www.postgresql.org/docs/18/functions-matching.html)
+defines `ILIKE` locale behavior and `LIKE` escaping. This bounded search needs no
+new extension or migration; it makes no indexed-search or large-dataset latency
+claim. Local PostgreSQL verification on 26 October used libc `en_US.UTF-8`
+(`datcollate` and `datctype`): `I ILIKE i` and `İ ILIKE i` were true, while
+`ı ILIKE I` was false. The hosted collation still needs verification before
+real UI integration; this is not a universal Turkish case-equivalence guarantee.
+
+#### Access and error composition
+
+Use the [Ticket read decision table](access-control.md#ticket-read-decision-table--26-october-2026).
+After existing transport/schema handling, preserve shared business precedence:
+current active User → active membership in path Organization → active Organization
+→ Ticket visibility. Do not override framework validation ordering to promise
+that every malformed unauthenticated request is always 401; overlapping cases
+must follow the existing dependency/error contract and get API tests.
+
+| Otherwise valid request | Result |
+| --- | --- |
+| Missing/invalid/expired token or missing/inactive current User | 401 `unauthenticated`, bearer header |
+| Missing Organization or no active actor membership | 403 `organization_access_denied` |
+| Active member, suspended Organization | 403 `organization_suspended` |
+| Authorized list, no visible matching records | 200, empty `items`, `total_count: 0` |
+| Authorized detail, missing/foreign/invisible Ticket | 404 `ticket_not_found`; same safe response |
+| Authorized visible Ticket in any lifecycle state | 200; reading grants no write permission |
+
+#### Ordering, count and examples
+
+Use `created_at DESC, ticket_id DESC`; no client-controlled sort field in this
+slice. All visibility/search/filter predicates must be identical for count and
+items. Prefer the existing Organization repository's single-statement pattern:
+visible relation → total count and ordered page → outer join from count to page.
+This preserves the correct total even when the page is empty. A window count alone
+cannot supply a total for an offset beyond the last row. Keep read queries free of
+mutation locks and business writes. The one-response snapshot guarantee does not
+promise stable offsets across different HTTP requests.
+
+Examples below assume valid authentication and Organization access; IDs are
+illustrative, not live demo resources. Local implementation follows this contract.
+
+| Request suffix or case | Expected result |
+| --- | --- |
+| `/tickets` | First 20 visible records, newest first |
+| `/tickets?q=%20EMAIL%20&status=open&limit=10&offset=0` | Visible open records whose titles contain `EMAIL`, ignoring case under database collation |
+| `/tickets?q=%25` | Only titles containing a literal percent sign |
+| `/tickets?q=release_1` | Literal underscore; does not match `releaseX1` |
+| `/tickets?q=%21` or `/tickets?q=%5C` | Literal exclamation mark or backslash |
+| `/tickets?q=%20%20` | No title restriction; other filters still apply |
+| `/tickets?q=%09email` or a 256-code-point decoded query | 422 |
+| `/tickets?q=email&q=email` or `/tickets?role=owner` | 422 |
+| `/tickets?assignment=unassigned&assignee_membership_id=12` | 422 |
+| Valid foreign/missing assignee ID | 200 empty visible collection, without confirming membership existence |
+| 12 matching records, `limit=20&offset=20` | `items: []`, `total_count: 12`, `limit: 20`, `offset: 20` |
+| Title matches another customer only | That row contributes neither an item nor a count |
+
+No matches returns:
+
+```json
+{"items": [], "total_count": 0, "limit": 20, "offset": 0}
+```
+
+Keep UI input text separate from normalized query text; omit blank `q`, reset offset
+when Organization/search/filter changes, and clear/invalidate old scope results.
+Do not send mock-only `all` enum values; omission means all. Searching the real
+collection must issue a server query and use server count, not the current page's
+length. Debouncing or caching later must not weaken stale-response protection.
 
 ### TicketResponse Example
 
