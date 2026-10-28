@@ -3,15 +3,17 @@
 React + TypeScript interface for the OpsDesk support-ticket product, developed
 inside the product monorepo. Vite provides the development server and build tooling.
 
-## Current checkpoint — 28 October 2026
+## Current checkpoint — 29 October 2026 (28 October release closure)
 
 The root opens Login when signed out and Workspaces when authenticated. App no
 longer mounts fixture Tickets. Signed-in navigation uses Workspaces/Account;
 registration success offers Continue to login and documents the password length.
 A real local PostgreSQL browser/API walkthrough passed. Frontend: 234 tests across
-12 files, build and lint passed. Today’s changes are uncommitted and not deployed.
-Yesterday’s published `0b28946` passed CI; no PR exists yet. Hosted registration,
-login/session-check/sign-out work, but the hosted UI still lacks Workspaces.
+12 files, build and lint passed on 28 October. PR #47 merged as `2013248`, passed
+Backend/Frontend CI and deployed successfully from `main`. Hosted browser smoke
+on 29 October verified registration, login, workspace creation/selection, real
+Ticket table/detail, search/status, reload/login return, session check and logout.
+Ticket creation UI and Comment service/API/form remain pending.
 
 ## Earlier checkpoint — 27 October 2026
 
@@ -48,7 +50,8 @@ needed for these fragment routes. Unknown paths show Page not found.
 
 Tests exercise the real adapters with synthetic HTTP responses. An in-app browser
 check verified anonymous direct-route/reload protection. Authenticated actual
-backend/database checks passed on 28 October; hosted private UI deployment remains pending.
+backend/database checks passed locally on 28 October and on the hosted preview
+on 29 October. Earlier dated checkpoints below preserve historical scope.
 
 ## Week 15 public dashboard and identity baseline — historical
 
@@ -83,7 +86,7 @@ then returns to the selected row on closing. Changing filters closes the card.
 This is local conditional rendering, not a URL route. Comments and real Ticket API
 integration remain pending.
 The provider deployment pause on 21 October delayed these increments.
-It was resolved on 25 October; the current hosted source includes table,
+It was resolved on 25 October; that historical hosted source included table,
 search/status filters, detail selection and the adapter. Ticket data remains mock.
 
 Login sends `POST /auth/login` with explicit email/password input. The adapter
@@ -364,7 +367,7 @@ is independent; neither job proves real API integration, visual layout, or deplo
 - `src/api/organizations.ts`: validated Organization list/detail/create and membership context.
 - `src/api/resources.ts`: shared typed outcomes, pagination guards and cancellable transport.
 - `src/api/resource-boundaries.test.ts`: malformed payload, scope, query, failure and cancellation coverage.
-  Protected workspace components now call these adapters; the older hosted preview stays mock-backed until the new source is deployed.
+  Protected workspace components now call these adapters; the private flow was deployed in PR #47 and verified on 29 October.
 - `src/navigation.ts`: allowlisted hash routes and browser history subscription.
 - `src/hooks/useResource.ts`: scoped request ownership and cancellation.
 - `src/components/Organizations.tsx` and `Workspace.tsx`: private directory/create and Ticket screens.
