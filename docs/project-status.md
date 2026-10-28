@@ -1,4 +1,4 @@
-# Project status — 26 October 2026
+# Project status — 27 October 2026
 
 This is a dated implementation checkpoint. The [README](../README.md) summarizes
 the product; contract documents describe intended rules. Issue files preserve
@@ -19,9 +19,16 @@ initial scope and dated implementation notes. GitHub remains the live work track
   These GET routes have not been deployed by this task.
 - React identity forms with runtime response guards and in-memory session state.
 - Public mock Ticket table, title/status filters, counts, detail card and focus
-  return; session termination resets dashboard state. No Ticket HTTP reads yet.
-- Pure Ticket display adapter with four tests. It neither validates unknown JSON
-  nor fetches records. API types alone are not runtime validation.
+  return; session termination resets dashboard state. This public view remains mock-backed.
+- Pure Ticket display mapper plus validated Organization/Ticket HTTP adapters,
+  locally added on 27 October and connected to protected workspace screens.
+  Fresh verification: 233 frontend tests / 12 files, build and lint passed;
+  77 focused backend read tests passed. Database evidence remains dated 26 October.
+
+- Local Organization selection/creation, membership roles, protected hash routes
+  and real Ticket list/detail/search/pagination. Private request ownership is
+  verified with synthetic-response UI tests; authenticated database/browser and
+  hosted checks are pending. No new deployment is claimed.
 
 ## Closed design and implementation issues
 
@@ -54,7 +61,7 @@ dashboard and display adapter merged normally in
 
 | Work | Issue(s) | Next decision / prerequisite |
 | --- | --- | --- |
-| Ticket list/detail | [F11 #19](https://github.com/ozdemirr1/opsdesk/issues/19) | Local backend implemented/tested; review/publication/CI, hosted collation check, then runtime guards and UI |
+| Ticket list/detail | [F11 #19](https://github.com/ozdemirr1/opsdesk/issues/19) | Backend merged in PR #46 with CI; runtime guards and private UI ready locally; actual database/browser and hosted verification remain |
 | Membership directory/add/reactivation | #16, #17 | Needed before meaningful membership administration UI; estimate at Month 04 handoff |
 | Priority/assignment and status workflow | #20, #21 | Current-state role checks and cooperating locks; not inert UI buttons |
 | Role/deactivation and ownership transfer | #22, #23 | Reviewed invariants and overlapping-operation tests |

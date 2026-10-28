@@ -3,16 +3,44 @@
 React + TypeScript interface for the OpsDesk support-ticket product, developed
 inside the product monorepo. Vite provides the development server and build tooling.
 
-## Current checkpoint — 25 October 2026
+## Current checkpoint — 27 October 2026
 
 The [live preview](https://opsdesk-production-448f.up.railway.app/) now includes
 the Week 15 table, filters and detail card at deployed source `255f937`.
-Week 15 merged in PR #43 (`122c052`). Last local verification on 24 October:
-141 tests across 10 files, production build and lint passed. Earlier counts and
+Week 15 merged in PR #43 (`122c052`). Fresh local verification on 27 October:
+233 tests across 12 files, production build and lint passed. Organization/Ticket
+HTTP adapters now validate unknown responses, with 68 new boundary cases.
+They now serve protected Organization and Ticket screens, with 22 additional
+UI behavior tests. The public hosted preview remains the Week 15 checkpoint. Earlier counts and
 browser checks below are dated historical evidence, not fresh runs.
 See [project status](../docs/project-status.md) for CI and remaining gates.
 
-## Current scope — Week 15
+## Protected workspace screens — 27 October 2026
+
+Workspaces navigation is visible only after verified login. Normal login opens
+the Organization directory automatically; login at a protected deep link resumes
+that exact internal route. Sign-out hides Workspaces again. Real Ticket list/detail
+reads, server search/status filters and pagination are connected under hash
+routes. Role comes from the selected Organization membership; UI controls do not
+replace server authorization. Direct routes require login and resume the same
+validated internal address. Reload clears the in-memory session.
+
+Private state is isolated by session and Organization keys. The resource hook
+hides old data on query changes and invalidates/aborts requests on cleanup.
+401 ends the session; 403 discards workspace access; 404 detail is unavailable;
+network/malformed/5xx responses remain errors with retry. Creation sends name
+only, guards repeated submission and never automatically retries uncertain writes.
+A new workspace can have no Tickets; a Ticket creation form is not in this slice.
+
+Paths: `#/organizations`, `#/organizations/{id}/tickets`,
+`#/organizations/{id}/tickets/{ticketId}`. No new dependency or server rewrite is
+needed for these fragment routes. Unknown paths show Page not found.
+
+Tests exercise the real adapters with synthetic HTTP responses. An in-app browser
+check verified anonymous direct-route/reload protection. Authenticated actual
+backend/database browser checks and hosted deployment remain pending.
+
+## Week 15 public dashboard and identity baseline — historical
 
 Implemented: an application shell with a typed `AppHeader` and local selection
 between a mock Ticket list and real API registration/login. `App` owns typed screen
@@ -322,7 +350,15 @@ is independent; neither job proves real API integration, visual layout, or deplo
 - `src/types/user.ts`: public UserProfile contract.
 - `src/types/session.ts`: in-memory token and checked UserProfile pair.
 - `src/types/ticket.ts`: Ticket status, priority, and summary types.
-- `src/api/tickets.ts` and its tests: Ticket response/display adapter; no HTTP integration yet.
+- `src/api/tickets.ts`: validated Ticket list/detail HTTP reads and pure display mapper.
+- `src/api/organizations.ts`: validated Organization list/detail/create and membership context.
+- `src/api/resources.ts`: shared typed outcomes, pagination guards and cancellable transport.
+- `src/api/resource-boundaries.test.ts`: malformed payload, scope, query, failure and cancellation coverage.
+  Protected workspace components now call these adapters; the public preview stays mock-backed.
+- `src/navigation.ts`: allowlisted hash routes and browser history subscription.
+- `src/hooks/useResource.ts`: scoped request ownership and cancellation.
+- `src/components/Organizations.tsx` and `Workspace.tsx`: private directory/create and Ticket screens.
+- `src/WorkspaceFlow.test.tsx`: protected navigation, creation, filtering/pagination and session/scope races.
 - `src/data/mockTickets.ts`: synthetic display data passed to the table by App.
 - `src/index.css`: global typography, colors, and box sizing.
 - `src/App.css`: application spacing and layout.
@@ -360,3 +396,33 @@ This module does not fetch or validate JSON. The dashboard still uses labelled
 mock Tickets. Runtime response validation (including safe integer IDs), real
 Ticket reads and Organization selection are integration prerequisites documented
 in [F11](../docs/issues/f11.md#week-15-implementation-breakdown--24-october-2026).
+
+
+## Organization/Ticket API preparation — 27 October 2026, earlier checkpoint
+
+The 24 October display-adapter entry above is historical. The module now also
+validates unknown JSON before mapping it. HTTP adapters reject unsafe numeric IDs,
+invalid roles/enums/timestamps, mismatched Organization IDs, duplicate records,
+inconsistent page counts and echoed pagination that differs from the request.
+Search parameters are encoded once; exact text is preserved for server matching.
+Bearer tokens appear only in the authorization header, and remain caller-owned.
+No dependency or browser storage was added. Failures stay distinct from empty
+success; cancellation is checked before and after transport, without automatic retry.
+
+The [Organization/session design](https://github.com/ozdemirr1/ai-backend-bootcamp/blob/main/notes/react/ticket-search-filter.md#organization-and-session-flow--27-october-2026)
+specifies the next controller. Role comes from own_membership in list/create,
+not from a global user field or the Organization detail response. Session/scope/
+request ownership checks, protected routing and rendered data integration are
+still to be implemented and tested. Local code and documentation are not yet
+published at this checkpoint; the link identifies the canonical note location.
+
+
+The API boundary preparation entry above precedes UI integration. Tasks 4–6 now
+implement the controller/screens described in the note. Final local verification
+is 231 tests / 12 files, build and lint; publication and hosted checks are pending.
+
+
+27 October navigation refinement: two additional cases verify signed-out/failed-login
+visibility and normal-login redirection with sign-out cleanup. Existing deep-link
+return/reload tests still pass. Final result: 233 tests / 12 files, build and lint.
+The 403 test waits for the final access-denied view rather than a transient alert.

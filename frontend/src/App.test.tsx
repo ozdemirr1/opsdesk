@@ -13,6 +13,18 @@ vi.mock('./api/identity', async (importOriginal) => {
   };
 });
 
+vi.mock('./api/organizations', () => ({
+  listOrganizations: vi.fn(async () => ({ ok: true, status: 200,
+    data: { items: [], total_count: 0, limit: 20, offset: 0 } })),
+}));
+
+// These tests inspect existing session-check behavior on the Login screen.
+// Normal login now lands on Workspaces; verify that transition before returning.
+async function openSessionScreen(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByRole('heading', { name: 'Workspaces' });
+  await user.click(screen.getByRole('button', { name: 'Login' }));
+}
+
 beforeEach(() => {
   vi.mocked(loginUser).mockReset();
   vi.mocked(getCurrentUser).mockReset();
@@ -162,7 +174,9 @@ test('preserves authenticated session across screen transitions and does not lea
   await user.type(passwordInput, 'validPassword123');
   await user.click(submitBtn);
 
-  // Verify status replaces form
+  await openSessionScreen(user);
+
+  // Verify the signed-in session on Login after the directory redirect
   const statusEl = await screen.findByRole('status');
   expect(statusEl).toHaveTextContent('Signed in as operator@example.com');
   expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
@@ -217,6 +231,7 @@ test('handles sign out flow: hides Sign out initially, signs out from Tickets, c
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
   expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
@@ -252,6 +267,7 @@ test('handles sign out flow: hides Sign out initially, signs out from Tickets, c
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   const newStatusEl = await screen.findByRole('status');
   expect(newStatusEl).toHaveTextContent('Signed in as operator@example.com');
@@ -279,6 +295,7 @@ test('handles successful session check: updates user info and keeps session acti
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
   const checkBtn = screen.getByRole('button', { name: 'Check session' });
@@ -320,6 +337,7 @@ test('handles 401 response on check session: clears session, switches to login s
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
   await user.click(screen.getByRole('button', { name: 'Tickets' }));
@@ -365,6 +383,7 @@ test('clears session when user profile becomes inactive during check', async () 
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -404,6 +423,7 @@ test('preserves session on network error during check and shows safe error messa
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
   await user.click(screen.getByRole('button', { name: 'Tickets' }));
@@ -448,6 +468,7 @@ test('preserves session on HTTP 500 server error during check and shows safe err
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
   await user.click(screen.getByRole('button', { name: 'Tickets' }));
@@ -492,6 +513,7 @@ test('preserves session on invalid response during check and shows safe error me
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
   await user.click(screen.getByRole('button', { name: 'Tickets' }));
@@ -536,6 +558,7 @@ test('does not show error message or alter session when check session response i
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -576,6 +599,7 @@ test('allows sign out while check session is pending and aborts in-flight reques
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -626,6 +650,7 @@ test('aborts pending session check when App is unmounted', async () => {
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -668,6 +693,7 @@ test('ignores delayed 200 response arriving after sign out so session is not res
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -723,6 +749,7 @@ test('ignores delayed 401 response from previous session arriving after re-login
   await user.type(screen.getByLabelText(/email/i), 'first@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -755,6 +782,7 @@ test('ignores delayed 401 response from previous session arriving after re-login
   await user.type(screen.getByLabelText(/email/i), 'second@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   const statusEl = await screen.findByRole('status');
   expect(statusEl).toHaveTextContent('Signed in as second@example.com');
@@ -833,6 +861,7 @@ test.each(['sign-out', 'unauthorized', 'inactive-user'] as const)(
     await user.type(screen.getByLabelText(/^Email/i), 'operator@example.com');
     await user.type(screen.getByLabelText(/^Password/i), 'validPassword123');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
     await screen.findByText('Signed in as operator@example.com');
 
     // Populate all dashboard state before ending the session.

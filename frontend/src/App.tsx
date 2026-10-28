@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AppHeader from './components/AppHeader';
 import TicketDashboard from './components/TicketDashboard';
 import LoginForm from './components/LoginForm';
@@ -6,12 +6,15 @@ import RegisterForm from './components/RegisterForm';
 import { getCurrentUser } from './api/identity';
 import { mockTickets } from './data/mockTickets';
 import type { Session } from './types/session';
+import Organizations from './components/Organizations';
+import Workspace from './components/Workspace';
+import { navigate, useRoute } from './navigation';
 import './App.css';
 
-type Screen = 'tickets' | 'login' | 'register';
 
 function App() {
-  const [activeScreen, setActiveScreen] = useState<Screen>('tickets');
+  const route = useRoute();
+  const [sessionEpoch, setSessionEpoch] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
@@ -29,7 +32,7 @@ function App() {
     };
   }, []);
 
-  const handleSignOut = () => {
+  const handleSignOut = useCallback(() => {
     // Abort pending session check and reset state
     if (checkAbortControllerRef.current) {
       checkAbortControllerRef.current.abort();
@@ -38,9 +41,14 @@ function App() {
     sessionRef.current = null;
     setIsCheckingSession(false);
     setSession(null);
-    setActiveScreen('login');
+    navigate('/login');
     setSessionError(null);
-  };
+  }, []);
+
+  const handleExpired = useCallback(() => {
+    handleSignOut();
+    setSessionError('Your session is no longer valid. Please sign in again.');
+  }, [handleSignOut]);
 
   const handleAuthenticated = (newSession: Session) => {
     // Invalidate any stale in-flight check when authenticating
@@ -48,10 +56,15 @@ function App() {
       checkAbortControllerRef.current.abort();
       checkAbortControllerRef.current = null;
     }
+    setSessionEpoch(value => value + 1);
     sessionRef.current = newSession;
     setIsCheckingSession(false);
     setSession(newSession);
     setSessionError(null);
+    // A guarded deep link stays in place; ordinary login opens the directory.
+    if (route.screen !== 'organizations' && route.screen !== 'workspace') {
+      navigate('/organizations');
+    }
   };
 
   const handleCheckSession = async () => {
@@ -97,7 +110,7 @@ function App() {
           // Valid profile but inactive: clear session and redirect to login
           sessionRef.current = null;
           setSession(null);
-          setActiveScreen('login');
+          navigate('/login');
           setSessionError('Your session is no longer valid. Please sign in again.');
         }
       } else {
@@ -109,7 +122,7 @@ function App() {
           // 401 Unauthorized: clear session and redirect to login
           sessionRef.current = null;
           setSession(null);
-          setActiveScreen('login');
+          navigate('/login');
           setSessionError('Your session is no longer valid. Please sign in again.');
         } else {
           // Network, 500 or invalid response: keep session and display safe error message
@@ -133,6 +146,9 @@ function App() {
     }
   };
 
+  const privateRoute = route.screen === 'organizations' || route.screen === 'workspace';
+  const activeScreen = privateRoute && !session ? 'login' : route.screen;
+
   return (
     <>
       <AppHeader
@@ -143,25 +159,26 @@ function App() {
       <nav aria-label="Screens" className="screen-nav">
         <button
           type="button"
-          onClick={() => setActiveScreen('tickets')}
+          onClick={() => navigate('/')}
           aria-pressed={activeScreen === 'tickets'}
         >
           Tickets
         </button>
         <button
           type="button"
-          onClick={() => setActiveScreen('login')}
+          onClick={() => navigate('/login')}
           aria-pressed={activeScreen === 'login'}
         >
           Login
         </button>
         <button
           type="button"
-          onClick={() => setActiveScreen('register')}
+          onClick={() => navigate('/register')}
           aria-pressed={activeScreen === 'register'}
         >
           Register
         </button>
+        {session && <button type="button" onClick={() => navigate('/organizations')} aria-pressed={privateRoute}>Workspaces</button>}
         {session && (
           <>
             <button
@@ -182,10 +199,15 @@ function App() {
       </nav>
 
       <main>
-        <p className="mock-note">
+        {!privateRoute && <p className="mock-note">
           Tickets use mock data. Registration and login connect to the live API.
-        </p>
+        </p>}
 
+        {session && route.screen === 'organizations' && <Organizations key={sessionEpoch} token={session.accessToken} onExpired={handleExpired} />}
+        {session && route.screen === 'workspace' && <Workspace key={`${sessionEpoch}:${route.organizationId}`} token={session.accessToken}
+          organizationId={route.organizationId} ticketId={route.ticketId} onExpired={handleExpired} />}
+        {route.screen === 'missing' && <section><h2>Page not found</h2><a href="#/">Return to preview</a></section>}
+        {privateRoute && !session && <p>Sign in to open this workspace. Reloading clears your session.</p>}
         {sessionError && <p role="alert">{sessionError}</p>}
 
         {activeScreen === 'tickets' && (

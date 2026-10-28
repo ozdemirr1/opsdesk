@@ -21,7 +21,7 @@ browser session; it is not server-side JWT revocation.
 
 **The Ticket dashboard is explicitly labelled mock data.** Search, status filtering
 and details use three synthetic records. It is an early identity-flow preview;
-real Ticket UI integration, comments, workflow actions and AI are not delivered yet.
+hosted real Ticket UI integration, comments, workflow actions and AI are not delivered yet.
 
 ![Live OpsDesk mock Ticket dashboard, captured 25 October 2026](docs/images/dashboard-2026-10-25.jpg)
 
@@ -33,8 +33,8 @@ interface. The preview is a learning deployment, not a production-readiness clai
 | Area | Implemented now | Remaining work |
 | --- | --- | --- |
 | Identity | Registration, Argon2id password hashes, JWT login, persisted active User resolution; browser forms/session handling | Bounded public-demo abuse controls and further operational verification |
-| Organizations | Atomic creation with owner membership; membership-scoped list/detail API | Organization selection in the UI; membership/role/ownership mutations |
-| Tickets | Tenant-consistent schema, creation and scoped list/detail APIs with title search/filter/pagination; mock table and detail card | Real API-to-UI integration, assignment, priority changes, status workflow, comments |
+| Organizations | Atomic creation with owner membership; scoped list/detail API and local selection/creation UI | Membership/role/ownership mutations; hosted verification of the new UI |
+| Tickets | Tenant-consistent schema, creation and scoped list/detail APIs with title search/filter/pagination; public mock preview plus locally integrated protected real-data table/detail | Hosted integration verification, creation UI, assignment, priority changes, status workflow, comments |
 | Quality and deployment | Backend/frontend CI; guarded local PostgreSQL tests; live same-origin preview and health endpoints | PostgreSQL CI, isolated restore/rollback evidence, broader release gates |
 | UI and AI | Typed components, accessible table semantics, focus handling and basic CSS | Week 16 full Month 04 UI package; AI planned for Month 06 |
 
@@ -53,7 +53,7 @@ These are separate, dated test groups, not a combined current-run total:
 
 | Check | Last recorded local result | Date |
 | --- | --- | --- |
-| Frontend | 141 tests across 10 files with one worker; build and lint passed | 26 October |
+| Frontend | 233 tests across 12 files with one worker; build and lint passed | 27 October |
 | Backend non-integration | 583 passed; 181 database/schema tests deselected; Ruff passed | 26 October |
 | PostgreSQL data integration | 178 passed on guarded `opsdesk_product_test` | 26 October |
 | Guarded schema/migration suite | 3 passed | 5 October |
@@ -86,8 +86,12 @@ Local product databases are `opsdesk_product_dev` and `opsdesk_product_test`.
 The older bootcamp databases `opsdesk_dev` / `opsdesk_test` are separate learning
 artifacts. Never run destructive tests against development or the hosted demo.
 
-Next: runtime response validation and authenticated
-Organization context, persisted comments, a role-aware priority action and the
+Organization/Ticket HTTP adapters now validate responses at runtime and serve
+the local protected workspace screens (27 October). Public preview Tickets remain
+mock-backed. The focused backend read tests also passed all 77 cases on 27 October.
+
+Next: publish and verify the complete private flow against the actual backend
+and hosted deployment, then persisted comments, a role-aware priority action and the
 full Month 04 UI package. The revised Week 16 plan allocates 42 focused hours plus
 up to 8 contingency hours; these are targets, not shipped features. Docker/Redis remain Month 05;
 AI summarization, priority/category suggestions and evaluations remain Month 06.
