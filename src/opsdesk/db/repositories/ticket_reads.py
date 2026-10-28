@@ -1,13 +1,14 @@
 from collections.abc import Mapping
 
-from sqlalchemy import and_, func, or_, select, true
+from sqlalchemy import func, select, true
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from opsdesk.db.models.organization import OrganizationRow
-from opsdesk.db.models.organization_membership import OrganizationMembershipRow
 from opsdesk.db.models.ticket import TicketRow
-from opsdesk.db.models.user import UserRow
+from opsdesk.db.repositories.ticket_visibility import (
+    access_statement,
+    visible_statement,
+)
 from opsdesk.db.repositories.tickets import _raise_database_error
 from opsdesk.tickets.models import Ticket
 from opsdesk.tickets.read_models import (
@@ -17,58 +18,6 @@ from opsdesk.tickets.read_models import (
     TicketListRead,
     TicketReadAccess,
 )
-
-
-def _access_statement(actor_user_id: int, organization_id: int):
-    # This one-row CTE and the visible rows use the same statement snapshot.
-    return select(
-        select(UserRow.user_id)
-        .where(UserRow.user_id == actor_user_id, UserRow.is_active.is_(True))
-        .exists()
-        .label("actor_active"),
-        select(OrganizationMembershipRow.membership_id)
-        .where(
-            OrganizationMembershipRow.user_id == actor_user_id,
-            OrganizationMembershipRow.organization_id == organization_id,
-            OrganizationMembershipRow.is_active.is_(True),
-        )
-        .exists()
-        .label("membership_active"),
-        select(OrganizationRow.organization_id)
-        .where(
-            OrganizationRow.organization_id == organization_id,
-            OrganizationRow.is_active.is_(True),
-        )
-        .exists()
-        .label("organization_active"),
-    ).cte("ticket_read_access")
-
-
-def _visible_statement(actor_user_id: int, organization_id: int):
-    membership = OrganizationMembershipRow
-    return (
-        select(*TicketRow.__table__.c)
-        .join(
-            OrganizationRow,
-            OrganizationRow.organization_id == TicketRow.organization_id,
-        )
-        .join(membership, membership.organization_id == TicketRow.organization_id)
-        .join(UserRow, UserRow.user_id == membership.user_id)
-        .where(
-            TicketRow.organization_id == organization_id,
-            UserRow.user_id == actor_user_id,
-            UserRow.is_active.is_(True),
-            membership.is_active.is_(True),
-            OrganizationRow.is_active.is_(True),
-            or_(
-                membership.role.in_(("agent", "admin", "owner")),
-                and_(
-                    membership.role == "customer",
-                    TicketRow.requester_membership_id == membership.membership_id,
-                ),
-            ),
-        )
-    )
 
 
 def _filtered_statement(statement, filters: TicketFilters):
@@ -115,9 +64,9 @@ class SqlAlchemyTicketReadRepository:
         limit: int,
         offset: int,
     ) -> TicketListRead:
-        access = _access_statement(actor_user_id, organization_id)
+        access = access_statement(actor_user_id, organization_id)
         visible = _filtered_statement(
-            _visible_statement(actor_user_id, organization_id), filters
+            visible_statement(actor_user_id, organization_id), filters
         ).cte("visible_tickets")
         page = (
             select(visible)
@@ -153,9 +102,9 @@ class SqlAlchemyTicketReadRepository:
     def get_for_actor(
         self, *, actor_user_id: int, organization_id: int, ticket_id: int
     ) -> TicketDetailRead:
-        access = _access_statement(actor_user_id, organization_id)
+        access = access_statement(actor_user_id, organization_id)
         visible = (
-            _visible_statement(actor_user_id, organization_id)
+            visible_statement(actor_user_id, organization_id)
             .where(TicketRow.ticket_id == ticket_id)
             .cte("visible_ticket")
         )

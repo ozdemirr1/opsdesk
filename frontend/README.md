@@ -3,7 +3,17 @@
 React + TypeScript interface for the OpsDesk support-ticket product, developed
 inside the product monorepo. Vite provides the development server and build tooling.
 
-## Current checkpoint — 27 October 2026
+## Current checkpoint — 28 October 2026
+
+The root opens Login when signed out and Workspaces when authenticated. App no
+longer mounts fixture Tickets. Signed-in navigation uses Workspaces/Account;
+registration success offers Continue to login and documents the password length.
+A real local PostgreSQL browser/API walkthrough passed. Frontend: 234 tests across
+12 files, build and lint passed. Today’s changes are uncommitted and not deployed.
+Yesterday’s published `0b28946` passed CI; no PR exists yet. Hosted registration,
+login/session-check/sign-out work, but the hosted UI still lacks Workspaces.
+
+## Earlier checkpoint — 27 October 2026
 
 The [live preview](https://opsdesk-production-448f.up.railway.app/) now includes
 the Week 15 table, filters and detail card at deployed source `255f937`.
@@ -38,7 +48,7 @@ needed for these fragment routes. Unknown paths show Page not found.
 
 Tests exercise the real adapters with synthetic HTTP responses. An in-app browser
 check verified anonymous direct-route/reload protection. Authenticated actual
-backend/database browser checks and hosted deployment remain pending.
+backend/database checks passed on 28 October; hosted private UI deployment remains pending.
 
 ## Week 15 public dashboard and identity baseline — historical
 
@@ -354,12 +364,12 @@ is independent; neither job proves real API integration, visual layout, or deplo
 - `src/api/organizations.ts`: validated Organization list/detail/create and membership context.
 - `src/api/resources.ts`: shared typed outcomes, pagination guards and cancellable transport.
 - `src/api/resource-boundaries.test.ts`: malformed payload, scope, query, failure and cancellation coverage.
-  Protected workspace components now call these adapters; the public preview stays mock-backed.
+  Protected workspace components now call these adapters; the older hosted preview stays mock-backed until the new source is deployed.
 - `src/navigation.ts`: allowlisted hash routes and browser history subscription.
 - `src/hooks/useResource.ts`: scoped request ownership and cancellation.
 - `src/components/Organizations.tsx` and `Workspace.tsx`: private directory/create and Ticket screens.
 - `src/WorkspaceFlow.test.tsx`: protected navigation, creation, filtering/pagination and session/scope races.
-- `src/data/mockTickets.ts`: synthetic display data passed to the table by App.
+- `src/data/mockTickets.ts`: synthetic display data retained for learning/component tests; not imported by App.
 - `src/index.css`: global typography, colors, and box sizing.
 - `src/App.css`: application spacing and layout.
 
@@ -372,9 +382,10 @@ See the [product README](../README.md) for capabilities and the
 [development guide](../docs/development.md) for backend setup.
 
 
-## Session and dashboard reset coverage
+## Session and dashboard reset coverage — historical Week 15
 
-The labelled mock Ticket dashboard remains available without signing in.
+At that historical checkpoint the labelled mock Ticket dashboard was public.
+It was removed from App navigation on 28 October.
 Sign out, a session-check 401, or an inactive current User returns to Login
 and removes the dashboard. Returning to Tickets starts with empty search,
 all statuses and no selected detail; session controls remain absent.

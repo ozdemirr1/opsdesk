@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react';
 
 export type Route =
-  | { screen: 'tickets' | 'login' | 'register' | 'organizations' | 'missing' }
+  | { screen: 'home' | 'login' | 'register' | 'organizations' | 'missing' }
   | { screen: 'workspace'; organizationId: number; ticketId?: number };
 
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#/u, '') || '/';
-  const screens = { '/': 'tickets', '/login': 'login', '/register': 'register', '/organizations': 'organizations' } as const;
+  const screens = { '/': 'home', '/login': 'login', '/register': 'register', '/organizations': 'organizations' } as const;
   if (Object.hasOwn(screens, path)) return { screen: screens[path as keyof typeof screens] };
   const match = /^\/organizations\/([1-9]\d*)\/tickets(?:\/([1-9]\d*))?$/u.exec(path);
   if (match) {

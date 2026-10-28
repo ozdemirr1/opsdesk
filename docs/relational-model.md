@@ -1,6 +1,6 @@
 # Relational Model
 
-> Implementation checkpoint: [project status — 25 October](project-status.md).
+> Implementation checkpoint: [project status — 28 October](project-status.md).
 > Design inventories and historical handoff notes below are not a claim that all
 > listed workflows are implemented.
 
@@ -9,8 +9,9 @@ Policy alignment: Friday, 11 September 2026.
 
 This document translates the [domain model](domain-model.md) into a PostgreSQL schema
 baseline. The [ERD](erd.md) illustrates the relationships. Users, Organizations,
-OrganizationMemberships, and Tickets are implemented and tested; Comments and
-Attachment metadata remain design documentation until their scheduled migrations.
+OrganizationMemberships, Tickets and Comment storage are implemented and tested.
+Comment revision `84c2f9a17d60` is verified on the test database; its service/API and
+form remain pending. Attachment metadata remains a design artifact.
 The [access-control matrix](access-control.md) and [Ticket lifecycle](ticket-lifecycle.md)
 supply reviewed operation rules. The [API baseline](api-contract.md) limits the
 Month 03 executable scope; the Attachment schema remains a design artifact with
@@ -168,6 +169,10 @@ this immutability; stronger database enforcement would require a separate decisi
 
 ## comments
 
+28 October: model/migration and scoped repository implemented. The posting rules
+below remain service/API requirements; the insert primitive does not authorize
+requests or normalize content. There is no public Comment endpoint yet.
+
 | Column | Type | Nullable | Constraint / default | Purpose |
 | --- | --- | --- | --- | --- |
 | comment_id | bigint | No | Identity primary key | Message identity |
@@ -288,8 +293,9 @@ be resolved before the relevant schema and API validation are implemented.
 
 - Initial identity canonical-storage constraints are implemented in revision
   `6a3066cd5538`; Ticket storage constraints are implemented in revision
-  `31be9023cfb2`. Both revisions are verified on the guarded test target. Comment
-  content bounds are reviewed, but the Comment table is not implemented yet.
+  `31be9023cfb2`; Comment storage is implemented in `84c2f9a17d60`. All are
+  verified on the guarded test target. Comment input normalization, posting
+  authorization and cooperating-lock service logic remain to be implemented.
 - Translate the reviewed matrices into service checks. The database supplies medium
   priority by default and enforces participant existence and tenant consistency;
   assignment-at-creation, active membership, eligible roles, and the requirement that

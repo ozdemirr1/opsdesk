@@ -11,12 +11,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from opsdesk.db.config import IntegrationDatabaseSettings
 from opsdesk.db.connection import create_integration_engine
 
-HEAD_REVISION = "31be9023cfb2"
+HEAD_REVISION = "84c2f9a17d60"
 PRODUCT_TABLES = {
     "users",
     "organizations",
     "organization_memberships",
     "tickets",
+    "comments",
 }
 
 pytestmark = [
@@ -85,13 +86,14 @@ def test_migration_chain_restores_schema(request, body_fails):
                 counts = connection.execute(
                     text(
                         "SELECT "
+                        "(SELECT COUNT(*) FROM public.comments), "
                         "(SELECT COUNT(*) FROM public.tickets), "
                         "(SELECT COUNT(*) FROM public.users), "
                         "(SELECT COUNT(*) FROM public.organizations), "
                         "(SELECT COUNT(*) FROM public.organization_memberships)"
                     )
                 ).one()
-                assert tuple(counts) == (0, 0, 0, 0), (
+                assert tuple(counts) == (0, 0, 0, 0, 0), (
                     "Schema tests require empty product tables."
                 )
 

@@ -226,10 +226,12 @@ uv run alembic -x target=development current
 uv run alembic -x target=development check
 ```
 
-Current schema head is `31be9023cfb2`. `upgrade head` applies only pending
+Current source schema head is `84c2f9a17d60`. On 28 October it was applied and
+verified on the guarded test database only; development and the last verified
+hosted schema remain at `31be9023cfb2`. `upgrade head` applies only pending
 revisions; repeating it at head does not recreate tables or delete records.
 `current` reports the revision; `check` compares the schema with model metadata.
-The schema contains users, organizations, organization_memberships, tickets,
+The schema contains users, organizations, organization_memberships, tickets, comments,
 and Alembic's revision table. Do not use `create_all()` or manual table DDL.
 
 Development migrations require the exact local database, application role,
@@ -290,9 +292,9 @@ connection test verifies the database, role, server address, and port.
 - The target guard runs before engine creation and probe setup/cleanup. Only
   `public.integration_probe` is created for these infrastructure tests. Its rows
   are deleted before and after each isolated probe scope in separate committed
-  transactions. Product-data scopes separately delete only `tickets`,
+  transactions. Product-data scopes separately delete only `comments`, `tickets`,
   `organization_memberships`, `users`, then `organizations`, after checking revision
-  `31be9023cfb2`.
+  `84c2f9a17d60`.
   Data cleanup preserves `alembic_version`; it does not reset identity sequences.
 - Tests close their Sessions before cleanup. Real commits are checked from separate
   Sessions; uncommitted writes, exception cleanup, and pool return are also tested.

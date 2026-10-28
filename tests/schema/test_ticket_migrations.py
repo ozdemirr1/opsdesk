@@ -10,7 +10,7 @@ from opsdesk.db.config import IntegrationDatabaseSettings
 from opsdesk.db.connection import create_integration_engine
 
 IDENTITY_REVISION = "6a3066cd5538"
-HEAD_REVISION = "31be9023cfb2"
+HEAD_REVISION = "84c2f9a17d60"
 
 pytestmark = [
     pytest.mark.integration,
@@ -60,6 +60,7 @@ def assert_head_schema(engine) -> None:
 
 def clean_product_rows(engine) -> None:
     with engine.begin() as connection:
+        connection.execute(text("DELETE FROM public.comments"))
         connection.execute(text("DELETE FROM public.tickets"))
         connection.execute(text("DELETE FROM public.organization_memberships"))
         connection.execute(text("DELETE FROM public.users"))

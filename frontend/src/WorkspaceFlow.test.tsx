@@ -319,3 +319,37 @@ test('failed login does not expose Workspaces or navigate to the directory', asy
   expect(screen.queryByRole('button', { name: 'Workspaces' })).not.toBeInTheDocument();
   expect(fetchMock).not.toHaveBeenCalled();
 });
+
+
+test.each(['sign-out', 'unauthorized', 'inactive'] as const)(
+  'clears real dashboard filters and selection across %s and re-login', async reason => {
+    start();
+    const actor = await signIn();
+    await screen.findByRole('button', { name: /View ticket #1/ });
+    await actor.type(screen.getByLabelText('Search ticket titles'), 'Private');
+    await actor.selectOptions(screen.getByLabelText('Status'), 'open');
+    await actor.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await actor.click(await screen.findByRole('button', { name: /View ticket #1/ }));
+    await screen.findByRole('region', { name: 'Ticket details' });
+    if (reason === 'sign-out') {
+      await actor.click(screen.getByRole('button', { name: 'Sign out' }));
+    } else {
+      vi.mocked(getCurrentUser).mockResolvedValueOnce(reason === 'unauthorized'
+        ? { ok: false, kind: 'http', status: 401, message: 'Authentication required.' }
+        : { ok: true, status: 200, data: { user_id: 1, email: 'demo@example.com', is_active: false } });
+      await actor.click(screen.getByRole('button', { name: 'Check session' }));
+    }
+    await screen.findByRole('heading', { name: 'Login' });
+    expect(screen.queryByRole('region', { name: 'Ticket details' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Your role: owner')).not.toBeInTheDocument();
+    await go('/');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    await signIn();
+    await actor.click(await screen.findByRole('link', { name: 'Open Alpha support' }));
+    await screen.findByRole('table');
+    expect(screen.getByLabelText('Search ticket titles')).toHaveValue('');
+    expect(screen.getByLabelText('Status')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
+    expect(screen.queryByRole('region', { name: 'Ticket details' })).not.toBeInTheDocument();
+  },
+);

@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AppHeader from './components/AppHeader';
-import TicketDashboard from './components/TicketDashboard';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import { getCurrentUser } from './api/identity';
-import { mockTickets } from './data/mockTickets';
 import type { Session } from './types/session';
 import Organizations from './components/Organizations';
 import Workspace from './components/Workspace';
@@ -147,7 +145,11 @@ function App() {
   };
 
   const privateRoute = route.screen === 'organizations' || route.screen === 'workspace';
-  const activeScreen = privateRoute && !session ? 'login' : route.screen;
+  // Root opens the user's directory only after authentication. Learning fixtures
+  // are not part of the product navigation.
+  const activeScreen = privateRoute && !session ? 'login'
+    : route.screen === 'home' ? (session ? 'organizations' : 'login')
+    : session && route.screen === 'register' ? 'organizations' : route.screen;
 
   return (
     <>
@@ -157,28 +159,13 @@ function App() {
       />
 
       <nav aria-label="Screens" className="screen-nav">
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          aria-pressed={activeScreen === 'tickets'}
-        >
-          Tickets
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/login')}
-          aria-pressed={activeScreen === 'login'}
-        >
-          Login
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/register')}
-          aria-pressed={activeScreen === 'register'}
-        >
-          Register
-        </button>
-        {session && <button type="button" onClick={() => navigate('/organizations')} aria-pressed={privateRoute}>Workspaces</button>}
+        {!session ? <>
+          <button type="button" onClick={() => navigate('/login')} aria-pressed={activeScreen === 'login'}>Login</button>
+          <button type="button" onClick={() => navigate('/register')} aria-pressed={activeScreen === 'register'}>Register</button>
+        </> : <>
+          <button type="button" onClick={() => navigate('/organizations')} aria-pressed={activeScreen === 'organizations' || activeScreen === 'workspace'}>Workspaces</button>
+          <button type="button" onClick={() => navigate('/login')} aria-pressed={activeScreen === 'login'}>Account</button>
+        </>}
         {session && (
           <>
             <button
@@ -199,31 +186,24 @@ function App() {
       </nav>
 
       <main>
-        {!privateRoute && <p className="mock-note">
-          Tickets use mock data. Registration and login connect to the live API.
-        </p>}
-
-        {session && route.screen === 'organizations' && <Organizations key={sessionEpoch} token={session.accessToken} onExpired={handleExpired} />}
+        {session && activeScreen === 'organizations' && <Organizations key={sessionEpoch} token={session.accessToken} onExpired={handleExpired} />}
         {session && route.screen === 'workspace' && <Workspace key={`${sessionEpoch}:${route.organizationId}`} token={session.accessToken}
           organizationId={route.organizationId} ticketId={route.ticketId} onExpired={handleExpired} />}
-        {route.screen === 'missing' && <section><h2>Page not found</h2><a href="#/">Return to preview</a></section>}
+        {route.screen === 'missing' && <section><h2>Page not found</h2><a href="#/">Go to home</a></section>}
         {privateRoute && !session && <p>Sign in to open this workspace. Reloading clears your session.</p>}
         {sessionError && <p role="alert">{sessionError}</p>}
 
-        {activeScreen === 'tickets' && (
-          <section>
-            <h2>Tickets</h2>
-            <TicketDashboard tickets={mockTickets} />
-          </section>
-        )}
-
         {activeScreen === 'login' && (
           <section>
-            <h2>Login</h2>
+            <h2>{session ? 'Account' : 'Login'}</h2>
             {session ? (
               <p role="status">Signed in as {session.user.email}</p>
             ) : (
-              <LoginForm onAuthenticated={handleAuthenticated} />
+              <>
+                <p>Sign in to access your workspaces and tickets.</p>
+                <p className="session-note">Your session stays in this tab. Reloading requires signing in again.</p>
+                <LoginForm onAuthenticated={handleAuthenticated} />
+              </>
             )}
           </section>
         )}
