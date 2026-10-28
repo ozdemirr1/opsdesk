@@ -10,36 +10,35 @@ full-stack learning documented in my
 
 **[Open OpsDesk](https://opsdesk-production-448f.up.railway.app/)**
 
-Rechecked on **28 October 2026**, registration through the API and browser login, session checking and sign-out work
-against the FastAPI backend and hosted PostgreSQL database.
-FastAPI serves the React build and API from the same origin on Railway.
+Verified on **29 October 2026** after deployment of the 28 October work:
+registration, login, workspace creation/selection and real Ticket list/detail work
+against the FastAPI backend and hosted PostgreSQL database. FastAPI serves the
+React build and API from the same origin on Railway; deployment follows `main`.
 
-Use a made-up email such as `your-name-demo-25@example.com` and a password used
-only for this demo. Accounts may be reset; do not enter real customer/support data.
+Use a made-up email such as `your-name-demo@example.com` and a password used only
+for this demo. Accounts may be reset; do not enter real customer/support data.
 Tokens stay in memory, so reloading requires login again. Sign-out clears the
 browser session; it is not server-side JWT revocation.
 
-**The hosted Ticket dashboard is explicitly labelled mock data.** Search, status filtering
-and details use three synthetic records. It is an early identity-flow preview;
-hosted real Ticket UI integration, comments, workflow actions and AI are not delivered yet.
+**Sign in to access your workspaces and Tickets.** Search, status filters and
+pagination use the real API. A new workspace starts empty: Ticket creation is
+currently available through the API, with its UI still pending. Comments,
+workflow actions and AI are not available in the interface yet.
 
-![Live OpsDesk mock Ticket dashboard, captured 25 October 2026](docs/images/dashboard-2026-10-25.jpg)
+![Live OpsDesk Ticket detail, captured 29 October 2026](docs/images/ticket-detail-2026-10-29.png)
 
-Actual browser capture of deployed source `255f937`; no product mockup or generated
-interface. The preview is a learning deployment, not a production-readiness claim.
-
-Locally, the 28 October interface opens Login before authentication and removes
-fixture Tickets from normal navigation. Real workspaces and Ticket reads are
-verified against local PostgreSQL; that increment is not deployed yet.
+Actual browser capture of runtime source `2013248`, using a synthetic account and
+API-created test Ticket. This is a learning preview, not a production-readiness
+claim. The older public fixture dashboard is no longer in product navigation.
 
 ## Implemented and planned
 
 | Area | Implemented now | Remaining work |
 | --- | --- | --- |
 | Identity | Registration, Argon2id password hashes, JWT login, persisted active User resolution; browser forms/session handling | Bounded public-demo abuse controls and further operational verification |
-| Organizations | Atomic creation with owner membership; scoped list/detail API and local selection/creation UI | Membership/role/ownership mutations; hosted verification of the new UI |
-| Tickets | Tenant-consistent schema, creation and scoped list/detail APIs with title search/filter/pagination; older hosted mock preview; locally verified protected real-data table/detail | Hosted integration verification, creation UI, assignment, priority changes, status workflow, comments |
-| Comments | Tenant-consistent schema/model and scoped repository verified on the test database | Service authorization, input normalization, cooperating locks, HTTP API and form |
+| Organizations | Atomic creation with owner membership; scoped list/detail API and hosted selection/creation UI | Membership/role/ownership mutations |
+| Tickets | Tenant-consistent schema, creation and scoped list/detail APIs with title search/filter/pagination; hosted protected real-data table/detail | Creation UI, assignment, priority changes, status workflow, comments |
+| Comments | Tenant-consistent schema/model and scoped repository; migration deployed, repository tested locally | Service authorization, input normalization, cooperating locks, HTTP API and form |
 | Quality and deployment | Backend/frontend CI; guarded local PostgreSQL tests; live same-origin preview and health endpoints | PostgreSQL CI, isolated restore/rollback evidence, broader release gates |
 | UI and AI | Typed components, accessible table semantics, focus handling and basic CSS | Week 16 full Month 04 UI package; AI planned for Month 06 |
 
@@ -49,7 +48,7 @@ The Week 16 backend now exposes nine business endpoints: `POST /users`,
 `POST /organizations/{organization_id}/tickets`,
 `GET /organizations/{organization_id}/tickets` and
 `GET /organizations/{organization_id}/tickets/{ticket_id}`, plus two health endpoints.
-The new reads belong to Week 16; the last verified live preview runs the Week 15 source.
+The Week 16 reads are deployed and verified through the hosted UI.
 The 22-endpoint design inventory describes the target, not the implemented API.
 
 ## Verification evidence
@@ -68,15 +67,15 @@ see the [baseline and contract preparation](docs/issues/f11.md#week-16-implement
 Ticket reads/search are implemented and locally tested; see the
 [implementation evidence](docs/issues/f11.md#week-16-local-implementation--26-october-2026).
 The 28 October Comment foundation adds revision `84c2f9a17d60`; its guarded
-migration tests and metadata check pass. Only the test database was upgraded;
-local development and the last verified hosted schema remain at `31be9023cfb2`.
+migration tests and metadata check pass. The test database and hosted deployment
+are upgraded; the last verified local development schema remains `31be9023cfb2`.
 
 Week 15 merged through [PR #43](https://github.com/ozdemirr1/opsdesk/pull/43).
 [Backend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40193369253) and
 [Frontend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40193369467)
 passed at merge commit `122c052`. Backend CI excludes PostgreSQL tests.
 The deployed source verified on 25 October was `255f937`; both health endpoints
-returned 200 then. The deployed SHA was not independently retrieved on 28 October.
+returned 200 then. The newer runtime `2013248` passed hosted smoke on 29 October.
 Full evidence, limitations and issue closures are in [project status](docs/project-status.md).
 
 ## Run locally and explore the design
@@ -94,18 +93,15 @@ Local product databases are `opsdesk_product_dev` and `opsdesk_product_test`.
 The older bootcamp databases `opsdesk_dev` / `opsdesk_test` are separate learning
 artifacts. Never run destructive tests against development or the hosted demo.
 
-Organization/Ticket HTTP adapters now validate responses at runtime and serve
-the local protected workspace screens (27 October). Public preview Tickets remain
-mock-backed. The focused backend read tests also passed all 77 cases on 27 October.
+Organization/Ticket HTTP adapters validate responses at runtime and serve the
+protected workspace screens. The real PostgreSQL/browser walkthrough passed
+locally on 28 October and on the hosted preview on 29 October.
+[PR #47](https://github.com/ozdemirr1/opsdesk/pull/47) merged as `2013248` with passing
+Backend/Frontend CI and successful Railway deployment. See [project status](docs/project-status.md).
 
-The actual local PostgreSQL/browser walkthrough passed on 28 October. Yesterday’s
-branch `0b28946` passed Backend/Frontend CI; no PR exists yet. Today’s navigation
-corrections and Comment persistence foundation are uncommitted. See [project status](docs/project-status.md).
-
-Next: publish and verify the complete private flow on the
-hosted deployment, then persisted comments, a role-aware priority action and the
+Next: persisted comments through the API/form, a role-aware priority action and the
 full Month 04 UI package. The revised Week 16 plan allocates 42 focused hours plus
 up to 8 contingency hours; these are targets, not shipped features. Docker/Redis remain Month 05;
 AI summarization, priority/category suggestions and evaluations remain Month 06.
-The broader backend release issue R01 is still open: this smaller identity preview
+The broader backend release issue R01 is still open: this smaller workspace preview
 does not fulfill its complete feature and operational acceptance criteria.

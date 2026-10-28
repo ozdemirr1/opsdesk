@@ -226,9 +226,10 @@ uv run alembic -x target=development current
 uv run alembic -x target=development check
 ```
 
-Current source schema head is `84c2f9a17d60`. On 28 October it was applied and
-verified on the guarded test database only; development and the last verified
-hosted schema remain at `31be9023cfb2`. `upgrade head` applies only pending
+Current source schema head is `84c2f9a17d60`. It was tested on the guarded test
+database on 28 October and applied by the successful Railway pre-deploy migration.
+Release verification completed on 29 October. The last verified development
+schema remains `31be9023cfb2`. `upgrade head` applies only pending
 revisions; repeating it at head does not recreate tables or delete records.
 `current` reports the revision; `check` compares the schema with model metadata.
 The schema contains users, organizations, organization_memberships, tickets, comments,

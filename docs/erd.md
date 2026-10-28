@@ -7,8 +7,9 @@ This diagram shows physical table identities and relationship columns. The
 key groups, deletion behavior, and limits of database enforcement.
 Implementation checkpoint, 28 October: Users, Organizations,
 OrganizationMemberships, Tickets and Comments are implemented through source head
-`84c2f9a17d60`, verified on the guarded test database. Development and the last
-verified hosted schema remain `31be9023cfb2`. Comment service/API and Attachment
+`84c2f9a17d60`, verified on the guarded test database and applied to the hosted
+deployment (release verified 29 October). The last verified development schema
+remains `31be9023cfb2`. Comment service/API and Attachment
 storage remain planned.
 See [project status](project-status.md) for implementation evidence.
 

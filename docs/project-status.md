@@ -1,4 +1,4 @@
-# Project status — 28 October 2026
+# Project status — 29 October 2026 (28 October release closure)
 
 This is a dated implementation checkpoint. The [README](../README.md) summarizes
 the product; contract documents describe intended rules. Issue files preserve
@@ -10,18 +10,18 @@ initial scope and dated implementation notes. GitHub remains the live work track
   synchronous SQLAlchemy Sessions and explicit transaction ownership.
 - Alembic schema includes Users, Organizations, OrganizationMemberships, Tickets
   and the new Comment foundation at source head `84c2f9a17d60`. The guarded test
-  database is upgraded; development and the last verified hosted schema remain
-  `31be9023cfb2`. Attachments remain planned; Comments have no service/API yet.
+  database and hosted deployment are upgraded; the last verified development
+  schema remains `31be9023cfb2`. Attachments remain planned; Comments have no service/API yet.
 - Registration, login and active persisted current-User resolution.
 - Atomic Organization creation and membership-scoped Organization list/detail.
 - Authenticated Ticket creation with server-derived requester/creator, tenant
   constraints, ordered locks, rollback and contention tests.
 - Local Week 16 scoped Ticket list/detail API with title search, filters and
   same-statement count/page/access checks; unit/API and PostgreSQL tests pass.
-  These GET routes have not been deployed by this task.
+  These GET routes are deployed and passed hosted smoke on 29 October.
 - React identity forms with runtime response guards and in-memory session state.
-- The hosted preview still has public fixture Tickets. Local App now opens Login
-  before authentication and only real workspaces after login; fixture components
+- Both local and hosted App open Login before authentication and real workspaces
+  after login; fixture components
   are retained outside product navigation.
 - Pure Ticket display mapper plus validated Organization/Ticket HTTP adapters,
   locally added on 27 October and connected to protected workspace screens.
@@ -32,7 +32,11 @@ initial scope and dated implementation notes. GitHub remains the live work track
 - Local Organization selection/creation, membership roles, protected hash routes
   and real Ticket list/detail/search/pagination. Private request ownership is
   verified with synthetic-response UI tests and a real local PostgreSQL/browser
-  walkthrough. Hosted private-flow release remains pending. No new deployment is claimed.
+  walkthrough. Hosted private-flow release is verified below; the full Month 04
+  feature/UI scope remains incomplete.
+
+Earlier dated sections retain the evidence available at that time. The latest
+release verification is recorded at the end.
 
 ## Closed design and implementation issues
 
@@ -65,7 +69,7 @@ dashboard and display adapter merged normally in
 
 | Work | Issue(s) | Next decision / prerequisite |
 | --- | --- | --- |
-| Ticket list/detail | [F11 #19](https://github.com/ozdemirr1/opsdesk/issues/19) | Backend merged in PR #46 with CI; runtime guards and private UI ready locally; actual database/browser verified; publication and hosted verification remain |
+| Ticket list/detail | [F11 #19](https://github.com/ozdemirr1/opsdesk/issues/19) | Backend merged in PR #46 with CI; runtime guards/private UI merged in PR #47; local and hosted browser smoke passed |
 | Membership directory/add/reactivation | #16, #17 | Needed before meaningful membership administration UI; estimate at Month 04 handoff |
 | Priority/assignment and status workflow | #20, #21 | Current-state role checks and cooperating locks; not inert UI buttons |
 | Role/deactivation and ownership transfer | #22, #23 | Reviewed invariants and overlapping-operation tests |
@@ -235,3 +239,41 @@ Thursday 29 October: finish Comment service/API authorization, content rules,
 posting/closing contention and rollback tests, then CommentForm/list integration
 and the scheduled priority boundary. Publication needs review and new-commit CI;
 hosted private-workspace verification and Month 04 learning/handoff gates remain.
+
+
+## 29 October — release verification closing the 28 October work
+
+The interruption left hosted smoke and publication records unfinished, not another
+implementation task. This check was completed on 29 October (Europe/Istanbul).
+The interrupted registration result was not recovered; a new synthetic account
+was registered through the browser and its success message was verified.
+
+- Product [PR #47](https://github.com/ozdemirr1/opsdesk/pull/47) merged normally as
+  `2013248`; bootcamp [PR #11](https://github.com/ozdemirr1/ai-backend-bootcamp/pull/11)
+  merged as `e94c0a9`. Daily commits were preserved.
+- Product merge-commit [Backend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40728800136)
+  and [Frontend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40728800380)
+  passed. PostgreSQL results remain the separate local 28 October runs; this
+  closure does not claim a fresh destructive database test run.
+- Railway now follows `main`, replacing `feature/week-15-railway-preview`.
+  Deployment `524bd101-54ed-4c3c-a1b3-41c59c8f8dcf` succeeded for `2013248`.
+  Its guarded hosted pre-deploy migration upgraded `31be9023cfb2` to
+  `84c2f9a17d60`. The development database was not migrated during this closure.
+- Hosted browser: anonymous root shows Login without fixture Tickets; register,
+  Continue to login, login, empty directory, workspace creation/selection, real
+  Ticket table/detail, combined literal `100%_search`/open filter, session check,
+  private-detail reload, login return and sign-out passed.
+- Hosted API: live/ready returned 200; scoped reads and two non-overlapping
+  one-item pages passed; anonymous Organization/list/detail and wrong-password
+  login returned 401. Cross-tenant and inactive-state cases retain their prior
+  local/automated evidence; they were not repeated against other hosted accounts.
+- One synthetic user and one workspace were created in this completion check.
+  Two synthetic Tickets were created through the API because the UI does not yet
+  offer Ticket creation. No existing records were deleted. The browser was signed
+  out and temporary credential material was removed after verification.
+
+The 28 October release-verification gate is closed. Comment service/API/form,
+posting-state checks and cooperating locks, priority actions, Ticket creation UI,
+and the remaining Month 04 UI/learning gates remain open. Earlier dated pending
+statements in this report describe their original checkpoint, not current release
+status. No new daily report was added.
