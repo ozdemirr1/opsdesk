@@ -4,14 +4,15 @@ import StatusBadge from './StatusBadge';
 type TicketDetailProps = {
   ticket: TicketSummary;
   onClose: () => void;
+  isMock?: boolean;
 };
 
-export default function TicketDetail({ ticket, onClose }: TicketDetailProps) {
+export default function TicketDetail({ ticket, onClose, isMock = true }: TicketDetailProps) {
   return (
-    <section className="ticket-detail" aria-label="Mock ticket details">
+    <section className="ticket-detail" aria-label={isMock ? 'Mock ticket details' : 'Ticket details'}>
       <div className="ticket-detail-header">
         <div>
-          <p className="ticket-detail-eyebrow">MOCK TICKET · #{ticket.ticketId}</p>
+          <p className="ticket-detail-eyebrow">{isMock ? 'MOCK TICKET' : 'TICKET'} · #{ticket.ticketId}</p>
           <h3>{ticket.title}</h3>
         </div>
         <button type="button" className="ticket-close-button" onClick={onClose} autoFocus>

@@ -169,6 +169,7 @@ export default function RegisterForm() {
         </label>
         <input
           id="register-password"
+          aria-describedby="password-help"
           type="password"
           name="password"
           autoComplete="new-password"
@@ -178,6 +179,8 @@ export default function RegisterForm() {
           onChange={handlePasswordChange}
         />
       </div>
+
+      <p id="password-help">Use 15–128 characters. For this demo, choose a password you do not use elsewhere.</p>
 
       <div className="form-group">
         <label htmlFor="register-confirm-password">
@@ -198,6 +201,8 @@ export default function RegisterForm() {
       <button type="submit" className="submit-btn" disabled={isSubmitting}>
         {isSubmitting ? 'Creating account...' : 'Create account'}
       </button>
+
+      {feedback?.kind === 'success' && <p><a href="#/login">Continue to login</a></p>}
 
       {feedback && (
         <div

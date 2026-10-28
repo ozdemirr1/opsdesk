@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import BigInteger, DateTime, Text, inspect, text
 
-HEAD_REVISION = "31be9023cfb2"
+HEAD_REVISION = "84c2f9a17d60"
 
 pytestmark = pytest.mark.integration
 

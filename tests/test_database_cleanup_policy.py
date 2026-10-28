@@ -137,7 +137,7 @@ def integration_engine():
         if sql == "SELECT version_num FROM public.alembic_version":
             result = MagicMock()
             result.scalar_one.return_value = (
-                "unexpected-revision" if mode == "revision" else "31be9023cfb2"
+                "unexpected-revision" if mode == "revision" else "84c2f9a17d60"
             )
             return result
 
@@ -147,7 +147,7 @@ def integration_engine():
                 str(delete_count), encoding="utf-8"
             )
 
-            failure_at = 1 if mode == "before" else 5
+            failure_at = 1 if mode == "before" else 6
             if delete_count == failure_at:
                 raise OperationalError(
                     None,
@@ -203,7 +203,7 @@ def integration_engine():
         assert not delete_counter.exists()
         assert "Unexpected schema revision for identity cleanup." in output
     else:
-        expected_deletes = "1" if failure_mode == "before" else "5"
+        expected_deletes = "1" if failure_mode == "before" else "6"
         assert delete_counter.read_text(encoding="utf-8") == expected_deletes
         assert "RuntimeError: Database operation failed." in output
 

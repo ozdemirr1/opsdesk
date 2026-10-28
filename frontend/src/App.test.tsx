@@ -2,260 +2,111 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
-import { loginUser, getCurrentUser, type CurrentUserResult } from './api/identity';
+import { navigate } from './navigation';
+import { registerUser, loginUser, getCurrentUser, type CurrentUserResult } from './api/identity';
 
 vi.mock('./api/identity', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/identity')>();
   return {
     ...actual,
+    registerUser: vi.fn(),
     loginUser: vi.fn(),
     getCurrentUser: vi.fn(),
   };
 });
 
+vi.mock('./api/organizations', () => ({
+  listOrganizations: vi.fn(async () => ({ ok: true, status: 200,
+    data: { items: [], total_count: 0, limit: 20, offset: 0 } })),
+}));
+
+// Session controls live on Account after the directory landing.
+async function openSessionScreen(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByRole('heading', { name: 'Workspaces' });
+  await user.click(screen.getByRole('button', { name: 'Account' }));
+}
+
 beforeEach(() => {
+  vi.mocked(registerUser).mockReset();
   vi.mocked(loginUser).mockReset();
   vi.mocked(getCurrentUser).mockReset();
 });
 
-test('renders Tickets heading and table initially, no Login/Register headings, and Tickets button is selected', () => {
-  render(<App />);
+test.each(['/', '/login', '/organizations', '/organizations/10/tickets', '/organizations/10/tickets/1'])(
+  'shows login without sample or private tickets at %s when signed out', path => {
+    window.history.replaceState(null, '', `#${path}`);
+    render(<App />);
+    expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cannot access workspace')).not.toBeInTheDocument();
+    for (const name of ['Tickets', 'Workspaces', 'Account', 'Sign out', 'Check session']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+  },
+);
 
-  // Check headings
-  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
-  expect(screen.queryByRole('heading', { name: 'Register', level: 2 })).not.toBeInTheDocument();
-
-  // Check initial table presence
-  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
-
-  // Check the selected button
-  expect(screen.getByRole('button', { name: 'Tickets' })).toHaveAttribute('aria-pressed', 'true');
-
-  // Verify Sign out button is not visible initially
-  expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Check session' })).not.toBeInTheDocument();
-});
-
-test('navigates to Login screen and returns to Tickets screen showing the table again', async () => {
+test('clears registration drafts and validation on leaving the form', async () => {
   const user = userEvent.setup();
   render(<App />);
-
-  const loginBtn = screen.getByRole('button', { name: 'Login' });
-  const ticketsBtn = screen.getByRole('button', { name: 'Tickets' });
-
-  // Click the Login button
-  await user.click(loginBtn);
-
-  expect(screen.getByRole('heading', { name: 'Login', level: 2 })).toBeInTheDocument();
-  expect(screen.queryByRole('heading', { name: 'Tickets', level: 2 })).not.toBeInTheDocument();
-  expect(screen.queryByRole('table', { name: 'Ticket list' })).not.toBeInTheDocument();
-
-  // Verify form fields are rendered on the Login screen
-  expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-  expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-
-  expect(loginBtn).toHaveAttribute('aria-pressed', 'true');
-
-  // Click the Tickets button again
-  await user.click(ticketsBtn);
-
-  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
-  expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
-
-  // Verify form fields are removed from the DOM
-  expect(screen.queryByLabelText(/^Email/i)).not.toBeInTheDocument();
-  expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
-
-  expect(ticketsBtn).toHaveAttribute('aria-pressed', 'true');
-});
-
-test('shows only Register heading when navigated to Register, and form fields reset on screen return', async () => {
-  const user = userEvent.setup();
-  render(<App />);
-
-  const registerBtn = screen.getByRole('button', { name: 'Register' });
-  const loginBtn = screen.getByRole('button', { name: 'Login' });
-  const ticketsBtn = screen.getByRole('button', { name: 'Tickets' });
-
-  // Click the Register button
-  await user.click(registerBtn);
-
-  expect(screen.getByRole('heading', { name: 'Register', level: 2 })).toBeInTheDocument();
-  expect(screen.queryByRole('heading', { name: 'Tickets', level: 2 })).not.toBeInTheDocument();
-  expect(screen.queryByRole('heading', { name: 'Login', level: 2 })).not.toBeInTheDocument();
-  expect(screen.queryByRole('table', { name: 'Ticket list' })).not.toBeInTheDocument();
-
-  // Form fields should be visible
-  const emailInput = screen.getByLabelText(/email/i);
-  const passwordInput = screen.getByLabelText(/^Password/i);
-  const confirmPasswordInput = screen.getByLabelText(/^Confirm password/i);
-  const submitBtn = screen.getByRole('button', { name: 'Create account' });
-
-  expect(emailInput).toBeInTheDocument();
-  expect(passwordInput).toBeInTheDocument();
-  expect(confirmPasswordInput).toBeInTheDocument();
-
-  // Check button states
-  expect(registerBtn).toHaveAttribute('aria-pressed', 'true');
-  expect(ticketsBtn).toHaveAttribute('aria-pressed', 'false');
-  expect(loginBtn).toHaveAttribute('aria-pressed', 'false');
-
-  // Type mismatched data (both >= 15 chars) into fields and submit
-  await user.type(emailInput, 'draft@example.com');
-  await user.type(passwordInput, 'draftPassword123');
-  await user.type(confirmPasswordInput, 'differentPassword123');
-  await user.click(submitBtn);
-
+  await user.click(screen.getByRole('button', { name: 'Register' }));
+  await user.type(screen.getByLabelText(/^Email/i), 'draft@example.com');
+  await user.type(screen.getByLabelText(/^Password/i), 'draft-password-123');
+  await user.type(screen.getByLabelText(/^Confirm password/i), 'another-password-123');
+  await user.click(screen.getByRole('button', { name: 'Create account' }));
   expect(screen.getByRole('alert')).toHaveTextContent('Passwords do not match.');
-
-  // Switch to Tickets screen
-  await user.click(ticketsBtn);
-
-  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeInTheDocument();
-  expect(screen.queryByLabelText(/^Email/i)).not.toBeInTheDocument();
-  expect(screen.queryByLabelText(/^Password/i)).not.toBeInTheDocument();
-  expect(screen.queryByLabelText(/^Confirm password/i)).not.toBeInTheDocument();
-
-  // Return to Register screen and verify fields and feedback are reset
-  await user.click(registerBtn);
-
-  expect(screen.getByRole('heading', { name: 'Register', level: 2 })).toBeInTheDocument();
-  expect(screen.getByLabelText(/email/i)).toHaveValue('');
+  await user.click(screen.getByRole('button', { name: 'Login' }));
+  await user.click(screen.getByRole('button', { name: 'Register' }));
+  expect(screen.getByLabelText(/^Email/i)).toHaveValue('');
   expect(screen.getByLabelText(/^Password/i)).toHaveValue('');
   expect(screen.getByLabelText(/^Confirm password/i)).toHaveValue('');
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  expect(screen.queryByRole('status')).not.toBeInTheDocument();
 });
 
-test('preserves authenticated session across screen transitions and does not leak to a new App instance', async () => {
+test('successful registration offers login without silently creating a session', async () => {
+  vi.mocked(registerUser).mockResolvedValue({ ok: true, status: 201,
+    data: { user_id: 5, email: 'demo@example.com', is_active: true } });
   const user = userEvent.setup();
-
-  vi.mocked(loginUser).mockResolvedValue({
-    ok: true,
-    status: 200,
-    data: { access_token: 'test-token-123', token_type: 'bearer' },
-  });
-
-  vi.mocked(getCurrentUser).mockResolvedValue({
-    ok: true,
-    status: 200,
-    data: { user_id: 1, email: 'operator@example.com', is_active: true },
-  });
-
-  const { unmount } = render(<App />);
-
-  const loginBtn = screen.getByRole('button', { name: 'Login' });
-  const ticketsBtn = screen.getByRole('button', { name: 'Tickets' });
-
-  // Navigate to Login screen
-  await user.click(loginBtn);
-
-  // Fill in credentials and submit
-  const emailInput = screen.getByLabelText(/email/i);
-  const passwordInput = screen.getByLabelText(/password/i);
-  const submitBtn = screen.getByRole('button', { name: 'Sign in' });
-
-  await user.type(emailInput, 'operator@example.com');
-  await user.type(passwordInput, 'validPassword123');
-  await user.click(submitBtn);
-
-  // Verify status replaces form
-  const statusEl = await screen.findByRole('status');
-  expect(statusEl).toHaveTextContent('Signed in as operator@example.com');
-  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
-  expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
-
-  // Switch to Tickets screen and verify status text is not displayed there
-  await user.click(ticketsBtn);
-  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  expect(screen.queryByText('Signed in as operator@example.com')).not.toBeInTheDocument();
-
-  // Return to Login screen: session should be preserved
-  await user.click(loginBtn);
-  expect(screen.getByRole('status')).toHaveTextContent('Signed in as operator@example.com');
-  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
-
-  // Mount a fresh App instance: should start without session
-  unmount();
   render(<App />);
-
-  const freshLoginBtn = screen.getByRole('button', { name: 'Login' });
-  await user.click(freshLoginBtn);
-
-  expect(screen.queryByText(/Signed in as/i)).not.toBeInTheDocument();
-  expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-  expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Register' }));
+  await user.type(screen.getByLabelText(/^Email/i), 'demo@example.com');
+  await user.type(screen.getByLabelText(/^Password/i), 'demo-password-123');
+  await user.type(screen.getByLabelText(/^Confirm password/i), 'demo-password-123');
+  await user.click(screen.getByRole('button', { name: 'Create account' }));
+  expect(await screen.findByRole('status')).toHaveTextContent('Account created. You are not signed in.');
+  expect(screen.getByLabelText(/^Password/i)).toHaveValue('');
+  expect(screen.queryByRole('button', { name: 'Workspaces' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('link', { name: 'Continue to login' }));
+  expect(await screen.findByRole('heading', { name: 'Login' })).toBeInTheDocument();
+  expect(loginUser).not.toHaveBeenCalled();
 });
 
-test('handles sign out flow: hides Sign out initially, signs out from Tickets, clears session, and allows re-login', async () => {
+test('authenticated root opens Workspaces, auth navigation disappears, and logout guards history', async () => {
+  vi.mocked(loginUser).mockResolvedValue({ ok: true, status: 200,
+    data: { access_token: 'synthetic-session', token_type: 'bearer' } });
+  vi.mocked(getCurrentUser).mockResolvedValue({ ok: true, status: 200,
+    data: { user_id: 1, email: 'demo@example.com', is_active: true } });
   const user = userEvent.setup();
-
-  vi.mocked(loginUser).mockResolvedValue({
-    ok: true,
-    status: 200,
-    data: { access_token: 'test-token-123', token_type: 'bearer' },
-  });
-
-  vi.mocked(getCurrentUser).mockResolvedValue({
-    ok: true,
-    status: 200,
-    data: { user_id: 1, email: 'operator@example.com', is_active: true },
-  });
-
+  const view = render(<App />);
+  await user.type(screen.getByLabelText(/^Email/i), 'demo@example.com');
+  await user.type(screen.getByLabelText(/^Password/i), 'demo-password-123');
+  await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await screen.findByRole('heading', { name: 'Workspaces' });
+  expect(screen.queryByRole('button', { name: 'Register' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Login' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Account' }));
+  expect(screen.getByRole('status')).toHaveTextContent('Signed in as demo@example.com');
+  await act(async () => navigate('/'));
+  expect(await screen.findByRole('heading', { name: 'Workspaces' })).toBeInTheDocument();
+  await act(async () => navigate('/register'));
+  expect(screen.queryByRole('button', { name: 'Create account' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Sign out' }));
+  await act(async () => navigate('/'));
+  expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  view.unmount();
   render(<App />);
-
-  const loginBtn = screen.getByRole('button', { name: 'Login' });
-  const ticketsBtn = screen.getByRole('button', { name: 'Tickets' });
-
-  expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
-
-  // Log in
-  await user.click(loginBtn);
-  await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
-  await user.type(screen.getByLabelText(/password/i), 'validPassword123');
-  await user.click(screen.getByRole('button', { name: 'Sign in' }));
-
-  await screen.findByRole('status');
-  expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
-
-  // Navigate to Tickets
-  await user.click(ticketsBtn);
-  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  const signOutBtn = screen.getByRole('button', { name: 'Sign out' });
-  expect(signOutBtn).toBeInTheDocument();
-
-  // Sign out
-  await user.click(signOutBtn);
-
-  expect(screen.getByRole('heading', { name: 'Login', level: 2 })).toBeInTheDocument();
-  expect(loginBtn).toHaveAttribute('aria-pressed', 'true');
-  expect(screen.queryByRole('status')).not.toBeInTheDocument();
-  expect(screen.getByLabelText(/email/i)).toHaveValue('');
-  expect(screen.getByLabelText(/password/i)).toHaveValue('');
-  expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
-
-  // Switch to Tickets and back to Login: session must remain cleared
-  await user.click(ticketsBtn);
-  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
-
-  await user.click(loginBtn);
-  expect(screen.queryByRole('status')).not.toBeInTheDocument();
-  expect(screen.getByLabelText(/email/i)).toHaveValue('');
-  expect(screen.getByLabelText(/password/i)).toHaveValue('');
-  expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
-
-  // Sign in again
-  await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
-  await user.type(screen.getByLabelText(/password/i), 'validPassword123');
-  await user.click(screen.getByRole('button', { name: 'Sign in' }));
-
-  const newStatusEl = await screen.findByRole('status');
-  expect(newStatusEl).toHaveTextContent('Signed in as operator@example.com');
-  expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
 });
 
 test('handles successful session check: updates user info and keeps session active', async () => {
@@ -279,6 +130,7 @@ test('handles successful session check: updates user info and keeps session acti
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
   const checkBtn = screen.getByRole('button', { name: 'Check session' });
@@ -320,9 +172,10 @@ test('handles 401 response on check session: clears session, switches to login s
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
-  await user.click(screen.getByRole('button', { name: 'Tickets' }));
+  await user.click(screen.getByRole('button', { name: 'Workspaces' }));
 
   // Return 401 on check call
   vi.mocked(getCurrentUser).mockResolvedValueOnce({
@@ -365,6 +218,7 @@ test('clears session when user profile becomes inactive during check', async () 
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -404,9 +258,10 @@ test('preserves session on network error during check and shows safe error messa
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
-  await user.click(screen.getByRole('button', { name: 'Tickets' }));
+  await user.click(screen.getByRole('button', { name: 'Workspaces' }));
 
   // Return network failure
   vi.mocked(getCurrentUser).mockResolvedValueOnce({
@@ -419,11 +274,11 @@ test('preserves session on network error during check and shows safe error messa
   await user.click(screen.getByRole('button', { name: 'Check session' }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Unable to verify session. Please try again.');
-  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Workspaces', level: 2 })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
 
-  // Switch to Login screen: session is preserved
-  await user.click(screen.getByRole('button', { name: 'Login' }));
+  // Account still displays the verified session.
+  await user.click(screen.getByRole('button', { name: 'Account' }));
   expect(screen.getByRole('status')).toHaveTextContent('Signed in as operator@example.com');
 });
 
@@ -448,9 +303,10 @@ test('preserves session on HTTP 500 server error during check and shows safe err
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
-  await user.click(screen.getByRole('button', { name: 'Tickets' }));
+  await user.click(screen.getByRole('button', { name: 'Workspaces' }));
 
   // Return 500 error
   vi.mocked(getCurrentUser).mockResolvedValueOnce({
@@ -463,11 +319,11 @@ test('preserves session on HTTP 500 server error during check and shows safe err
   await user.click(screen.getByRole('button', { name: 'Check session' }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Unable to verify session. Please try again.');
-  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Workspaces', level: 2 })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
 
-  // Switch to Login screen: session is preserved
-  await user.click(screen.getByRole('button', { name: 'Login' }));
+  // Account still displays the verified session.
+  await user.click(screen.getByRole('button', { name: 'Account' }));
   expect(screen.getByRole('status')).toHaveTextContent('Signed in as operator@example.com');
 });
 
@@ -492,9 +348,10 @@ test('preserves session on invalid response during check and shows safe error me
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
-  await user.click(screen.getByRole('button', { name: 'Tickets' }));
+  await user.click(screen.getByRole('button', { name: 'Workspaces' }));
 
   // Return invalid response
   vi.mocked(getCurrentUser).mockResolvedValueOnce({
@@ -507,11 +364,11 @@ test('preserves session on invalid response during check and shows safe error me
   await user.click(screen.getByRole('button', { name: 'Check session' }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Unable to verify session. Please try again.');
-  expect(screen.getByRole('heading', { name: 'Tickets', level: 2 })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Workspaces', level: 2 })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
 
-  // Switch to Login screen: session is preserved
-  await user.click(screen.getByRole('button', { name: 'Login' }));
+  // Account still displays the verified session.
+  await user.click(screen.getByRole('button', { name: 'Account' }));
   expect(screen.getByRole('status')).toHaveTextContent('Signed in as operator@example.com');
 });
 
@@ -536,6 +393,7 @@ test('does not show error message or alter session when check session response i
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -576,6 +434,7 @@ test('allows sign out while check session is pending and aborts in-flight reques
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -626,6 +485,7 @@ test('aborts pending session check when App is unmounted', async () => {
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -668,6 +528,7 @@ test('ignores delayed 200 response arriving after sign out so session is not res
   await user.type(screen.getByLabelText(/email/i), 'operator@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -723,6 +584,7 @@ test('ignores delayed 401 response from previous session arriving after re-login
   await user.type(screen.getByLabelText(/email/i), 'first@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   await screen.findByRole('status');
 
@@ -755,6 +617,7 @@ test('ignores delayed 401 response from previous session arriving after re-login
   await user.type(screen.getByLabelText(/email/i), 'second@example.com');
   await user.type(screen.getByLabelText(/password/i), 'validPassword123');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+  await openSessionScreen(user);
 
   const statusEl = await screen.findByRole('status');
   expect(statusEl).toHaveTextContent('Signed in as second@example.com');
@@ -775,118 +638,3 @@ test('ignores delayed 401 response from previous session arriving after re-login
   expect(screen.getByRole('button', { name: 'Check session' })).toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
-
-test('resets ticket search and status when leaving and returning to Tickets', async () => {
-  const user = userEvent.setup();
-  render(<App />);
-  await user.type(screen.getByRole('searchbox', { name: 'Search tickets' }), 'EMAIL');
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'in_progress');
-  expect(screen.getByRole('rowheader', { name: '#102' })).toBeVisible();
-  expect(screen.queryByRole('rowheader', { name: '#101' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('rowheader', { name: '#103' })).not.toBeInTheDocument();
-
-  await user.click(screen.getByRole('button', { name: 'Login' }));
-  expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Tickets' }));
-  expect(screen.getByRole('searchbox', { name: 'Search tickets' })).toHaveValue('');
-  expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('all');
-  expect(screen.getAllByRole('rowheader')).toHaveLength(3);
-  expect(screen.getByText('Tickets use mock data. Registration and login connect to the live API.'))
-    .toBeVisible();
-});
-
-test('closes ticket details when leaving Tickets and returning', async () => {
-  const user = userEvent.setup();
-  render(<App />);
-
-  await user.click(screen.getByRole('button', {
-    name: 'View ticket #101: Cannot access workspace',
-  }));
-  expect(screen.getByRole('region', { name: 'Mock ticket details' })).toBeVisible();
-
-  await user.click(screen.getByRole('button', { name: 'Login' }));
-  await user.click(screen.getByRole('button', { name: 'Tickets' }));
-
-  expect(screen.queryByRole('region', { name: 'Mock ticket details' }))
-    .not.toBeInTheDocument();
-  expect(screen.getByRole('table', { name: 'Ticket list' })).toBeVisible();
-});
-
-test.each(['sign-out', 'unauthorized', 'inactive-user'] as const)(
-  'clears dashboard state after %s',
-  async (reason) => {
-    const user = userEvent.setup();
-
-    vi.mocked(loginUser).mockResolvedValue({
-      ok: true,
-      status: 200,
-      data: { access_token: 'test-session-token', token_type: 'bearer' },
-    });
-    vi.mocked(getCurrentUser).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      data: { user_id: 1, email: 'operator@example.com', is_active: true },
-    });
-
-    render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Login' }));
-    await user.type(screen.getByLabelText(/^Email/i), 'operator@example.com');
-    await user.type(screen.getByLabelText(/^Password/i), 'validPassword123');
-    await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    await screen.findByText('Signed in as operator@example.com');
-
-    // Populate all dashboard state before ending the session.
-    await user.click(screen.getByRole('button', { name: 'Tickets' }));
-    await user.type(screen.getByRole('searchbox', { name: 'Search tickets' }), 'email');
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'in_progress');
-    await user.click(screen.getByRole('button', {
-      name: 'View ticket #102: Email notifications delayed',
-    }));
-    expect(screen.getByRole('region', { name: 'Mock ticket details' })).toBeVisible();
-    expect(screen.getByText('Showing 1 of 3 tickets')).toBeInTheDocument();
-
-    if (reason === 'sign-out') {
-      await user.click(screen.getByRole('button', { name: 'Sign out' }));
-    } else {
-      if (reason === 'unauthorized') {
-        vi.mocked(getCurrentUser).mockResolvedValueOnce({
-          ok: false,
-          kind: 'http',
-          status: 401,
-          message: 'Authentication required.',
-        });
-      } else {
-        vi.mocked(getCurrentUser).mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          data: { user_id: 1, email: 'operator@example.com', is_active: false },
-        });
-      }
-      await user.click(screen.getByRole('button', { name: 'Check session' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'Your session is no longer valid. Please sign in again.',
-      );
-    }
-
-    expect(await screen.findByRole('button', { name: 'Sign in' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Check session' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Mock ticket details' })).not.toBeInTheDocument();
-
-    // Returning to the public mock preview must not restore the prior session or selection.
-    await user.click(screen.getByRole('button', { name: 'Tickets' }));
-    expect(screen.getByRole('searchbox', { name: 'Search tickets' })).toHaveValue('');
-    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('all');
-    expect(screen.getByText('Showing 3 of 3 tickets')).toBeInTheDocument();
-    expect(screen.getAllByRole('rowheader')).toHaveLength(3);
-    expect(screen.queryByRole('region', { name: 'Mock ticket details' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Check session' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', {
-      name: 'View ticket #102: Email notifications delayed',
-    })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByText(
-      'Tickets use mock data. Registration and login connect to the live API.',
-    )).toBeVisible();
-  },
-);

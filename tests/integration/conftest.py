@@ -12,7 +12,7 @@ from opsdesk.db.connection import (
 )
 from opsdesk.db.session import create_session_factory
 
-HEAD_REVISION = "31be9023cfb2"
+HEAD_REVISION = "84c2f9a17d60"
 
 
 @contextmanager
@@ -107,6 +107,7 @@ def identity_scope(integration_engine, request):
                             "Unexpected schema revision for identity cleanup."
                         )
 
+                    connection.execute(text("DELETE FROM public.comments"))
                     connection.execute(text("DELETE FROM public.tickets"))
                     connection.execute(
                         text("DELETE FROM public.organization_memberships")
