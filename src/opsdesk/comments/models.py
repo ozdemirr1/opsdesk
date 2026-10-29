@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from opsdesk.tickets.models import Ticket, TicketCreationContext
 from opsdesk.tickets.read_models import TicketReadAccess
 
 
@@ -37,3 +38,9 @@ class CommentListRead:
     access: TicketReadAccess
     ticket_visible: bool
     page: CommentPage
+
+
+@dataclass(frozen=True, slots=True)
+class CommentCreationContext:
+    access: TicketCreationContext
+    ticket: Ticket | None

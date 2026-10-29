@@ -2,13 +2,24 @@ from sqlalchemy import and_, func, select, true
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from opsdesk.comments.models import Comment, CommentListRead, CommentPage, NewComment
+from opsdesk.comments.models import (
+    Comment,
+    CommentCreationContext,
+    CommentListRead,
+    CommentPage,
+    NewComment,
+)
 from opsdesk.db.models.comment import CommentRow
+from opsdesk.db.models.ticket import TicketRow
 from opsdesk.db.repositories.ticket_visibility import (
     access_statement,
     visible_statement,
 )
-from opsdesk.db.repositories.tickets import _raise_database_error
+from opsdesk.db.repositories.tickets import (
+    SqlAlchemyTicketRepository,
+    _raise_database_error,
+)
+from opsdesk.tickets.models import Ticket
 from opsdesk.tickets.read_models import TicketReadAccess
 
 
@@ -23,12 +34,45 @@ class SqlAlchemyCommentRepository:
 
     create() is a low-level primitive, not an authorization boundary: its caller
     must lock/recheck the actor, membership, Organization and Ticket, derive the
-    author and validate posting state/content before insertion. No HTTP route is
-    wired to it until that service is implemented.
+    author and validate posting state/content before insertion. CommentService owns this sequence.
     """
 
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def lock_creation_context(
+        self, *, actor_user_id: int, organization_id: int, ticket_id: int
+    ) -> CommentCreationContext | None:
+        # Same connection and transaction: Organization -> User -> membership -> Ticket.
+        access = SqlAlchemyTicketRepository(self._session).lock_creation_context(
+            actor_user_id=actor_user_id,
+            organization_id=organization_id,
+        )
+        if access is None:
+            return None
+        try:
+            row = self._session.scalar(
+                select(TicketRow)
+                .where(
+                    TicketRow.organization_id == organization_id,
+                    TicketRow.ticket_id == ticket_id,
+                )
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        except DBAPIError as error:
+            _raise_database_error(error)
+        ticket = (
+            None
+            if row is None
+            else Ticket(
+                **{
+                    column.name: getattr(row, column.name)
+                    for column in TicketRow.__table__.c
+                }
+            )
+        )
+        return CommentCreationContext(access=access, ticket=ticket)
 
     def create(self, new_comment: NewComment) -> Comment:
         row = CommentRow(

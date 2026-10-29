@@ -1,1 +1,1 @@
-"""Comment persistence foundation; service and HTTP routes are not exposed yet."""
+"""Append-only, organization-scoped Ticket comments."""

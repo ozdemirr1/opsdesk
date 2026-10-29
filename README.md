@@ -38,17 +38,21 @@ claim. The older public fixture dashboard is no longer in product navigation.
 | Identity | Registration, Argon2id password hashes, JWT login, persisted active User resolution; browser forms/session handling | Bounded public-demo abuse controls and further operational verification |
 | Organizations | Atomic creation with owner membership; scoped list/detail API and hosted selection/creation UI | Membership/role/ownership mutations |
 | Tickets | Tenant-consistent schema, creation and scoped list/detail APIs with title search/filter/pagination; hosted protected real-data table/detail | Creation UI, assignment, priority changes, status workflow, comments |
-| Comments | Tenant-consistent schema/model and scoped repository; migration deployed, repository tested locally | Service authorization, input normalization, cooperating locks, HTTP API and form |
+| Comments | Deployed storage; locally implemented authorized GET/POST API, content normalization, ordered locks and rollback/concurrency tests | Review/CI/deployment of the new API; CommentForm/list integration |
 | Quality and deployment | Backend/frontend CI; guarded local PostgreSQL tests; live same-origin preview and health endpoints | PostgreSQL CI, isolated restore/rollback evidence, broader release gates |
 | UI and AI | Typed components, accessible table semantics, focus handling and basic CSS | Week 16 full Month 04 UI package; AI planned for Month 06 |
 
-The Week 16 backend now exposes nine business endpoints: `POST /users`,
+The Week 16 backend has nine deployed business endpoints: `POST /users`,
 `POST /auth/login`, `GET /users/me`, `POST /organizations`, `GET /organizations`,
 `GET /organizations/{organization_id}` and
 `POST /organizations/{organization_id}/tickets`,
 `GET /organizations/{organization_id}/tickets` and
 `GET /organizations/{organization_id}/tickets/{ticket_id}`, plus two health endpoints.
 The Week 16 reads are deployed and verified through the hosted UI.
+Two additional Comment routes (GET/POST on
+`/organizations/{organization_id}/tickets/{ticket_id}/comments`) are implemented
+and tested locally on 29 October, bringing the source total to eleven; these
+new routes have not been published or deployed.
 The 22-endpoint design inventory describes the target, not the implemented API.
 
 ## Verification evidence
@@ -58,8 +62,8 @@ These are separate, dated test groups, not a combined current-run total:
 | Check | Last recorded local result | Date |
 | --- | --- | --- |
 | Frontend | 234 tests across 12 files; build and lint passed | 28 October |
-| Backend non-integration | 589 passed; 209 database/schema tests deselected; Ruff passed | 28 October |
-| PostgreSQL data integration | 204 passed on guarded `opsdesk_product_test` | 28 October |
+| Backend non-integration | 702 passed; 242 database/schema tests deselected; Ruff passed | 29 October |
+| PostgreSQL data integration | 237 passed on guarded `opsdesk_product_test` | 29 October |
 | Guarded schema/migration suite | 5 passed | 28 October |
 
 The 26 October frontend retry used one worker after an initial disk-space error;
@@ -99,7 +103,7 @@ locally on 28 October and on the hosted preview on 29 October.
 [PR #47](https://github.com/ozdemirr1/opsdesk/pull/47) merged as `2013248` with passing
 Backend/Frontend CI and successful Railway deployment. See [project status](docs/project-status.md).
 
-Next: persisted comments through the API/form, a role-aware priority action and the
+Next: review/publish the local Comment API and connect its form/list, a role-aware priority action and the
 full Month 04 UI package. The revised Week 16 plan allocates 42 focused hours plus
 up to 8 contingency hours; these are targets, not shipped features. Docker/Redis remain Month 05;
 AI summarization, priority/category suggestions and evaluations remain Month 06.

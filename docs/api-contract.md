@@ -1,6 +1,6 @@
 # API Contract Baseline
 
-> Implementation checkpoint: [project status — 26 October](project-status.md).
+> Implementation checkpoint: [project status — 29 October](project-status.md).
 > Design inventories and historical handoff notes below are not a claim that all
 > listed workflows are implemented.
 
@@ -365,6 +365,11 @@ this release has no idempotency-key protocol. The table is endpoint-specific rat
 than a universal shortcut.
 
 ## Comments and Memberships
+
+29 October implementation checkpoint: Comment GET/POST and their service rules
+are implemented and tested locally. The Comment UI, publication and the membership
+mutations below remain separate work. Closed posting returns `409 state_conflict`;
+hidden parents return `404 ticket_not_found`.
 
 | Purpose | Method and path | Input | Authorization and behavior | Success |
 | --- | --- | --- | --- | --- |

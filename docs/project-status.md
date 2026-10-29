@@ -1,4 +1,4 @@
-# Project status — 29 October 2026 (28 October release closure)
+# Project status — 29 October 2026 (Comment API tasks 1–3)
 
 This is a dated implementation checkpoint. The [README](../README.md) summarizes
 the product; contract documents describe intended rules. Issue files preserve
@@ -11,7 +11,8 @@ initial scope and dated implementation notes. GitHub remains the live work track
 - Alembic schema includes Users, Organizations, OrganizationMemberships, Tickets
   and the new Comment foundation at source head `84c2f9a17d60`. The guarded test
   database and hosted deployment are upgraded; the last verified development
-  schema remains `31be9023cfb2`. Attachments remain planned; Comments have no service/API yet.
+  schema remains `31be9023cfb2`. Attachments remain planned. Comment service/GET/POST API is now locally
+  implemented and tested; publication and frontend integration remain pending.
 - Registration, login and active persisted current-User resolution.
 - Atomic Organization creation and membership-scoped Organization list/detail.
 - Authenticated Ticket creation with server-derived requester/creator, tenant
@@ -26,8 +27,8 @@ initial scope and dated implementation notes. GitHub remains the live work track
 - Pure Ticket display mapper plus validated Organization/Ticket HTTP adapters,
   locally added on 27 October and connected to protected workspace screens.
   Fresh verification: 234 frontend tests / 12 files, build and lint passed on
-  28 October. Fresh backend results: 589 non-integration, 204 PostgreSQL data
-  and 5 schema tests passed; real API/browser evidence is recorded below.
+  28 October. 29 October backend results: 702 non-integration and 237 PostgreSQL data
+  tests passed. The 5 schema tests retain their 28 October result; evidence is below.
 
 - Local Organization selection/creation, membership roles, protected hash routes
   and real Ticket list/detail/search/pagination. Private request ownership is
@@ -277,3 +278,42 @@ posting-state checks and cooperating locks, priority actions, Ticket creation UI
 and the remaining Month 04 UI/learning gates remain open. Earlier dated pending
 statements in this report describe their original checkpoint, not current release
 status. No new daily report was added.
+
+
+## 29 October — Comment service and API, tasks 1–3
+
+Implemented locally: POST and GET
+`/organizations/{organization_id}/tickets/{ticket_id}/comments`.
+The authenticated User supplies the actor; the service derives the author from
+current active Organization membership. Customers can comment on their own
+requested Tickets; agent/admin/owner can comment on visible same-Organization
+Tickets. Closed Tickets reject posting with `409 state_conflict` but remain
+readable. Hidden Tickets return 404 and foreign Organizations return 403.
+
+Content is a strict string: normalize CRLF/CR to LF, reject C0 controls other than
+LF/TAB before trimming, trim boundaries and accept 1–10,000 Unicode code points.
+Internal whitespace and Unicode remain intact; extra body fields are rejected.
+GET validates limit/offset, rejects unknown/duplicate query keys and returns a
+chronological page with its authorized total. Public Comment fields are limited
+to ID, author membership ID, content and creation time.
+
+Writes reuse the ordered Organization → User → membership locks, then lock and
+refresh the scoped Ticket. Commit precedes the response; failures roll back.
+PostgreSQL tests observe actual blocking through `pg_blocking_pids` on independent
+connections. Closure-first rejects the waiting comment; comment-first preserves
+the comment after closure. Closure is a cooperating test transaction, **not a new
+status endpoint**. A timeout returns the safe busy error, rolls back, and does not
+block an independent Organization from progressing.
+
+Fresh checks: **702 backend non-integration tests passed** (242 database/schema
+cases deselected), **237 PostgreSQL data integration tests passed** exclusively
+on guarded `opsdesk_product_test`; Ruff lint/format and diff whitespace checks
+passed. This adds 113 non-integration and 33 data integration cases. No migration
+changed; the 5 schema tests retain their 28 October result. Frontend remains
+unchanged; its 234-test/build/lint result also retains its 28 October date.
+
+This increment is local and uncommitted; no push, PR or deployment was performed.
+The live preview remains the previously verified release. CommentForm/list,
+priority actions and the remaining Month 04 UI tasks are still pending. Only the
+requested first three Thursday tasks are complete; the entire day/week is not
+marked complete. No separate daily report was created.
