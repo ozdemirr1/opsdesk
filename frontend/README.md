@@ -3,7 +3,17 @@
 React + TypeScript interface for the OpsDesk support-ticket product, developed
 inside the product monorepo. Vite provides the development server and build tooling.
 
-## Current checkpoint — 29 October 2026 (28 October release closure)
+## Current checkpoint — 30 October 2026, Thursday completion
+
+Protected Ticket detail now includes a real Comment list/form, chronological
+pagination, safe errors, draft preservation and scope-change cancellation. Closed
+Tickets are read-only. Uncertain sends never retry automatically; missing Comment
+routes never trigger a parent reload loop. Fresh checks: 278 tests / 14 files,
+production build and lint passed. This increment is local/uncommitted and has not
+been verified in a hosted browser. Priority UI remains Friday work; its backend
+PUT endpoint is implemented and locally tested. See the product status record.
+
+## Earlier checkpoint — 29 October 2026 (28 October release closure)
 
 The root opens Login when signed out and Workspaces when authenticated. App no
 longer mounts fixture Tickets. Signed-in navigation uses Workspaces/Account;

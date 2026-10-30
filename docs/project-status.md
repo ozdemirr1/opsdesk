@@ -1,4 +1,4 @@
-# Project status — 29 October 2026 (Comment API tasks 1–3)
+# Project status — 30 October 2026 (Thursday tasks 4–6)
 
 This is a dated implementation checkpoint. The [README](../README.md) summarizes
 the product; contract documents describe intended rules. Issue files preserve
@@ -12,7 +12,8 @@ initial scope and dated implementation notes. GitHub remains the live work track
   and the new Comment foundation at source head `84c2f9a17d60`. The guarded test
   database and hosted deployment are upgraded; the last verified development
   schema remains `31be9023cfb2`. Attachments remain planned. Comment service/GET/POST API is now locally
-  implemented and tested; publication and frontend integration remain pending.
+  implemented and tested, with CommentForm/list integration added on 30 October.
+  Review/publication and hosted verification remain pending.
 - Registration, login and active persisted current-User resolution.
 - Atomic Organization creation and membership-scoped Organization list/detail.
 - Authenticated Ticket creation with server-derived requester/creator, tenant
@@ -27,8 +28,8 @@ initial scope and dated implementation notes. GitHub remains the live work track
 - Pure Ticket display mapper plus validated Organization/Ticket HTTP adapters,
   locally added on 27 October and connected to protected workspace screens.
   Fresh verification: 234 frontend tests / 12 files, build and lint passed on
-  28 October. 29 October backend results: 702 non-integration and 237 PostgreSQL data
-  tests passed. The 5 schema tests retain their 28 October result; evidence is below.
+  28 October. 30 October results: 740 backend non-integration, 281 PostgreSQL data and
+  278 frontend tests passed; build/lint/Ruff passed. The 5 schema tests retain their 28 October result; evidence is below.
 
 - Local Organization selection/creation, membership roles, protected hash routes
   and real Ticket list/detail/search/pagination. Private request ownership is
@@ -317,3 +318,45 @@ The live preview remains the previously verified release. CommentForm/list,
 priority actions and the remaining Month 04 UI tasks are still pending. Only the
 requested first three Thursday tasks are complete; the entire day/week is not
 marked complete. No separate daily report was created.
+
+
+## 30 October — completion of Thursday 29 October tasks 4–6
+
+The first three Thursday tasks were committed/pushed by the learner as product
+`7a3bb04` and bootcamp `98f4cda` on `feature/week-16-comment-api`; local tracking
+branches agree. This checkpoint adds local uncommitted work to that same branch,
+not a claim of merge, current-head CI or a new Railway release.
+
+1. **Comment list/form:** the protected real Ticket detail now reads and posts
+   persisted comments through validated adapters. The list has chronological
+   pagination, empty/loading/error states and plain-text multiline rendering.
+   Closed Tickets have readable history without a form. Sending locks out duplicate
+   submissions; success clears the draft and refreshes the list. Validation/conflict
+   failures retain the draft; ambiguous writes are never automatically retried and
+   explicitly tell the user to check history before sending again. Session,
+   Organization or Ticket changes discard drafts/history and ignore late results.
+   401 expires the session, 403 clears workspace access, and a missing Comment
+   route offers manual Ticket refresh rather than an automatic reload loop.
+2. **Priority backend subset:** PUT
+   `/organizations/{organization_id}/tickets/{ticket_id}/priority` accepts only a
+   valid priority. Fresh active actor/membership/Organization, scoped visibility,
+   staff role and open/in_progress state are checked under ordered locks before
+   mutation or no-op. Customer attempts are denied; resolved/closed changes fail.
+   A real change updates priority and `updated_at` in one SQL statement; an
+   authorized repeat leaves all fields unchanged. Failure rolls back. PostgreSQL
+   tests verify waiting requests observe a cooperating closure, role demotion or
+   membership deactivation before deciding. Assignment/status endpoints remain
+   outside this subset; issue #20 is not claimed complete.
+3. **Verification and record:** 740 backend non-integration tests passed (286
+   database/schema cases deselected); 281 PostgreSQL data integration tests passed
+   exclusively on guarded `opsdesk_product_test`; 278 frontend tests across 14 files
+   passed. Frontend build/lint, backend Ruff lint/format and diff checks passed.
+   No schema changed; the 5 schema cases retain their 28 October evidence.
+   Frontend checks used real adapters with synthetic HTTP responses; backend
+   integration used real PostgreSQL. No new authenticated browser or hosted smoke
+   is claimed for this increment.
+
+Thursday's requested implementation is complete locally. The next Friday package
+still includes the role-aware priority UI, Tailwind primitives and responsive
+shell/sidebar. Ticket creation UI and remaining Month 04 gates also stay open.
+No publish, paid service change, new migration or separate daily report was made.

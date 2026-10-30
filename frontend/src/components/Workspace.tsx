@@ -8,6 +8,7 @@ import { navigate, ticketPath } from '../navigation';
 import ResourceFeedback from './ResourceFeedback';
 import TicketTable from './TicketTable';
 import TicketDetail from './TicketDetail';
+import Comments from './Comments';
 
 type Props = { token: string; organizationId: number; ticketId?: number; onExpired: () => void };
 
@@ -67,7 +68,11 @@ function DetailData({ token, organizationId, ticketId, onExpired, onDenied, retr
   const result = useResource(load);
   if (!result) return <p role="status">Loading ticket…</p>;
   if (!result.ok) return <ReadError result={result} onExpired={onExpired} onDenied={onDenied} retry={retry} />;
-  return <TicketDetail ticket={toTicketSummary(result.data)} isMock={false} onClose={() => navigate(ticketPath(organizationId))} />;
+  return <>
+    <TicketDetail ticket={toTicketSummary(result.data)} isMock={false} onClose={() => navigate(ticketPath(organizationId))} />
+    <Comments token={token} organizationId={organizationId} ticketId={ticketId}
+      closed={result.data.status === 'closed'} onExpired={onExpired} onDenied={onDenied} refreshTicket={retry} />
+  </>;
 }
 function RemoteDashboard(props: ReadProps) {
   const [draft, setDraft] = useState('');

@@ -41,7 +41,7 @@ const statuses = ['open', 'in_progress', 'resolved', 'closed'];
 const priorities = ['low', 'medium', 'high', 'urgent'];
 
 /** Require a real calendar date and an explicit timezone; preserve the wire string. */
-function isTimestamp(value: unknown): value is string {
+export function isTimestamp(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/u.exec(value);
   if (!parts || !Number.isFinite(Date.parse(value))) return false;

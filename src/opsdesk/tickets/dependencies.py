@@ -6,12 +6,14 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+from opsdesk.db.repositories.ticket_priority import SqlAlchemyTicketPriorityRepository
 from opsdesk.db.repositories.ticket_reads import SqlAlchemyTicketReadRepository
 from opsdesk.db.repositories.tickets import (
     SqlAlchemyTicketRepository,
     SqlAlchemyTicketTransaction,
 )
 from opsdesk.db.session import session_scope
+from opsdesk.tickets.priority import TicketPriorityService
 from opsdesk.tickets.read_schemas import TicketListQuery
 from opsdesk.tickets.services import TicketCreationService, TicketReadService
 
@@ -116,3 +118,14 @@ def get_ticket_list_query(
             )
         ]
         raise RequestValidationError(details) from None
+
+
+def get_ticket_priority_service(request: Request) -> Iterator[TicketPriorityService]:
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise RuntimeError("Database session factory is not configured.")
+    with session_scope(factory) as session:
+        yield TicketPriorityService(
+            SqlAlchemyTicketPriorityRepository(session),
+            SqlAlchemyTicketTransaction(session),
+        )

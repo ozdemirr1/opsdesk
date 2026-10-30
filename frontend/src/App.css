@@ -420,3 +420,18 @@ main h2 {
 .workspace-panel a:focus-visible { outline: 3px solid #0d6efd; outline-offset: 3px; }
 .workspace-panel strong, .workspace-heading h2 { overflow-wrap: anywhere; }
 .ticket-detail-description p { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+
+.comment-thread { margin-top: 1.5rem; padding: 1.25rem; background: #fff; border: 1px solid #dce1e6; border-radius: 0.5rem; }
+.comment-heading, .comment-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.comment-heading h3 { margin: 0; }
+.comment-list { list-style: none; margin: 1rem 0; padding: 0; }
+.comment-list li { padding: 1rem 0; border-bottom: 1px solid #e5e7eb; }
+.comment-list p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-meta { font-size: 0.875rem; color: #52606d; }
+.comment-form { display: grid; gap: 0.75rem; margin-top: 1.25rem; }
+.comment-form label { font-weight: 600; }
+.comment-form textarea { box-sizing: border-box; width: 100%; min-height: 7rem; padding: 0.75rem; font: inherit; resize: vertical; border: 1px solid #b8c1cc; border-radius: 0.375rem; }
+.comment-form textarea:focus-visible { outline: 2px solid #0d6efd; outline-offset: 2px; }
+.comment-form p { margin: 0; }
+.comment-form button { justify-self: start; }

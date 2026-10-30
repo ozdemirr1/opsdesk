@@ -41,7 +41,11 @@ beforeEach(() => {
     if (/\/tickets\/\d+$/u.test(url.pathname)) return json(ticket(Number(url.pathname.split('/').at(-1))));
     return page([ticket()], url);
   };
-  fetchMock.mockReset().mockImplementation(async (url, options = {}) => handler(new URL(url, 'http://localhost'), options));
+  fetchMock.mockReset().mockImplementation(async (url, options = {}) => {
+    const target = new URL(url, 'http://localhost');
+    if (target.pathname.endsWith('/comments')) return page([], target);
+    return handler(target, options);
+  });
   vi.stubGlobal('fetch', fetchMock);
 });
 afterEach(() => vi.unstubAllGlobals());

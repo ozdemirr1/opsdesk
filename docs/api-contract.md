@@ -1,6 +1,6 @@
 # API Contract Baseline
 
-> Implementation checkpoint: [project status — 29 October](project-status.md).
+> Implementation checkpoint: [project status — 30 October](project-status.md).
 > Design inventories and historical handoff notes below are not a claim that all
 > listed workflows are implemented.
 
@@ -147,6 +147,10 @@ only the Organization projection because its authorization check does not turn t
 response into a membership-directory operation.
 
 ## Tickets
+
+30 October checkpoint: the priority PUT subset below is implemented and tested
+locally. Priority UI and publication remain pending; assignment/status operations
+remain design scope.
 
 | Purpose | Method and path | Input | Authorization and behavior | Success |
 | --- | --- | --- | --- | --- |
@@ -367,8 +371,8 @@ than a universal shortcut.
 ## Comments and Memberships
 
 29 October implementation checkpoint: Comment GET/POST and their service rules
-are implemented and tested locally. The Comment UI, publication and the membership
-mutations below remain separate work. Closed posting returns `409 state_conflict`;
+are implemented and tested locally. Comment UI integration was completed locally on 30 October. Publication and
+the membership mutations below remain separate work. Closed posting returns `409 state_conflict`;
 hidden parents return `404 ticket_not_found`.
 
 | Purpose | Method and path | Input | Authorization and behavior | Success |
