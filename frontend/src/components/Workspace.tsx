@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { listOrganizations, type OrganizationContext } from '../api/organizations';
-import { getTicket, listTickets, toTicketSummary, type TicketQuery } from '../api/tickets';
+import { listOrganizations, type OrganizationContext, type OrganizationRole } from '../api/organizations';
+import { getTicket, listTickets, toTicketSummary, type TicketQuery, type TicketResponse } from '../api/tickets';
 import type { ResourceResult } from '../api/resources';
 import type { TicketStatus } from '../types/ticket';
 import { useResource } from '../hooks/useResource';
@@ -9,6 +9,7 @@ import ResourceFeedback from './ResourceFeedback';
 import TicketTable from './TicketTable';
 import TicketDetail from './TicketDetail';
 import Comments from './Comments';
+import TicketPriorityControl from './TicketPriorityControl';
 
 type Props = { token: string; organizationId: number; ticketId?: number; onExpired: () => void };
 
@@ -43,7 +44,7 @@ function WorkspaceContent({ token, organizationId, ticketId, onExpired, retry }:
     <div className="workspace-heading"><div><h2>{result.data.organization.name}</h2>
       <p>Your role: {result.data.own_membership.role}</p></div><a href="#/organizations">Change workspace</a></div>
     {!result.data.organization.is_active ? <p role="alert">This workspace is suspended. Tickets are unavailable.</p>
-      : ticketId !== undefined ? <RemoteDetail key={ticketId} token={token} organizationId={organizationId} ticketId={ticketId} onExpired={onExpired} onDenied={onDenied} />
+      : ticketId !== undefined ? <RemoteDetail role={result.data.own_membership.role} key={ticketId} token={token} organizationId={organizationId} ticketId={ticketId} onExpired={onExpired} onDenied={onDenied} />
       : <RemoteDashboard token={token} organizationId={organizationId} onExpired={onExpired} onDenied={onDenied} />}
   </section>;
 }
@@ -55,25 +56,45 @@ function ReadError({ result, onExpired, onDenied, retry }: {
   useEffect(() => { if (denied) onDenied(); }, [denied, onDenied]);
   return <ResourceFeedback result={result} onExpired={onExpired} retry={retry} />;
 }
-function RemoteDetail({ token, organizationId, ticketId, onExpired, onDenied }: ReadProps & { ticketId: number }) {
+type DetailProps = ReadProps & { ticketId: number; role: OrganizationRole };
+function RemoteDetail({ token, organizationId, ticketId, onExpired, onDenied, role }: DetailProps) {
   const [revision, setRevision] = useState(0);
   return <>
     <a href={`#${ticketPath(organizationId)}`}>Back to tickets</a>
-    <DetailData key={revision} token={token} organizationId={organizationId} ticketId={ticketId}
+    <DetailData role={role} key={revision} token={token} organizationId={organizationId} ticketId={ticketId}
       onExpired={onExpired} onDenied={onDenied} retry={() => setRevision(value => value + 1)} />
   </>;
 }
-function DetailData({ token, organizationId, ticketId, onExpired, onDenied, retry }: ReadProps & { ticketId: number; retry: () => void }) {
+function DetailData({ token, organizationId, ticketId, onExpired, onDenied, retry, role }: DetailProps & { retry: () => void }) {
   const load = useCallback((signal: AbortSignal) => getTicket(token, organizationId, ticketId, signal), [token, organizationId, ticketId]);
   const result = useResource(load);
   if (!result) return <p role="status">Loading ticket…</p>;
   if (!result.ok) return <ReadError result={result} onExpired={onExpired} onDenied={onDenied} retry={retry} />;
+  return <LoadedDetail key={`${token}:${organizationId}:${ticketId}`} initial={result.data}
+    token={token} organizationId={organizationId} ticketId={ticketId} role={role}
+    onExpired={onExpired} onDenied={onDenied} retry={retry} />;
+}
+function LoadedDetail({ initial, token, organizationId, ticketId, role, onExpired, onDenied, retry }: DetailProps & {
+  initial: TicketResponse; retry: () => void;
+}) {
+  const [ticket, setTicket] = useState(initial);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [missing, setMissing] = useState(false);
+  if (missing) return <p role="alert">This ticket is no longer available. Return to the ticket list.</p>;
   return <>
-    <TicketDetail ticket={toTicketSummary(result.data)} isMock={false} onClose={() => navigate(ticketPath(organizationId))} />
+    <TicketDetail ticket={toTicketSummary(ticket)} isMock={false} onClose={() => navigate(ticketPath(organizationId))} />
+    <TicketPriorityControl token={token} ticket={ticket} role={role}
+      onExpired={onExpired} onDenied={onDenied} onMissing={() => setMissing(true)} refreshTicket={retry}
+      onUpdated={updated => {
+        setNotice(updated.priority === ticket.priority ? 'Priority unchanged.' : 'Priority updated.');
+        setTicket(updated);
+      }} />
+    {notice && <p role="status">{notice}</p>}
     <Comments token={token} organizationId={organizationId} ticketId={ticketId}
-      closed={result.data.status === 'closed'} onExpired={onExpired} onDenied={onDenied} refreshTicket={retry} />
+      closed={ticket.status === 'closed'} onExpired={onExpired} onDenied={onDenied} refreshTicket={retry} />
   </>;
 }
+
 function RemoteDashboard(props: ReadProps) {
   const [draft, setDraft] = useState('');
   const [status, setStatus] = useState<TicketStatus | ''>('');

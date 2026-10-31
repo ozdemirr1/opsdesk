@@ -37,10 +37,10 @@ claim. The older public fixture dashboard is no longer in product navigation.
 | --- | --- | --- |
 | Identity | Registration, Argon2id password hashes, JWT login, persisted active User resolution; browser forms/session handling | Bounded public-demo abuse controls and further operational verification |
 | Organizations | Atomic creation with owner membership; scoped list/detail API and hosted selection/creation UI | Membership/role/ownership mutations |
-| Tickets | Tenant-consistent schema, creation and scoped list/detail APIs with title search/filter/pagination; hosted protected real-data table/detail; locally tested staff priority API | Creation UI, assignment, priority UI, status workflow |
+| Tickets | Tenant-consistent schema, creation and scoped list/detail APIs with title search/filter/pagination; hosted protected real-data table/detail; locally tested staff priority API and role-aware detail control | Creation UI, assignment, status workflow |
 | Comments | Deployed storage; local authorized GET/POST API plus real detail CommentForm/list, pagination and scope cleanup | Review/CI/deployment and hosted verification of the new comments flow |
 | Quality and deployment | Backend/frontend CI; guarded local PostgreSQL tests; live same-origin preview and health endpoints | PostgreSQL CI, isolated restore/rollback evidence, broader release gates |
-| UI and AI | Typed components, accessible table semantics, focus handling and basic CSS | Week 16 full Month 04 UI package; AI planned for Month 06 |
+| UI and AI | Typed components, Tailwind tokens, shared controls, responsive sidebar/auth screens and accessible table semantics | Ticket creation modal, toast and remaining Month 04 UI gates; AI planned for Month 06 |
 
 The Week 16 backend has nine deployed business endpoints: `POST /users`,
 `POST /auth/login`, `GET /users/me`, `POST /organizations`, `GET /organizations`,
@@ -52,9 +52,9 @@ The Week 16 reads are deployed and verified through the hosted UI.
 Three additional routes are implemented locally: Comment GET/POST on
 `/organizations/{organization_id}/tickets/{ticket_id}/comments` and PUT on
 `/organizations/{organization_id}/tickets/{ticket_id}/priority`. The source total
-is twelve business endpoints. First-three-task Comment API code was pushed on its
-feature branch; the new UI/priority increment is uncommitted. These routes are not
-claimed deployed.
+is twelve business endpoints. Comment UI and priority API were pushed as `acb5a57`
+with passing Backend/Frontend CI. The Friday priority UI and responsive design are local and uncommitted;
+no PR or new deployment is claimed. These three routes are not claimed deployed.
 The 22-endpoint design inventory describes the target, not the implemented API.
 
 ## Verification evidence
@@ -63,7 +63,7 @@ These are separate, dated test groups, not a combined current-run total:
 
 | Check | Last recorded local result | Date |
 | --- | --- | --- |
-| Frontend | 278 tests across 14 files; build and lint passed | 30 October |
+| Frontend | 311 tests across 16 files (30 Oct); final build/lint passed | 31 October |
 | Backend non-integration | 740 passed; 286 database/schema tests deselected; Ruff passed | 30 October |
 | PostgreSQL data integration | 281 passed on guarded `opsdesk_product_test` | 30 October |
 | Guarded schema/migration suite | 5 passed | 28 October |
@@ -105,8 +105,8 @@ locally on 28 October and on the hosted preview on 29 October.
 [PR #47](https://github.com/ozdemirr1/opsdesk/pull/47) merged as `2013248` with passing
 Backend/Frontend CI and successful Railway deployment. See [project status](docs/project-status.md).
 
-Next: review/publish the local comments flow and priority API, add the priority UI and the
-full Month 04 UI package. The revised Week 16 plan allocates 42 focused hours plus
+Next: review/publish the comments flow and priority API/UI, then complete the
+remaining Month 04 UI package. The revised Week 16 plan allocates 42 focused hours plus
 up to 8 contingency hours; these are targets, not shipped features. Docker/Redis remain Month 05;
 AI summarization, priority/category suggestions and evaluations remain Month 06.
 The broader backend release issue R01 is still open: this smaller workspace preview

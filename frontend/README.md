@@ -3,15 +3,26 @@
 React + TypeScript interface for the OpsDesk support-ticket product, developed
 inside the product monorepo. Vite provides the development server and build tooling.
 
-## Current checkpoint — 30 October 2026, Thursday completion
+## Current checkpoint — 31 October 2026, Friday tasks 4–6 completed
 
-Protected Ticket detail now includes a real Comment list/form, chronological
-pagination, safe errors, draft preservation and scope-change cancellation. Closed
-Tickets are read-only. Uncertain sends never retry automatically; missing Comment
-routes never trigger a parent reload loop. Fresh checks: 278 tests / 14 files,
-production build and lint passed. This increment is local/uncommitted and has not
-been verified in a hosted browser. Priority UI remains Friday work; its backend
-PUT endpoint is implemented and locally tested. See the product status record.
+Friday's priority control and Tailwind/responsive design are implemented locally.
+AppShell places navigation in a desktop sidebar and a compact mobile header;
+login/register have a focused form layout. Workspace cards, filters, table,
+Ticket detail, comments and priority forms use shared colors, spacing and controls.
+The table keeps horizontal overflow inside its keyboard-focusable region.
+
+The styling follows the [Tailwind Vite setup](https://tailwindcss.com/docs/installation/using-vite).
+`src/index.css` owns theme tokens and base controls; `src/App.css` owns semantic
+component layouts, with 800px/480px breakpoints. `src/components/AppShell.tsx`
+owns page structure and the keyboard skip link, leaving session/API logic in App.
+
+Verification: 311 tests / 16 files passed on 30 October; final build/lint and
+browser layout review completed on 31 October. Private-screen visual review used
+synthetic API responses in a temporary isolated harness. No hosted release is
+claimed. These changes remain local/uncommitted. Existing npm audit findings in
+four development packages are documented in project status; Tailwind added none
+of those affected versions. Ticket creation modal, toast and remaining Month 04
+gates remain pending.
 
 ## Earlier checkpoint — 29 October 2026 (28 October release closure)
 

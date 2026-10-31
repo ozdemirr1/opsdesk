@@ -56,13 +56,13 @@ export function invalidRequest(): Extract<ResourceResult<never>, { kind: 'invali
 /** Resource adapters share transport but do not own session or screen state. */
 export async function requestResource<T>(
   path: string, token: string, guard: Guard<T>,
-  options: { signal?: AbortSignal; body?: { name: string } | { content: string }; expectedStatus?: number } = {},
+  options: { signal?: AbortSignal; body?: { name: string } | { content: string } | { priority: string }; method?: 'PUT'; expectedStatus?: number } = {},
 ): Promise<ResourceResult<T>> {
   if (typeof token !== 'string' || !token.trim() || /[\r\n]/u.test(token)) return invalidRequest();
   const cancelled = () => ({ ok: false, kind: 'aborted', status: null, message: 'Request cancelled.' } as const);
   if (options.signal?.aborted) return cancelled();
   const result = await requestJson(path, {
-    method: options.body ? 'POST' : 'GET',
+    method: options.method ?? (options.body ? 'POST' : 'GET'),
     headers: {
       Authorization: `Bearer ${token}`,
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),

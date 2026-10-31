@@ -102,3 +102,18 @@ export function getTicket(
     (value): value is TicketResponse => isTicketResponse(value) &&
       value.organization_id === organizationId && value.ticket_id === ticketId, { signal });
 }
+
+
+export function changeTicketPriority(
+  token: string, organizationId: number, ticketId: number, priority: TicketPriority,
+  signal?: AbortSignal,
+): Promise<ResourceResult<TicketResponse>> {
+  if (!isId(organizationId) || !isId(ticketId) || !priorities.includes(priority)) {
+    return Promise.resolve(invalidRequest());
+  }
+  return requestResource(`/organizations/${organizationId}/tickets/${ticketId}/priority`, token,
+    (value): value is TicketResponse => isTicketResponse(value) &&
+      value.organization_id === organizationId && value.ticket_id === ticketId &&
+      value.priority === priority && ['open', 'in_progress'].includes(value.status),
+    { method: 'PUT', body: { priority }, signal });
+}

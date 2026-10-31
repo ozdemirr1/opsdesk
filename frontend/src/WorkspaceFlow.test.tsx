@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { getCurrentUser, loginUser } from './api/identity';
@@ -357,3 +357,118 @@ test.each(['sign-out', 'unauthorized', 'inactive'] as const)(
     expect(screen.queryByRole('region', { name: 'Ticket details' })).not.toBeInTheDocument();
   },
 );
+
+
+test.each(['owner', 'admin', 'agent', 'customer'] as const)('priority control follows API membership role %s', async role => {
+  handler = url => url.pathname.endsWith('/organizations')
+    ? page([{ ...alpha, own_membership: { ...alpha.own_membership, role } }], url) : json(ticket());
+  start('/organizations/10/tickets/1'); await signIn();
+  await screen.findByRole('region', { name: 'Ticket details' });
+  expect(screen.queryByRole('button', { name: 'Save priority' }) !== null).toBe(role !== 'customer');
+});
+
+test.each(['resolved', 'closed'])('priority control is unavailable for %s tickets', async status => {
+  handler = url => url.pathname.endsWith('/organizations') ? page([alpha], url) : json({ ...ticket(), status });
+  start('/organizations/10/tickets/1'); await signIn();
+  await screen.findByRole('region', { name: 'Ticket details' });
+  expect(screen.queryByRole('button', { name: 'Save priority' })).not.toBeInTheDocument();
+  expect(screen.getByText('Priority cannot be changed on resolved or closed tickets.')).toBeInTheDocument();
+});
+
+test('priority success updates detail without losing a comment draft and prevents duplicate PUTs', async () => {
+  const pending = deferred();
+  handler = (url, options) => options.method === 'PUT' ? pending.promise
+    : url.pathname.endsWith('/organizations') ? page([alpha], url) : json(ticket());
+  start('/organizations/10/tickets/1'); const actor = await signIn();
+  await waitFor(() => expect(screen.getByLabelText('Add a comment')).toBeEnabled());
+  await actor.type(screen.getByLabelText('Add a comment'), 'Keep comment draft');
+  await actor.selectOptions(screen.getByLabelText('Priority'), 'urgent');
+  await actor.dblClick(screen.getByRole('button', { name: 'Save priority' }));
+  expect(fetchMock.mock.calls.filter(([, o]) => o?.method === 'PUT')).toHaveLength(1);
+  expect(screen.getByRole('button', { name: 'Saving priority…' })).toBeDisabled();
+  await act(async () => pending.resolve(json({ ...ticket(), priority: 'urgent', updated_at: '2026-10-30T12:00:00Z' })));
+  expect(await screen.findByText('Priority updated.')).toBeInTheDocument();
+  expect(within(screen.getByRole('region', { name: 'Ticket details' })).getByText('urgent')).toBeInTheDocument();
+  expect(screen.getByLabelText('Add a comment')).toHaveValue('Keep comment draft');
+});
+
+test('same priority still reaches backend authorization and shows a confirmed no-op', async () => {
+  handler = (url, options) => options.method === 'PUT' ? json(ticket())
+    : url.pathname.endsWith('/organizations') ? page([alpha], url) : json(ticket());
+  start('/organizations/10/tickets/1'); const actor = await signIn();
+  await actor.click(await screen.findByRole('button', { name: 'Save priority' }));
+  expect(await screen.findByText('Priority unchanged.')).toBeInTheDocument();
+  const writes = fetchMock.mock.calls.filter(([, o]) => o?.method === 'PUT');
+  expect(writes).toHaveLength(1);
+  expect(JSON.parse(String(writes[0][1]?.body))).toEqual({ priority: 'high' });
+});
+
+test.each([401, 403, 404])('priority write denial %s clears unavailable private detail', async status => {
+  handler = (url, options) => options.method === 'PUT' ? json({}, status)
+    : url.pathname.endsWith('/organizations') ? page([alpha], url) : json(ticket());
+  start('/organizations/10/tickets/1'); const actor = await signIn();
+  await actor.click(await screen.findByRole('button', { name: 'Save priority' }));
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'Ticket details' })).not.toBeInTheDocument());
+  expect(screen.queryByRole('button', { name: 'Save priority' })).not.toBeInTheDocument();
+  if (status === 401) expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
+});
+
+test.each([409, 500, 503, 'network', 'malformed'] as const)('priority failure %s requires manual refresh without retry or optimistic update', async failure => {
+  let changed = false;
+  handler = (url, options) => {
+    if (options.method === 'PUT') {
+      changed = true;
+      if (failure === 'network') throw Error('offline');
+      return failure === 'malformed' ? json({ unexpected: true }) : json({}, failure);
+    }
+    return url.pathname.endsWith('/organizations') ? page([alpha], url)
+      : json({ ...ticket(), status: changed ? 'closed' : 'open' });
+  };
+  start('/organizations/10/tickets/1'); const actor = await signIn();
+  await actor.selectOptions(await screen.findByLabelText('Priority'), 'urgent');
+  await actor.click(screen.getByRole('button', { name: 'Save priority' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(failure === 409 ? 'state has changed' : 'could not be confirmed');
+  expect(screen.getByRole('button', { name: 'Save priority' })).toBeDisabled();
+  expect(within(screen.getByRole('region', { name: 'Ticket details' })).getByText('high')).toBeInTheDocument();
+  expect(fetchMock.mock.calls.filter(([, o]) => o?.method === 'PUT')).toHaveLength(1);
+  await actor.click(screen.getByRole('button', { name: 'Refresh ticket' }));
+  expect(await screen.findByText('Priority cannot be changed on resolved or closed tickets.')).toBeInTheDocument();
+});
+
+test('priority validation failure retains selection and permits manual correction', async () => {
+  handler = (url, options) => options.method === 'PUT' ? json({}, 422)
+    : url.pathname.endsWith('/organizations') ? page([alpha], url) : json(ticket());
+  start('/organizations/10/tickets/1'); const actor = await signIn();
+  await actor.selectOptions(await screen.findByLabelText('Priority'), 'urgent');
+  await actor.click(screen.getByRole('button', { name: 'Save priority' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Select a valid priority');
+  expect(screen.getByLabelText('Priority')).toHaveValue('urgent');
+  expect(screen.getByRole('button', { name: 'Save priority' })).toBeEnabled();
+});
+
+test.each(['ticket', 'organization', 'session'])('priority pending request cannot affect the new %s scope', async scope => {
+  const pending = deferred();
+  handler = (url, options) => {
+    if (options.method === 'PUT') return pending.promise;
+    if (url.pathname.endsWith('/organizations')) return page([alpha, beta], url);
+    return url.pathname.includes('/20/tickets') ? json(ticket(2, 20, 'Beta private ticket'))
+      : json(ticket(Number(url.pathname.split('/').at(-1)), 10));
+  };
+  start('/organizations/10/tickets/1'); const actor = await signIn();
+  await actor.selectOptions(await screen.findByLabelText('Priority'), 'urgent');
+  await actor.click(screen.getByRole('button', { name: 'Save priority' }));
+  const signal = fetchMock.mock.calls.find(([, o]) => o?.method === 'PUT')![1]!.signal!;
+  if (scope === 'session') {
+    await actor.click(screen.getByRole('button', { name: 'Sign out' }));
+    await signIn();
+  } else await go(scope === 'ticket' ? '/organizations/10/tickets/2' : '/organizations/20/tickets/2');
+  await waitFor(() => expect(signal.aborted).toBe(true));
+  await act(async () => pending.resolve(scope === 'session' ? json({}, 401) : json({ ...ticket(), priority: 'urgent' })));
+  expect(screen.queryByText('Priority updated.')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  if (scope === 'organization') {
+    await screen.findByText('Beta private ticket');
+    expect(screen.queryByRole('button', { name: 'Save priority' })).not.toBeInTheDocument();
+  }
+  if (scope === 'ticket') expect(await screen.findByLabelText('Priority')).toHaveValue('high');
+});
