@@ -139,3 +139,19 @@ test('missing comments route does not automatically reload the parent in a loop'
   await user().click(screen.getByRole('button', { name: 'Refresh ticket' }));
   expect(handlers.refreshTicket).toHaveBeenCalledOnce();
 });
+
+test('empty closed history does not invite an impossible comment action', async () => {
+  fetch.mockResolvedValue(page([]));
+  render(<Comments {...props()} closed />);
+  expect(await screen.findByText('No comments yet.')).toBeInTheDocument();
+  expect(screen.queryByText(/Start the conversation/)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Write a comment' })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Add a comment')).not.toBeInTheDocument();
+});
+
+test('empty open history action focuses the comment field', async () => {
+  fetch.mockResolvedValue(page([]));
+  render(<Comments {...props()} />);
+  await user().click(await screen.findByRole('button', { name: 'Write a comment' }));
+  expect(screen.getByLabelText('Add a comment')).toHaveFocus();
+});

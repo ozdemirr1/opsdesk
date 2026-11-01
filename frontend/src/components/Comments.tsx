@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { listComments, postComment, validCommentContent } from '../api/comments';
 import { useResource } from '../hooks/useResource';
 import ResourceFeedback from './ResourceFeedback';
+import { EmptyState, LoadingState } from './ResourceState';
 
 type Props = {
   token: string; organizationId: number; ticketId: number; closed: boolean;
@@ -33,11 +34,15 @@ function CommentThread(props: Props) {
   return <section className="comment-thread" aria-label="Ticket comments">
     <div className="comment-heading"><h3>Comments</h3>
       <button type="button" onClick={refresh}>Refresh comments</button></div>
-    {!result ? <p role="status">Loading comments…</p>
+    {!result ? <LoadingState>Loading comments…</LoadingState>
       : !result.ok ? <ResourceFeedback result={result} onExpired={onExpired} retry={refresh} />
       : <>
         <p>{result.data.total_count} comments</p>
-        {result.data.items.length === 0 ? <p>{offset ? 'No comments on this page.' : 'No comments yet. Start the conversation.'}</p>
+        {result.data.items.length === 0 ? <EmptyState
+          title={offset ? 'No comments on this page.' : closed ? 'No comments yet.' : 'No comments yet. Start the conversation.'}
+          description={closed ? 'This ticket is closed; new comments cannot be added.' : 'Keep the updates for this request in one conversation.'}
+          action={offset ? <button type="button" onClick={() => setOffset(0)}>First comment page</button>
+            : !closed ? <button type="button" onClick={() => document.getElementById('comment-content')?.focus()}>Write a comment</button> : undefined} />
           : <ol className="comment-list">{result.data.items.map(comment => <li key={comment.comment_id}>
             <div className="comment-meta"><strong>Member #{comment.author_membership_id}</strong>
               <time dateTime={comment.created_at}>{new Date(comment.created_at).toLocaleString()}</time></div>

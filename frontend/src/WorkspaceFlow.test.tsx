@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { getCurrentUser, loginUser } from './api/identity';
@@ -471,4 +471,258 @@ test.each(['ticket', 'organization', 'session'])('priority pending request canno
     expect(screen.queryByRole('button', { name: 'Save priority' })).not.toBeInTheDocument();
   }
   if (scope === 'ticket') expect(await screen.findByLabelText('Priority')).toHaveValue('high');
+});
+
+async function openTicketForm() {
+  const actor = await signIn();
+  await actor.click(await screen.findByRole('button', { name: 'New ticket' }));
+  expect(screen.getByRole('dialog', { name: 'Create ticket' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Title')).toHaveFocus();
+  return actor;
+}
+async function fillTicketForm(actor: ReturnType<typeof user>) {
+  await actor.type(screen.getByLabelText('Title'), 'Printer issue');
+  await actor.type(screen.getByLabelText('Description'), 'First line.\nSecond line.');
+  await actor.selectOptions(screen.getByLabelText('Priority'), 'high');
+}
+const ticketWrites = () => fetchMock.mock.calls.filter(([url, options]) => url.includes('/tickets') && options?.method === 'POST');
+
+test.each([10, 20])('member in workspace %s creates once and navigates to canonical detail with scoped success', async org => {
+  const pending = deferred();
+  handler = (url, options) => {
+    if (url.pathname.endsWith('/organizations')) return page([alpha, beta], url);
+    if (options.method === 'POST') return pending.promise;
+    if (url.pathname.endsWith('/tickets/7')) return json(ticket(7, org, 'Printer issue'));
+    return page([], url);
+  };
+  start(`/organizations/${org}/tickets`);
+  const actor = await openTicketForm();
+  await fillTicketForm(actor);
+  await actor.dblClick(screen.getByRole('button', { name: 'Create ticket' }));
+  expect(ticketWrites()).toHaveLength(1);
+  expect(ticketWrites()[0][0]).toContain(`/organizations/${org}/tickets`);
+  expect(JSON.parse(String(ticketWrites()[0][1]?.body))).toEqual({ title: 'Printer issue', description: 'First line.\nSecond line.', priority: 'high' });
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  await act(async () => pending.resolve(json(ticket(7, org, 'Printer issue'), 201)));
+  expect(await screen.findByRole('region', { name: 'Ticket details' })).toHaveTextContent('Printer issue');
+  expect(window.location.hash).toBe(`#/organizations/${org}/tickets/7`);
+  expect(screen.getByText('Ticket #7 created successfully.')).toBeInTheDocument();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  await go(`/organizations/${org}/tickets`);
+  await go(`/organizations/${org}/tickets/7`);
+  expect(screen.queryByText('Ticket #7 created successfully.')).not.toBeInTheDocument();
+});
+
+test('empty fields block POST and cancelling restores focus to New ticket', async () => {
+  start(); const actor = await openTicketForm();
+  await actor.click(screen.getByRole('button', { name: 'Create ticket' }));
+  expect(ticketWrites()).toHaveLength(0);
+  expect(screen.getByLabelText('Title')).toHaveAttribute('aria-invalid', 'true');
+  expect(screen.getByLabelText('Title')).toHaveFocus();
+  await actor.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'New ticket' })).toHaveFocus();
+});
+
+test('422 keeps the draft editable and never displays unsafe server detail', async () => {
+  const oldHandler = handler;
+  handler = (url, options) => options.method === 'POST' ? json({ detail: 'secret database diagnostic' }, 422) : oldHandler(url, options);
+  start(); const actor = await openTicketForm(); await fillTicketForm(actor);
+  await actor.click(screen.getByRole('button', { name: 'Create ticket' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Check the title, description and priority');
+  expect(screen.getByLabelText('Title')).toHaveValue('Printer issue');
+  expect(screen.getByLabelText('Title')).toBeEnabled();
+  expect(screen.queryByText(/secret database/)).not.toBeInTheDocument();
+});
+
+test.each([401, 403, 404])('creation response %s clears the form and protected context', async status => {
+  const oldHandler = handler;
+  handler = (url, options) => options.method === 'POST' ? json({}, status) : oldHandler(url, options);
+  start(); const actor = await openTicketForm(); await fillTicketForm(actor);
+  await actor.click(screen.getByRole('button', { name: 'Create ticket' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  if (status === 401) expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
+  else expect(screen.getByRole('heading', { name: 'Workspace unavailable' })).toBeInTheDocument();
+  expect(screen.queryByText('Printer issue')).not.toBeInTheDocument();
+});
+
+test.each(['network', 'invalid', 'server'])('uncertain %s result prevents resend and offers an unfiltered list check', async failure => {
+  const oldHandler = handler;
+  handler = (url, options) => options.method === 'POST'
+    ? failure === 'network' ? Promise.reject(new Error('offline')) : json({}, failure === 'server' ? 503 : 201)
+    : oldHandler(url, options);
+  start(); const actor = await signIn();
+  await actor.type(await screen.findByLabelText('Search ticket titles'), 'old search');
+  await actor.click(screen.getByRole('button', { name: 'Apply filters' }));
+  await actor.click(screen.getByRole('button', { name: 'New ticket' }));
+  await fillTicketForm(actor);
+  await actor.click(screen.getByRole('button', { name: 'Create ticket' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Creation could not be confirmed');
+  expect(screen.getByLabelText('Title')).toHaveValue('Printer issue');
+  expect(screen.getByLabelText('Title')).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'Create ticket' })).not.toBeInTheDocument();
+  expect(ticketWrites()).toHaveLength(1);
+  await actor.click(screen.getByRole('button', { name: 'Check ticket list' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Search ticket titles')).toHaveValue('');
+  await waitFor(() => expect(fetchMock.mock.calls.at(-1)?.[0]).not.toContain('q='));
+});
+
+test.each(['workspace', 'logout'])('%s during creation discards late success and aborts request', async change => {
+  const pending = deferred(); let signal: AbortSignal | undefined;
+  const oldHandler = handler;
+  handler = (url, options) => {
+    if (options.method === 'POST') { signal = options.signal as AbortSignal; return pending.promise; }
+    return oldHandler(url, options);
+  };
+  start(); const actor = await openTicketForm(); await fillTicketForm(actor);
+  await actor.click(screen.getByRole('button', { name: 'Create ticket' }));
+  if (change === 'workspace') await go('/organizations/20/tickets');
+  else await actor.click(screen.getByRole('button', { name: 'Sign out' }));
+  expect(signal?.aborted).toBe(true);
+  await act(async () => pending.resolve(json(ticket(7, 10, 'Printer issue'), 201)));
+  expect(window.location.hash).not.toBe('#/organizations/10/tickets/7');
+  expect(screen.queryByText('Ticket #7 created successfully.')).not.toBeInTheDocument();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+test('a stalled create request times out as uncertain and ignores a later success', async () => {
+  const pending = deferred(); let signal: AbortSignal | undefined;
+  const oldHandler = handler;
+  handler = (url, options) => {
+    if (options.method === 'POST') { signal = options.signal as AbortSignal; return pending.promise; }
+    return oldHandler(url, options);
+  };
+  start(); const actor = await openTicketForm(); await fillTicketForm(actor);
+  vi.useFakeTimers();
+  try {
+    fireEvent.click(screen.getByRole('button', { name: 'Create ticket' }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(signal?.aborted).toBe(true);
+    expect(screen.getByRole('alert')).toHaveTextContent('Creation could not be confirmed');
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    await act(async () => pending.resolve(json(ticket(7, 10, 'Printer issue'), 201)));
+    expect(screen.queryByText('Ticket #7 created successfully.')).not.toBeInTheDocument();
+    expect(ticketWrites()).toHaveLength(1);
+  } finally { vi.useRealTimers(); }
+});
+
+test('empty workspace directory action focuses the creation field without changing route', async () => {
+  handler = url => page([], url);
+  start('/organizations'); const actor = await signIn();
+  await actor.click(await screen.findByRole('button', { name: 'Name your workspace' }));
+  expect(screen.getByLabelText('Workspace name')).toHaveFocus();
+  expect(window.location.hash).toBe('#/organizations');
+});
+
+test('empty ticket action opens the modal and cancellation restores its own trigger', async () => {
+  handler = url => url.pathname.endsWith('/organizations') ? page([alpha], url) : page([], url);
+  start(); const actor = await signIn();
+  await actor.click(await screen.findByRole('button', { name: 'Create your first ticket' }));
+  expect(screen.getByLabelText('Title')).toHaveFocus();
+  fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Create your first ticket' })).toHaveFocus();
+  expect(ticketWrites()).toHaveLength(0);
+});
+
+test('no-match recovery clears applied filters and returns keyboard focus to search', async () => {
+  handler = url => url.pathname.endsWith('/organizations') ? page([alpha], url)
+    : url.searchParams.has('q') || url.searchParams.has('status') ? page([], url) : page([ticket()], url);
+  start(); const actor = await signIn();
+  await actor.type(await screen.findByLabelText('Search ticket titles'), 'missing');
+  await actor.selectOptions(screen.getByLabelText('Status'), 'closed');
+  await actor.click(screen.getByRole('button', { name: 'Apply filters' }));
+  await actor.click(await screen.findByRole('button', { name: 'Reset search and status' }));
+  expect(screen.getByLabelText('Search ticket titles')).toHaveFocus();
+  expect(screen.getByLabelText('Search ticket titles')).toHaveValue('');
+  expect(screen.getByLabelText('Status')).toHaveValue('');
+  expect(await screen.findByRole('button', { name: /View ticket #1/ })).toBeInTheDocument();
+});
+
+test('a now-empty ticket page can return to page one while preserving search', async () => {
+  handler = url => {
+    if (url.pathname.endsWith('/organizations')) return page([alpha], url);
+    if (url.searchParams.get('offset') === '20') return page([], url, 1);
+    return page(Array.from({length:20}, (_, i) => ticket(i + 1)), url, 21);
+  };
+  start(); const actor = await signIn();
+  await actor.type(await screen.findByLabelText('Search ticket titles'), 'Private');
+  await actor.click(screen.getByRole('button', { name: 'Apply filters' }));
+  await actor.click(await screen.findByRole('button', { name: 'Next page' }));
+  await actor.click(await screen.findByRole('button', { name: 'First ticket page' }));
+  expect(await screen.findByRole('button', { name: /View ticket #1:/ })).toBeInTheDocument();
+  const lastUrl = new URL(fetchMock.mock.calls.at(-1)![0], 'http://localhost');
+  expect(lastUrl.searchParams.get('offset')).toBe('0');
+  expect(lastUrl.searchParams.get('q')).toBe('Private');
+});
+
+test('loading and failure never masquerade as empty tickets; retry recovers', async () => {
+  const pending = deferred(); let recovered = false;
+  handler = url => url.pathname.endsWith('/organizations') ? page([alpha], url)
+    : recovered ? page([], url) : pending.promise;
+  start(); const actor = await signIn();
+  expect(await screen.findByText('Loading tickets…')).toHaveAttribute('role', 'status');
+  expect(screen.queryByText('No tickets yet.')).not.toBeInTheDocument();
+  await act(async () => pending.resolve(json({detail:'private diagnostic'}, 503)));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load data');
+  expect(screen.queryByText('No tickets yet.')).not.toBeInTheDocument();
+  expect(screen.queryByText('private diagnostic')).not.toBeInTheDocument();
+  recovered = true;
+  await actor.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('No tickets yet.')).toBeInTheDocument();
+});
+
+test('Escape cannot hide a pending create and validation errors are announced', async () => {
+  const pending = deferred(); const oldHandler = handler;
+  handler = (url, options) => options.method === 'POST' ? pending.promise : oldHandler(url, options);
+  start(); const actor = await openTicketForm();
+  await actor.click(screen.getByRole('button', { name: 'Create ticket' }));
+  expect(screen.getByRole('alert')).toHaveTextContent('Check the highlighted fields');
+  await fillTicketForm(actor);
+  await actor.click(screen.getByRole('button', { name: 'Create ticket' }));
+  fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  await act(async () => pending.resolve(json({}, 422)));
+  fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+test('integrated owner flow creates, reads, comments, changes priority and clears private UI on logout', async () => {
+  let saved = ticket(9, 10, 'Printer issue');
+  const comments: {comment_id:number;author_membership_id:number;content:string;created_at:string}[] = [];
+  fetchMock.mockImplementation(async (raw, options = {}) => {
+    const url = new URL(raw, 'http://localhost');
+    if (url.pathname.endsWith('/organizations')) return page([alpha], url);
+    if (url.pathname.endsWith('/comments')) {
+      if (options.method === 'POST') {
+        const comment = {comment_id:1,author_membership_id:1,content:JSON.parse(String(options.body)).content,created_at:'2026-11-01T10:00:00Z'};
+        comments.push(comment); return json(comment, 201);
+      }
+      return page(comments, url);
+    }
+    if (url.pathname.endsWith('/priority')) {
+      saved = {...saved, priority:JSON.parse(String(options.body)).priority}; return json(saved);
+    }
+    if (options.method === 'POST') return json(saved, 201);
+    if (url.pathname.endsWith('/tickets/9')) return json(saved);
+    return page([], url);
+  });
+  start(); const actor = await openTicketForm(); await fillTicketForm(actor);
+  await actor.click(screen.getByRole('button', { name: 'Create ticket' }));
+  await screen.findByRole('region', { name: 'Ticket details' });
+  await actor.click(await screen.findByRole('button', { name: 'Write a comment' }));
+  expect(screen.getByLabelText('Add a comment')).toHaveFocus();
+  await actor.type(screen.getByLabelText('Add a comment'), 'Reproduced the issue.');
+  await actor.click(screen.getByRole('button', { name: 'Post comment' }));
+  expect(await screen.findByText('Comment posted.')).toBeInTheDocument();
+  expect(await screen.findByText('Reproduced the issue.')).toBeInTheDocument();
+  await actor.selectOptions(screen.getByLabelText('Priority', {exact:true}), 'urgent');
+  await actor.click(screen.getByRole('button', { name: 'Save priority' }));
+  expect(await screen.findByText('Priority updated.')).toBeInTheDocument();
+  await actor.click(screen.getByRole('button', { name: 'Sign out' }));
+  expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
+  expect(screen.queryByText('Reproduced the issue.')).not.toBeInTheDocument();
+  expect(screen.queryByText('Printer issue')).not.toBeInTheDocument();
 });

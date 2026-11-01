@@ -133,3 +133,32 @@ main > section > p, .workspace-panel > p { color: var(--color-muted); }
   .workspace-list li, .auth-form { padding: 1rem; }
   .workspace-link { width: 100%; }
 }
+
+
+.ticket-list-heading, .modal-heading, .modal-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.create-ticket-dialog { margin: auto; width: min(36rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; padding: 1.5rem; background: white; color: var(--color-ink); border: 1px solid var(--color-line); border-radius: var(--radius-panel); box-shadow: 0 24px 80px #11264040; }
+.create-ticket-dialog::backdrop { background: #11264099; }
+.modal-heading h2 { font-size: 1.5rem; margin: 0; }
+#create-ticket-help, .field-help { color: var(--color-muted); font-size: 0.8125rem; }
+.create-ticket-form { display: grid; gap: 1.125rem; margin-top: 1.5rem; }
+.create-ticket-form p { margin: 0; }
+.field-error { color: #9b2928; font-size: 0.8125rem; }
+[aria-invalid="true"] { border-color: #b42333; }
+.modal-actions { justify-content: flex-end; padding-top: 0.5rem; }
+.success-toast { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; padding: 0.875rem 1rem; border: 1px solid #b8e5d0; border-radius: var(--radius-control); background: #edf9f4; color: #186549; }
+.success-toast p { margin: 0; }
+@media (max-width: 480px) { .create-ticket-dialog { padding: 1rem; } .modal-actions button { flex: 1; } .success-toast { flex-wrap: wrap; } }
+
+/* Recovery actions share a surface without confusing empty results with errors. */
+.empty-state { margin: 1rem 0; padding: clamp(1.25rem, 3vw, 2rem); border: 1px dashed var(--color-line); border-radius: var(--radius-panel); background: #f9fbff; overflow-wrap: anywhere; }
+.empty-state-title { margin: 0; font-weight: 650; color: var(--color-ink); }
+.empty-state-description { max-width: 42rem; color: var(--color-muted); font-size: 0.875rem; line-height: 1.6; }
+.empty-state-action { margin-top: 1rem; }
+.empty-state-action button { max-width: 100%; white-space: normal; }
+.loading-state { display: flex; align-items: center; gap: 0.75rem; padding: 1.25rem; border: 1px solid var(--color-line); border-radius: var(--radius-panel); background: white; color: var(--color-muted); }
+.loading-indicator { width: 0.75rem; height: 0.75rem; flex: none; border-radius: 50%; background: var(--color-brand); }
+.resource-feedback { margin-block: 1rem; }
+.resource-feedback > button, .resource-feedback > a { margin-top: 0.25rem; }
+.resource-feedback > a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+.create-ticket-dialog { overscroll-behavior: contain; }
+@media (max-width: 480px) { .empty-state { padding: 1rem; } .empty-state-action button { width: 100%; } }

@@ -56,7 +56,7 @@ export function invalidRequest(): Extract<ResourceResult<never>, { kind: 'invali
 /** Resource adapters share transport but do not own session or screen state. */
 export async function requestResource<T>(
   path: string, token: string, guard: Guard<T>,
-  options: { signal?: AbortSignal; body?: { name: string } | { content: string } | { priority: string }; method?: 'PUT'; expectedStatus?: number } = {},
+  options: { signal?: AbortSignal; body?: { name: string } | { content: string } | { priority: string } | { title: string; description: string; priority: string }; method?: 'PUT'; expectedStatus?: number } = {},
 ): Promise<ResourceResult<T>> {
   if (typeof token !== 'string' || !token.trim() || /[\r\n]/u.test(token)) return invalidRequest();
   const cancelled = () => ({ ok: false, kind: 'aborted', status: null, message: 'Request cancelled.' } as const);

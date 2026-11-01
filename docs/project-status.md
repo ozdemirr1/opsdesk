@@ -1,4 +1,4 @@
-# Project status — 31 October 2026 (Friday tasks 4–6 completed)
+# Project status — 1 November 2026 (Saturday tasks 4–6 completed)
 
 This is a dated implementation checkpoint. The [README](../README.md) summarizes
 the product; contract documents describe intended rules. Issue files preserve
@@ -25,6 +25,10 @@ initial scope and dated implementation notes. GitHub remains the live work track
   state restrictions and cancellation on scope changes. Publication is pending.
 - Tailwind-backed shared controls and responsive auth/sidebar layout are complete
   locally; desktop/narrow visual verification is recorded below.
+- Local Ticket creation modal connected to the existing POST API, with safe
+  pending/error handling, success notification and detail navigation.
+- Actionable empty states, shared loading feedback and keyboard recovery controls;
+  bounded desktop/tablet/mobile review completed on 1 November.
 - React identity forms with runtime response guards and in-memory session state.
 - Both local and hosted App open Login before authentication and real workspaces
   after login; fixture components
@@ -432,3 +436,78 @@ Friday's six requested implementation tasks are complete locally. All Friday
 changes remain uncommitted; CI evidence above still belongs to `acb5a57`.
 Ticket creation modal, toast, fuller empty states/accessibility, final integrated
 release checks and publication remain Month 04 work. No new daily report was made.
+
+
+## 31 October — Saturday tasks 1–3: Ticket creation UI
+
+- Added New ticket to the authenticated workspace list, including an empty
+  workspace. All active member roles can create; backend membership/organization
+  checks remain authoritative. The native dialog focuses the title on opening,
+  makes the background inert and restores the opener on cancellation. Escape and
+  explicit close work while idle; closing is disabled during the bounded request.
+- The adapter sends only normalized title, description and priority to the
+  existing POST endpoint. Requester/creator remain server-derived. Client limits
+  match backend code-point limits; responses require 201 and matching workspace,
+  submitted content and creation invariants. There is no backend/schema change.
+- A request guard prevents duplicate submits. 422 keeps the draft editable;
+  401 expires the session and 403/404 discard workspace access. Network, malformed
+  and server failures, including a 30-second client timeout, explain that creation
+  is uncertain and offer an unfiltered list check rather than automatic retry.
+  Route/organization/session changes abort requests and discard late results;
+  cancellation does not imply a server write was rolled back.
+- Confirmed creation navigates to the returned Ticket ID and fetches its canonical
+  detail. A dismissible live-region success notice stays until dismissal or
+  navigation; Back/Forward cannot revive it. Returning to the list fetches again.
+- Verification: **347 frontend tests across 17 files**, production build and lint
+  pass. The previous backend evidence is unchanged (740 non-integration and 281
+  PostgreSQL data tests on 30 October; 5 schema tests on 28 October).
+- Browser checks used actual components/adapters with synthetic HTTP responses in
+  an isolated local harness: initial focus, native modal background exclusion,
+  keyboard navigation, Escape/focus return, creation/detail/notice dismissal and
+  updated list. Desktop and 355-CSS-pixel narrow layout showed no horizontal
+  overflow. This is not an end-to-end PostgreSQL or hosted smoke result.
+
+Friday's design/priority changes are now committed as product `19dfaff`, matching
+its local origin tracking ref. Today's creation work remains uncommitted.
+No new CI, PR, merge or deployment is claimed. Railway is deliberately left for
+an evening check by the learner; the supplied screenshot shows a queued build.
+Saturday's broader empty-state/accessibility review and final integrated release
+checks remain open. This increment closes only the requested first three tasks.
+
+
+## 1 November — completion of Saturday 31 October tasks 4–6
+
+- Empty states now distinguish an empty workspace, no matching Tickets and a
+  page emptied by changing results. Recovery actions open Ticket creation,
+  reset search/status or return to the first page while preserving filters.
+  Empty Organization and Comment states guide focus to their existing forms;
+  closed Tickets do not invite new comments. Empty later Organization/Comment
+  pages also offer a return to page one.
+- Shared loading surfaces announce progress with a polite status region and
+  use a static indicator. Read failures remain alerts with bounded recovery
+  choices, never successful-empty states. Existing response/session guards stay
+  authoritative. Pagination controls now have navigation landmarks.
+- The Ticket modal announces validation failures, focuses the first invalid
+  field, and contains overscroll. Native Escape restores its actual opener when
+  idle; pending writes cannot be hidden by Escape. Resetting filters restores
+  focus to search. Existing focus styles, labelled controls and text-based status
+  badges are retained; this is a bounded accessibility review, not a WCAG audit.
+- Verification on **1 November**: **356 frontend tests across 17 files**, production
+  build and lint pass. Nine additional tests cover recovery/focus behavior,
+  loading/error separation, closed empty comments and a combined authenticated
+  create → detail → comment → priority update → logout flow using real frontend
+  adapters with synthetic HTTP responses. Backend/schema were not changed or
+  rerun; historical backend evidence retains its original dates.
+- Browser review used the same application in an isolated synthetic-response
+  harness. Empty-state layouts at **1280, 700 and 320 CSS pixels** had page scroll
+  widths equal to their viewport widths. At 320px, the modal's client/scroll
+  widths both measured 280px; longer validation content scrolls vertically.
+  Keyboard Enter, invalid-field focus, Escape/opener return, failed-read Retry
+  and filter-reset focus were checked. The temporary server/tab were closed.
+
+Saturday's six implementation/UI-check tasks are complete locally. This does not
+close Sunday's full PostgreSQL/persistence, cross-identity, exact-head CI,
+publication, hosted smoke, operational recovery or Month 04 retrospective gates.
+Creation and this continuation remain uncommitted. No commit, push, merge or
+Railway action was performed; the manual deployment instructions remain a release
+step after the intended source is published. No new daily file was introduced.

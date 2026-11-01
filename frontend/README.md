@@ -3,7 +3,38 @@
 React + TypeScript interface for the OpsDesk support-ticket product, developed
 inside the product monorepo. Vite provides the development server and build tooling.
 
-## Current checkpoint — 31 October 2026, Friday tasks 4–6 completed
+## Current checkpoint — 1 November 2026, Saturday tasks 4–6 completed
+
+Shared `ResourceState` components present loading and successful-empty results;
+errors remain distinct in `ResourceFeedback`. Empty screens offer Ticket creation,
+form focus, filter reset or page-one recovery. Filter reset returns focus to search;
+pagination uses navigation landmarks. Closed empty Tickets have no comment action.
+The native creation dialog now announces invalid fields and contains overscroll.
+
+356 tests / 17 files, production build and lint pass. Added coverage includes
+recovery/focus and a combined create/detail/comment/priority/logout flow with real
+adapters and synthetic HTTP responses. Browser checks covered 1280/700/320 CSS
+pixel layouts, Enter/Escape/focus, retry and reset. No actual database or hosted
+smoke is claimed. Saturday's code is uncommitted; Sunday's final release and
+operational gates, plus recorded dependency findings, remain open.
+
+## Earlier checkpoint — 31 October 2026, Saturday tasks 1–3 completed
+
+The authenticated workspace list now offers New ticket, including empty lists.
+`CreateTicketDialog` owns the draft and bounded request lifecycle; `api/tickets.ts`
+validates title/description/priority and the existing POST response. Workspace owns
+success navigation and the dismissible live-region notice. Native dialog behavior
+provides background exclusion; Escape/Cancel restore the opener while idle.
+Pending writes cannot be resent. Uncertain results require checking the list;
+client cancellation does not undo a write. Scope changes discard late responses.
+
+347 tests across 17 files, production build and lint pass. Browser verification
+covered keyboard/focus, creation/detail/list flow and desktop/narrow layout using
+synthetic HTTP responses in a temporary harness. No hosted smoke or deployment is
+claimed. The creation UI is uncommitted; Friday's design is committed as `19dfaff`.
+Remaining Saturday review/release gates and existing dependency findings stay open.
+
+## Earlier checkpoint — 31 October 2026, Friday tasks 4–6 completed
 
 Friday's priority control and Tailwind/responsive design are implemented locally.
 AppShell places navigation in a desktop sidebar and a compact mobile header;

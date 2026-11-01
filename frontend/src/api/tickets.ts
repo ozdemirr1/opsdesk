@@ -117,3 +117,34 @@ export function changeTicketPriority(
       value.priority === priority && ['open', 'in_progress'].includes(value.status),
     { method: 'PUT', body: { priority }, signal });
 }
+
+
+export type CreateTicketInput = { title: string; description: string; priority: TicketPriority };
+
+export function validateTicketInput(input: CreateTicketInput): { title?: string; description?: string } {
+  const errors: { title?: string; description?: string } = {};
+  if (typeof input.title !== 'string' || !input.title.trim() || [...input.title.trim()].length > 255 || /[\0\r\n\t]/u.test(input.title)) {
+    errors.title = 'Enter a title of 1–255 characters without tabs or line breaks.';
+  }
+  if (typeof input.description !== 'string' || !input.description.trim() || [...input.description.trim()].length > 10_000 || input.description.includes('\0')) {
+    errors.description = 'Enter a description of 1–10,000 characters without null characters.';
+  }
+  return errors;
+}
+
+export function createTicket(
+  token: string, organizationId: number, input: CreateTicketInput, signal?: AbortSignal,
+): Promise<ResourceResult<TicketResponse>> {
+  const errors = validateTicketInput(input);
+  if (!isId(organizationId) || errors.title || errors.description || !priorities.includes(input.priority)) {
+    return Promise.resolve(invalidRequest());
+  }
+  // Explicit fields prevent runtime extras from becoming ownership/role input.
+  const body = { title: input.title.trim(), description: input.description.trim(), priority: input.priority };
+  return requestResource(`/organizations/${organizationId}/tickets`, token,
+    (value): value is TicketResponse => isTicketResponse(value) && value.organization_id === organizationId &&
+      value.status === 'open' && value.assignee_membership_id === null &&
+      value.requester_membership_id === value.creator_membership_id && value.priority === body.priority &&
+      value.title === body.title && value.description === body.description,
+    { body, signal, expectedStatus: 201 });
+}

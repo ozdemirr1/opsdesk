@@ -10,6 +10,8 @@ import TicketTable from './TicketTable';
 import TicketDetail from './TicketDetail';
 import Comments from './Comments';
 import TicketPriorityControl from './TicketPriorityControl';
+import CreateTicketDialog from './CreateTicketDialog';
+import { EmptyState, LoadingState } from './ResourceState';
 
 type Props = { token: string; organizationId: number; ticketId?: number; onExpired: () => void };
 
@@ -36,16 +38,36 @@ function WorkspaceContent({ token, organizationId, ticketId, onExpired, retry }:
   const load = useCallback((signal: AbortSignal) => loadContext(token, organizationId, signal), [token, organizationId]);
   const result = useResource(load);
   const [denied, setDenied] = useState(false);
+  const [createdId, setCreatedId] = useState<number | null>(null);
+  // Keep a success message only for its destination; Back/Forward cannot revive it.
+  useEffect(() => {
+    const clearOnNavigation = () => setCreatedId(id =>
+      id !== null && window.location.hash !== `#${ticketPath(organizationId, id)}` ? null : id);
+    window.addEventListener('hashchange', clearOnNavigation);
+    window.addEventListener('popstate', clearOnNavigation);
+    return () => {
+      window.removeEventListener('hashchange', clearOnNavigation);
+      window.removeEventListener('popstate', clearOnNavigation);
+    };
+  }, [organizationId]);
+  function onCreated(ticket: TicketResponse) {
+    setCreatedId(ticket.ticket_id);
+    navigate(ticketPath(organizationId, ticket.ticket_id));
+  }
   const onDenied = useCallback(() => setDenied(true), []);
   if (denied) return <section><h2>Workspace unavailable</h2><p role="alert">Your access has changed. Select a workspace again.</p><a href="#/organizations">Choose workspace</a></section>;
-  if (!result) return <p role="status">Checking workspace membership…</p>;
+  if (!result) return <LoadingState>Checking workspace membership…</LoadingState>;
   if (!result.ok) return <ResourceFeedback result={result} onExpired={onExpired} retry={retry} />;
   return <section className="workspace-panel">
     <div className="workspace-heading"><div><h2>{result.data.organization.name}</h2>
       <p>Your role: {result.data.own_membership.role}</p></div><a href="#/organizations">Change workspace</a></div>
+    {createdId !== null && ticketId === createdId && result.data.organization.is_active && <div className="success-toast">
+      <p role="status" aria-live="polite" aria-atomic="true">Ticket #{createdId} created successfully.</p>
+      <button type="button" aria-label="Dismiss success notification" onClick={() => setCreatedId(null)}>Dismiss</button>
+    </div>}
     {!result.data.organization.is_active ? <p role="alert">This workspace is suspended. Tickets are unavailable.</p>
       : ticketId !== undefined ? <RemoteDetail role={result.data.own_membership.role} key={ticketId} token={token} organizationId={organizationId} ticketId={ticketId} onExpired={onExpired} onDenied={onDenied} />
-      : <RemoteDashboard token={token} organizationId={organizationId} onExpired={onExpired} onDenied={onDenied} />}
+      : <RemoteDashboard onCreated={onCreated} token={token} organizationId={organizationId} onExpired={onExpired} onDenied={onDenied} />}
   </section>;
 }
 type ReadProps = Omit<Props, 'ticketId'> & { onDenied: () => void };
@@ -68,7 +90,7 @@ function RemoteDetail({ token, organizationId, ticketId, onExpired, onDenied, ro
 function DetailData({ token, organizationId, ticketId, onExpired, onDenied, retry, role }: DetailProps & { retry: () => void }) {
   const load = useCallback((signal: AbortSignal) => getTicket(token, organizationId, ticketId, signal), [token, organizationId, ticketId]);
   const result = useResource(load);
-  if (!result) return <p role="status">Loading ticket…</p>;
+  if (!result) return <LoadingState>Loading ticket…</LoadingState>;
   if (!result.ok) return <ReadError result={result} onExpired={onExpired} onDenied={onDenied} retry={retry} />;
   return <LoadedDetail key={`${token}:${organizationId}:${ticketId}`} initial={result.data}
     token={token} organizationId={organizationId} ticketId={ticketId} role={role}
@@ -95,17 +117,26 @@ function LoadedDetail({ initial, token, organizationId, ticketId, role, onExpire
   </>;
 }
 
-function RemoteDashboard(props: ReadProps) {
+function RemoteDashboard(props: ReadProps & { onCreated: (ticket: TicketResponse) => void }) {
+  const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState('');
   const [status, setStatus] = useState<TicketStatus | ''>('');
   const [query, setQuery] = useState<TicketQuery>({ limit: 20, offset: 0 });
   const [revision, setRevision] = useState(0);
+  function resetFilters() {
+    setDraft(''); setStatus(''); setQuery({ limit: 20, offset: 0 });
+    document.getElementById('live-search')?.focus();
+  }
   function submit(event: FormEvent) {
     event.preventDefault();
     setQuery({ limit: 20, offset: 0, ...(draft ? { q: draft } : {}), ...(status ? { status } : {}) });
   }
   return <>
-    <h3>Tickets</h3>
+    <div className="ticket-list-heading"><h3>Tickets</h3>
+      <button type="button" className="submit-btn" onClick={() => setCreating(true)}>New ticket</button></div>
+    {creating && <CreateTicketDialog token={props.token} organizationId={props.organizationId}
+      onClose={() => setCreating(false)} onCreated={props.onCreated} onExpired={props.onExpired} onDenied={props.onDenied}
+      onReviewList={() => { setCreating(false); setDraft(''); setStatus(''); setQuery({ limit: 20, offset: 0 }); setRevision(value => value + 1); }} />}
     <p>Live workspace data. Search and filters apply to all tickets you can access.</p>
     <form className="ticket-controls" onSubmit={submit}>
       <div className="ticket-search"><label htmlFor="live-search">Search ticket titles</label>
@@ -116,27 +147,34 @@ function RemoteDashboard(props: ReadProps) {
           if (value === '' || value === 'open' || value === 'in_progress' || value === 'resolved' || value === 'closed') setStatus(value);
         }}><option value="">All statuses</option><option value="open">Open</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select></div>
       <button type="submit">Apply filters</button>
-      <button type="button" onClick={() => { setDraft(''); setStatus(''); setQuery({ limit: 20, offset: 0 }); }}>Clear filters</button>
+      <button type="button" onClick={resetFilters}>Clear filters</button>
     </form>
-    <TicketPage key={revision} {...props} query={query} onPage={offset => setQuery(previous => ({ ...previous, offset }))}
+    <TicketPage key={revision} {...props} onCreate={() => setCreating(true)} onResetFilters={resetFilters} query={query} onPage={offset => setQuery(previous => ({ ...previous, offset }))}
       retry={() => setRevision(value => value + 1)} />
   </>;
 }
-function TicketPage({ token, organizationId, onExpired, onDenied, query, onPage, retry }: ReadProps & {
-  query: TicketQuery; onPage: (offset: number) => void; retry: () => void;
+function TicketPage({ token, organizationId, onExpired, onDenied, query, onPage, retry, onCreate, onResetFilters }: ReadProps & {
+  query: TicketQuery; onPage: (offset: number) => void; retry: () => void; onCreate: () => void; onResetFilters: () => void;
 }) {
   const load = useCallback((signal: AbortSignal) => listTickets(token, organizationId, query, signal), [token, organizationId, query]);
   const result = useResource(load);
-  if (!result) return <p role="status">Loading tickets…</p>;
+  if (!result) return <LoadingState>Loading tickets…</LoadingState>;
   if (!result.ok) return <ReadError result={result} onExpired={onExpired} onDenied={onDenied} retry={retry} />;
   const { items, total_count, offset, limit } = result.data;
   return <>
     <p className="ticket-result-count" role="status">{total_count} matching tickets</p>
     {items.length ? <TicketTable tickets={items.map(toTicketSummary)} onSelectTicket={id => navigate(ticketPath(organizationId, id))} />
-      : <p>{offset > 0 ? 'No tickets on this page.' : query.q || query.status ? 'No matching tickets.' : 'No tickets yet.'}</p>}
-    <div className="ticket-controls" aria-label="Ticket pagination">
+       : offset > 0 ? <EmptyState title="No tickets on this page."
+        description="The results may have changed. Return to the first page with your current filters."
+        action={<button type="button" onClick={() => onPage(0)}>First ticket page</button>} />
+      : query.q || query.status ? <EmptyState title="No matching tickets."
+        description="Try a different title or clear the filters to see all tickets you can access."
+        action={<button type="button" onClick={onResetFilters}>Reset search and status</button>} />
+      : <EmptyState title="No tickets yet." description="Create a ticket to start tracking a support request in this workspace."
+        action={<button type="button" className="submit-btn" onClick={onCreate}>Create your first ticket</button>} />}
+    <nav className="ticket-controls" aria-label="Ticket pagination">
       <button disabled={offset === 0} onClick={() => onPage(Math.max(0, offset - limit))}>Previous page</button>
       <button disabled={offset + items.length >= total_count} onClick={() => onPage(offset + limit)}>Next page</button>
-    </div>
+    </nav>
   </>;
 }
