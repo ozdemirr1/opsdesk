@@ -1,4 +1,4 @@
-# Project status — 29 October 2026 (28 October release closure)
+# Project status — 1 November 2026 (Saturday tasks 4–6 completed)
 
 This is a dated implementation checkpoint. The [README](../README.md) summarizes
 the product; contract documents describe intended rules. Issue files preserve
@@ -11,7 +11,9 @@ initial scope and dated implementation notes. GitHub remains the live work track
 - Alembic schema includes Users, Organizations, OrganizationMemberships, Tickets
   and the new Comment foundation at source head `84c2f9a17d60`. The guarded test
   database and hosted deployment are upgraded; the last verified development
-  schema remains `31be9023cfb2`. Attachments remain planned; Comments have no service/API yet.
+  schema remains `31be9023cfb2`. Attachments remain planned. Comment service/GET/POST API is now locally
+  implemented and tested, with CommentForm/list integration added on 30 October.
+  Review/publication and hosted verification remain pending.
 - Registration, login and active persisted current-User resolution.
 - Atomic Organization creation and membership-scoped Organization list/detail.
 - Authenticated Ticket creation with server-derived requester/creator, tenant
@@ -19,6 +21,14 @@ initial scope and dated implementation notes. GitHub remains the live work track
 - Local Week 16 scoped Ticket list/detail API with title search, filters and
   same-statement count/page/access checks; unit/API and PostgreSQL tests pass.
   These GET routes are deployed and passed hosted smoke on 29 October.
+- Local role-aware priority control on real Ticket detail, with response validation,
+  state restrictions and cancellation on scope changes. Publication is pending.
+- Tailwind-backed shared controls and responsive auth/sidebar layout are complete
+  locally; desktop/narrow visual verification is recorded below.
+- Local Ticket creation modal connected to the existing POST API, with safe
+  pending/error handling, success notification and detail navigation.
+- Actionable empty states, shared loading feedback and keyboard recovery controls;
+  bounded desktop/tablet/mobile review completed on 1 November.
 - React identity forms with runtime response guards and in-memory session state.
 - Both local and hosted App open Login before authentication and real workspaces
   after login; fixture components
@@ -26,8 +36,8 @@ initial scope and dated implementation notes. GitHub remains the live work track
 - Pure Ticket display mapper plus validated Organization/Ticket HTTP adapters,
   locally added on 27 October and connected to protected workspace screens.
   Fresh verification: 234 frontend tests / 12 files, build and lint passed on
-  28 October. Fresh backend results: 589 non-integration, 204 PostgreSQL data
-  and 5 schema tests passed; real API/browser evidence is recorded below.
+  28 October. 30 October results: 740 backend non-integration, 281 PostgreSQL data and
+  311 frontend tests passed; build/lint/Ruff passed. Final design build/lint passed on 31 October. The 5 schema tests retain their 28 October result; evidence is below.
 
 - Local Organization selection/creation, membership roles, protected hash routes
   and real Ticket list/detail/search/pagination. Private request ownership is
@@ -277,3 +287,227 @@ posting-state checks and cooperating locks, priority actions, Ticket creation UI
 and the remaining Month 04 UI/learning gates remain open. Earlier dated pending
 statements in this report describe their original checkpoint, not current release
 status. No new daily report was added.
+
+
+## 29 October — Comment service and API, tasks 1–3
+
+Implemented locally: POST and GET
+`/organizations/{organization_id}/tickets/{ticket_id}/comments`.
+The authenticated User supplies the actor; the service derives the author from
+current active Organization membership. Customers can comment on their own
+requested Tickets; agent/admin/owner can comment on visible same-Organization
+Tickets. Closed Tickets reject posting with `409 state_conflict` but remain
+readable. Hidden Tickets return 404 and foreign Organizations return 403.
+
+Content is a strict string: normalize CRLF/CR to LF, reject C0 controls other than
+LF/TAB before trimming, trim boundaries and accept 1–10,000 Unicode code points.
+Internal whitespace and Unicode remain intact; extra body fields are rejected.
+GET validates limit/offset, rejects unknown/duplicate query keys and returns a
+chronological page with its authorized total. Public Comment fields are limited
+to ID, author membership ID, content and creation time.
+
+Writes reuse the ordered Organization → User → membership locks, then lock and
+refresh the scoped Ticket. Commit precedes the response; failures roll back.
+PostgreSQL tests observe actual blocking through `pg_blocking_pids` on independent
+connections. Closure-first rejects the waiting comment; comment-first preserves
+the comment after closure. Closure is a cooperating test transaction, **not a new
+status endpoint**. A timeout returns the safe busy error, rolls back, and does not
+block an independent Organization from progressing.
+
+Fresh checks: **702 backend non-integration tests passed** (242 database/schema
+cases deselected), **237 PostgreSQL data integration tests passed** exclusively
+on guarded `opsdesk_product_test`; Ruff lint/format and diff whitespace checks
+passed. This adds 113 non-integration and 33 data integration cases. No migration
+changed; the 5 schema tests retain their 28 October result. Frontend remains
+unchanged; its 234-test/build/lint result also retains its 28 October date.
+
+This increment is local and uncommitted; no push, PR or deployment was performed.
+The live preview remains the previously verified release. CommentForm/list,
+priority actions and the remaining Month 04 UI tasks are still pending. Only the
+requested first three Thursday tasks are complete; the entire day/week is not
+marked complete. No separate daily report was created.
+
+
+## 30 October — completion of Thursday 29 October tasks 4–6
+
+The first three Thursday tasks were committed/pushed by the learner as product
+`7a3bb04` and bootcamp `98f4cda` on `feature/week-16-comment-api`; local tracking
+branches agree. This checkpoint adds local uncommitted work to that same branch,
+not a claim of merge, current-head CI or a new Railway release.
+
+1. **Comment list/form:** the protected real Ticket detail now reads and posts
+   persisted comments through validated adapters. The list has chronological
+   pagination, empty/loading/error states and plain-text multiline rendering.
+   Closed Tickets have readable history without a form. Sending locks out duplicate
+   submissions; success clears the draft and refreshes the list. Validation/conflict
+   failures retain the draft; ambiguous writes are never automatically retried and
+   explicitly tell the user to check history before sending again. Session,
+   Organization or Ticket changes discard drafts/history and ignore late results.
+   401 expires the session, 403 clears workspace access, and a missing Comment
+   route offers manual Ticket refresh rather than an automatic reload loop.
+2. **Priority backend subset:** PUT
+   `/organizations/{organization_id}/tickets/{ticket_id}/priority` accepts only a
+   valid priority. Fresh active actor/membership/Organization, scoped visibility,
+   staff role and open/in_progress state are checked under ordered locks before
+   mutation or no-op. Customer attempts are denied; resolved/closed changes fail.
+   A real change updates priority and `updated_at` in one SQL statement; an
+   authorized repeat leaves all fields unchanged. Failure rolls back. PostgreSQL
+   tests verify waiting requests observe a cooperating closure, role demotion or
+   membership deactivation before deciding. Assignment/status endpoints remain
+   outside this subset; issue #20 is not claimed complete.
+3. **Verification and record:** 740 backend non-integration tests passed (286
+   database/schema cases deselected); 281 PostgreSQL data integration tests passed
+   exclusively on guarded `opsdesk_product_test`; 278 frontend tests across 14 files
+   passed. Frontend build/lint, backend Ruff lint/format and diff checks passed.
+   No schema changed; the 5 schema cases retain their 28 October evidence.
+   Frontend checks used real adapters with synthetic HTTP responses; backend
+   integration used real PostgreSQL. No new authenticated browser or hosted smoke
+   is claimed for this increment.
+
+Thursday's requested implementation is complete locally. The next Friday package
+still includes the role-aware priority UI, Tailwind primitives and responsive
+shell/sidebar. Ticket creation UI and remaining Month 04 gates also stay open.
+No publish, paid service change, new migration or separate daily report was made.
+
+
+## 30 October — Friday tasks 1–3: priority control
+
+- GitHub review: product `acb5a57` has successful [Backend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/41082922607)
+  and [Frontend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/41082922744).
+  Neither repository has a PR for `feature/week-16-comment-api`; the bootcamp
+  branch has no workflow runs. Thursday's continuation is pushed as product
+  `acb5a57` and bootcamp `25f3a23`.
+- Real Ticket detail now exposes the priority form only to agent/admin/owner,
+  using API membership context. Resolved/closed Tickets cannot be changed;
+  backend authorization remains authoritative. PUT responses are checked for
+  matching organization, Ticket, priority, state and valid response structure.
+- Pending submissions prevent duplicate sends. Successful responses update the
+  detail without discarding a comment draft; an authorized no-op reports unchanged
+  priority. Unauthorized/missing resources clear private content. Uncertain writes
+  and state conflicts require an explicit refresh before another attempt.
+- Ticket, organization and session changes abort pending writes and ignore late
+  responses. Tests cover role/state visibility, successful/no-op writes, error
+  handling, malformed responses, duplicate prevention and scope cleanup.
+- Fresh frontend verification: **309 tests across 15 files**, build and lint pass.
+  Tests use the real App/adapters with synthetic HTTP responses. Earlier 30 October
+  backend evidence remains 740 non-integration and 281 PostgreSQL data tests; no
+  backend/schema change or rerun was needed. Schema evidence remains 5 tests from
+  28 October. No new manual browser or hosted smoke is claimed.
+
+These Friday changes are local and uncommitted; the successful CI above applies
+only to `acb5a57`. Review/publication, Tailwind/responsive shell, Ticket creation UI
+and the remaining Month 04 acceptance gates are still pending.
+
+
+## 31 October — completion of Friday 30 October tasks 4–6
+
+- Added Tailwind CSS 4.3.3 and its Vite plugin using the
+  [official Vite integration](https://tailwindcss.com/docs/installation/using-vite).
+  Shared theme tokens cover colors, typography and radii; base styles unify
+  buttons, fields, focus and disabled/error states. Semantic component styles
+  remain in App.css. Explicit source scanning and static tokens keep utilities
+  and CSS variable consumers consistent.
+- AppShell separates public login/register presentation from authenticated
+  navigation. Desktop uses a sidebar; narrow screens use a compact top navigation.
+  The same controls remain available without a modal or hidden navigation state.
+  No session persistence, role rules or API contracts changed.
+- Workspace cards, Ticket filters/table/detail, priority controls and comments
+  share spacing and surfaces. Tables scroll within their labelled region;
+  long descriptions wrap. Keyboard users can skip to main content without
+  changing the hash route. Reduced-motion preferences are respected.
+- Verification: **311 frontend tests across 16 files passed on 30 October**,
+  including two new shell accessibility/session-cleanup tests; build and lint
+  passed. After the interrupted work resumed on 31 October, the final theme
+  adjustment passed build/lint again. Both repositories pass diff checks.
+- Browser checks covered login/register, workspace selection, Ticket table and
+  detail at desktop and narrow layouts. Observed narrow viewport widths included
+  355 and 433 CSS pixels; page scroll width matched viewport width while the
+  table retained its own horizontal scroll. Authenticated visual checks used
+  the real components in an isolated temporary harness with synthetic responses,
+  not the production API. The harness was stopped; no hosted smoke or deployment
+  is claimed. Existing behavior tests cover permissions and request cancellation.
+- Installation initially failed certificate validation; using the system CA
+  bundle resolved it without disabling TLS verification. npm audit reports four
+  existing development-dependency findings (two moderate, two high): Vitest /
+  @vitest/mocker, undici and zod. Their versions are unchanged from HEAD;
+  dependency remediation remains a separate follow-up, not a clean-audit claim.
+
+Friday's six requested implementation tasks are complete locally. All Friday
+changes remain uncommitted; CI evidence above still belongs to `acb5a57`.
+Ticket creation modal, toast, fuller empty states/accessibility, final integrated
+release checks and publication remain Month 04 work. No new daily report was made.
+
+
+## 31 October — Saturday tasks 1–3: Ticket creation UI
+
+- Added New ticket to the authenticated workspace list, including an empty
+  workspace. All active member roles can create; backend membership/organization
+  checks remain authoritative. The native dialog focuses the title on opening,
+  makes the background inert and restores the opener on cancellation. Escape and
+  explicit close work while idle; closing is disabled during the bounded request.
+- The adapter sends only normalized title, description and priority to the
+  existing POST endpoint. Requester/creator remain server-derived. Client limits
+  match backend code-point limits; responses require 201 and matching workspace,
+  submitted content and creation invariants. There is no backend/schema change.
+- A request guard prevents duplicate submits. 422 keeps the draft editable;
+  401 expires the session and 403/404 discard workspace access. Network, malformed
+  and server failures, including a 30-second client timeout, explain that creation
+  is uncertain and offer an unfiltered list check rather than automatic retry.
+  Route/organization/session changes abort requests and discard late results;
+  cancellation does not imply a server write was rolled back.
+- Confirmed creation navigates to the returned Ticket ID and fetches its canonical
+  detail. A dismissible live-region success notice stays until dismissal or
+  navigation; Back/Forward cannot revive it. Returning to the list fetches again.
+- Verification: **347 frontend tests across 17 files**, production build and lint
+  pass. The previous backend evidence is unchanged (740 non-integration and 281
+  PostgreSQL data tests on 30 October; 5 schema tests on 28 October).
+- Browser checks used actual components/adapters with synthetic HTTP responses in
+  an isolated local harness: initial focus, native modal background exclusion,
+  keyboard navigation, Escape/focus return, creation/detail/notice dismissal and
+  updated list. Desktop and 355-CSS-pixel narrow layout showed no horizontal
+  overflow. This is not an end-to-end PostgreSQL or hosted smoke result.
+
+Friday's design/priority changes are now committed as product `19dfaff`, matching
+its local origin tracking ref. Today's creation work remains uncommitted.
+No new CI, PR, merge or deployment is claimed. Railway is deliberately left for
+an evening check by the learner; the supplied screenshot shows a queued build.
+Saturday's broader empty-state/accessibility review and final integrated release
+checks remain open. This increment closes only the requested first three tasks.
+
+
+## 1 November — completion of Saturday 31 October tasks 4–6
+
+- Empty states now distinguish an empty workspace, no matching Tickets and a
+  page emptied by changing results. Recovery actions open Ticket creation,
+  reset search/status or return to the first page while preserving filters.
+  Empty Organization and Comment states guide focus to their existing forms;
+  closed Tickets do not invite new comments. Empty later Organization/Comment
+  pages also offer a return to page one.
+- Shared loading surfaces announce progress with a polite status region and
+  use a static indicator. Read failures remain alerts with bounded recovery
+  choices, never successful-empty states. Existing response/session guards stay
+  authoritative. Pagination controls now have navigation landmarks.
+- The Ticket modal announces validation failures, focuses the first invalid
+  field, and contains overscroll. Native Escape restores its actual opener when
+  idle; pending writes cannot be hidden by Escape. Resetting filters restores
+  focus to search. Existing focus styles, labelled controls and text-based status
+  badges are retained; this is a bounded accessibility review, not a WCAG audit.
+- Verification on **1 November**: **356 frontend tests across 17 files**, production
+  build and lint pass. Nine additional tests cover recovery/focus behavior,
+  loading/error separation, closed empty comments and a combined authenticated
+  create → detail → comment → priority update → logout flow using real frontend
+  adapters with synthetic HTTP responses. Backend/schema were not changed or
+  rerun; historical backend evidence retains its original dates.
+- Browser review used the same application in an isolated synthetic-response
+  harness. Empty-state layouts at **1280, 700 and 320 CSS pixels** had page scroll
+  widths equal to their viewport widths. At 320px, the modal's client/scroll
+  widths both measured 280px; longer validation content scrolls vertically.
+  Keyboard Enter, invalid-field focus, Escape/opener return, failed-read Retry
+  and filter-reset focus were checked. The temporary server/tab were closed.
+
+Saturday's six implementation/UI-check tasks are complete locally. This does not
+close Sunday's full PostgreSQL/persistence, cross-identity, exact-head CI,
+publication, hosted smoke, operational recovery or Month 04 retrospective gates.
+Creation and this continuation remain uncommitted. No commit, push, merge or
+Railway action was performed; the manual deployment instructions remain a release
+step after the intended source is published. No new daily file was introduced.

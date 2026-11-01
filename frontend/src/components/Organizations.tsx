@@ -3,6 +3,7 @@ import { createOrganization, listOrganizations } from '../api/organizations';
 import { useResource } from '../hooks/useResource';
 import { navigate, ticketPath } from '../navigation';
 import ResourceFeedback from './ResourceFeedback';
+import { EmptyState, LoadingState } from './ResourceState';
 
 type Props = { token: string; onExpired: () => void };
 export default function Organizations({ token, onExpired }: Props) {
@@ -21,19 +22,24 @@ function OrganizationPage({ token, onExpired, offset, onPage, retry }: Props & {
 }) {
   const load = useCallback((signal: AbortSignal) => listOrganizations(token, { offset, limit: 20 }, signal), [token, offset]);
   const result = useResource(load);
-  if (!result) return <p role="status">Loading workspaces…</p>;
+  if (!result) return <LoadingState>Loading workspaces…</LoadingState>;
   if (!result.ok) return <ResourceFeedback result={result} onExpired={onExpired} retry={retry} />;
   return <>
-    {result.data.total_count === 0 && <p>No workspaces yet. Create one below.</p>}
+    {result.data.total_count === 0 && <EmptyState title="No workspaces yet. Create one below."
+      description="A workspace keeps your team’s tickets and conversations together."
+      action={<button type="button" onClick={() => document.getElementById('organization-name')?.focus()}>Name your workspace</button>} />}
+    {result.data.total_count > 0 && result.data.items.length === 0 && <EmptyState title="No workspaces on this page."
+      description="The list may have changed. Return to the first page to see available workspaces."
+      action={<button type="button" onClick={() => onPage(0)}>First workspace page</button>} />}
     <ul className="workspace-list">{result.data.items.map(({ organization, own_membership }) => <li key={organization.organization_id}>
       <div><strong>{organization.name}</strong><p>Your role: {own_membership.role}</p></div>
       {organization.is_active ? <a className="workspace-link" href={`#${ticketPath(organization.organization_id)}`}>Open {organization.name}</a> : <span>Suspended</span>}
     </li>)}</ul>
-    {result.data.total_count > 0 && <div className="ticket-controls" aria-label="Workspace pagination">
+    {result.data.total_count > 0 && <nav className="ticket-controls" aria-label="Workspace pagination">
       <button disabled={offset === 0} onClick={() => onPage(Math.max(0, offset - 20))}>Previous workspaces</button>
       <span>{result.data.total_count} workspaces</span>
       <button disabled={offset + result.data.items.length >= result.data.total_count} onClick={() => onPage(offset + 20)}>Next workspaces</button>
-    </div>}
+    </nav>}
   </>;
 }
 function CreateOrganization({ token, onExpired }: Props) {

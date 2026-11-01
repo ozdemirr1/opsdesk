@@ -9,11 +9,20 @@ from opsdesk.identity.models import User
 from opsdesk.tickets.dependencies import (
     get_ticket_creation_service,
     get_ticket_list_query,
+    get_ticket_priority_service,
     get_ticket_read_service,
     reject_ticket_detail_query,
 )
+from opsdesk.tickets.priority import (
+    PriorityBusyError,
+    PriorityInputError,
+    PriorityPermissionError,
+    PriorityStateError,
+    TicketPriorityService,
+)
 from opsdesk.tickets.read_schemas import TicketListQuery, TicketListResponse
 from opsdesk.tickets.schemas import (
+    ChangePriorityRequest,
     CreateTicketRequest,
     PositiveBigInt,
     TicketResponse,
@@ -125,4 +134,41 @@ def read_ticket(
         raise ApiError("ticket_not_found") from None
     except TicketReadBusyError:
         raise ApiError("concurrency_busy") from None
+    return TicketResponse.model_validate(result)
+
+
+@router.put(
+    "/organizations/{organization_id}/tickets/{ticket_id}/priority",
+    response_model=TicketResponse,
+)
+def change_ticket_priority(
+    organization_id: PositiveBigInt,
+    ticket_id: PositiveBigInt,
+    payload: ChangePriorityRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    service: Annotated[TicketPriorityService, Depends(get_ticket_priority_service)],
+) -> TicketResponse:
+    try:
+        result = service.change(
+            actor_user_id=current_user.user_id,
+            organization_id=organization_id,
+            ticket_id=ticket_id,
+            priority=payload.priority,
+        )
+    except TicketActorUnavailableError:
+        raise ApiError("unauthenticated") from None
+    except TicketOrganizationAccessDeniedError:
+        raise ApiError("organization_access_denied") from None
+    except TicketOrganizationSuspendedError:
+        raise ApiError("organization_suspended") from None
+    except TicketNotFoundError:
+        raise ApiError("ticket_not_found") from None
+    except PriorityPermissionError:
+        raise ApiError("permission_denied") from None
+    except PriorityStateError:
+        raise ApiError("state_conflict") from None
+    except PriorityBusyError:
+        raise ApiError("concurrency_busy") from None
+    except PriorityInputError:
+        raise ApiError("validation_error") from None
     return TicketResponse.model_validate(result)

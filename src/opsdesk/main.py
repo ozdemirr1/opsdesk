@@ -12,6 +12,7 @@ from opsdesk.api.middleware import (
     configure_request_logging,
 )
 from opsdesk.api.transport import install_transport_handlers
+from opsdesk.comments.router import router as comments_router
 from opsdesk.config import Settings
 from opsdesk.db.config import DatabaseSettings
 from opsdesk.db.connection import create_database_engine
@@ -77,6 +78,7 @@ def create_app(
     app.include_router(identity_router)
     app.include_router(organizations_router)
     app.include_router(tickets_router)
+    app.include_router(comments_router)
     app.include_router(health_router)
 
     app.add_exception_handler(ApiError, handle_api_error)

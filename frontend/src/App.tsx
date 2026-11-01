@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import AppHeader from './components/AppHeader';
+import AppShell from './components/AppShell';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import { getCurrentUser } from './api/identity';
@@ -151,14 +151,8 @@ function App() {
     : route.screen === 'home' ? (session ? 'organizations' : 'login')
     : session && route.screen === 'register' ? 'organizations' : route.screen;
 
-  return (
-    <>
-      <AppHeader
-        productName="OpsDesk"
-        subtitle="Support ticket workspace"
-      />
-
-      <nav aria-label="Screens" className="screen-nav">
+  const navigation = (
+    <nav aria-label="Screens" className="screen-nav">
         {!session ? <>
           <button type="button" onClick={() => navigate('/login')} aria-pressed={activeScreen === 'login'}>Login</button>
           <button type="button" onClick={() => navigate('/register')} aria-pressed={activeScreen === 'register'}>Register</button>
@@ -184,8 +178,11 @@ function App() {
           </>
         )}
       </nav>
+  );
 
-      <main>
+  return (
+    <AppShell email={session?.user.email} navigation={navigation}>
+
         {session && activeScreen === 'organizations' && <Organizations key={sessionEpoch} token={session.accessToken} onExpired={handleExpired} />}
         {session && route.screen === 'workspace' && <Workspace key={`${sessionEpoch}:${route.organizationId}`} token={session.accessToken}
           organizationId={route.organizationId} ticketId={route.ticketId} onExpired={handleExpired} />}
@@ -214,8 +211,7 @@ function App() {
             <RegisterForm />
           </section>
         )}
-      </main>
-    </>
+    </AppShell>
   );
 }
 
