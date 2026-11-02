@@ -1,52 +1,27 @@
-# Project status — 1 November 2026 (Saturday tasks 4–6 completed)
+# Project status — 2 November 2026
 
-This is a dated implementation checkpoint. The [README](../README.md) summarizes
-the product; contract documents describe intended rules. Issue files preserve
-initial scope and dated implementation notes. GitHub remains the live work tracker.
+## Current delivered boundary
 
-## Delivered product boundary
+OpsDesk PR #49 merged normally as `8a633d0` and is deployed on Railway. The
+protected real-data flow includes identity, Organizations, Ticket creation and
+reads/search/filter/pagination, comments and a role-aware priority action.
+The Tailwind/responsive shell, creation modal, success notice and keyboard/
+empty/loading/error states are published. The 2 November hosted walkthrough
+verified Ticket/Comment/priority persistence through logout and login.
 
-- FastAPI application/configuration, safe error envelopes and request diagnostics;
-  synchronous SQLAlchemy Sessions and explicit transaction ownership.
-- Alembic schema includes Users, Organizations, OrganizationMemberships, Tickets
-  and the new Comment foundation at source head `84c2f9a17d60`. The guarded test
-  database and hosted deployment are upgraded; the last verified development
-  schema remains `31be9023cfb2`. Attachments remain planned. Comment service/GET/POST API is now locally
-  implemented and tested, with CommentForm/list integration added on 30 October.
-  Review/publication and hosted verification remain pending.
-- Registration, login and active persisted current-User resolution.
-- Atomic Organization creation and membership-scoped Organization list/detail.
-- Authenticated Ticket creation with server-derived requester/creator, tenant
-  constraints, ordered locks, rollback and contention tests.
-- Local Week 16 scoped Ticket list/detail API with title search, filters and
-  same-statement count/page/access checks; unit/API and PostgreSQL tests pass.
-  These GET routes are deployed and passed hosted smoke on 29 October.
-- Local role-aware priority control on real Ticket detail, with response validation,
-  state restrictions and cancellation on scope changes. Publication is pending.
-- Tailwind-backed shared controls and responsive auth/sidebar layout are complete
-  locally; desktop/narrow visual verification is recorded below.
-- Local Ticket creation modal connected to the existing POST API, with safe
-  pending/error handling, success notification and detail navigation.
-- Actionable empty states, shared loading feedback and keyboard recovery controls;
-  bounded desktop/tablet/mobile review completed on 1 November.
-- React identity forms with runtime response guards and in-memory session state.
-- Both local and hosted App open Login before authentication and real workspaces
-  after login; fixture components
-  are retained outside product navigation.
-- Pure Ticket display mapper plus validated Organization/Ticket HTTP adapters,
-  locally added on 27 October and connected to protected workspace screens.
-  Fresh verification: 234 frontend tests / 12 files, build and lint passed on
-  28 October. 30 October results: 740 backend non-integration, 281 PostgreSQL data and
-  311 frontend tests passed; build/lint/Ruff passed. Final design build/lint passed on 31 October. The 5 schema tests retain their 28 October result; evidence is below.
+Fresh 2 November local evidence: **281 PostgreSQL data tests**, **5 schema tests**,
+no metadata drift, and a successful isolated dump/restore plus previous-version
+Ticket-read compatibility rehearsal. Source/test/hosted schema is `84c2f9a17d60`.
+Release CI on 1 November passed 740 backend non-integration and 356 frontend tests.
+These are separate suites, not one aggregate count. See
+[recovery evidence](release-recovery.md) and the dated acceptance section below.
 
-- Local Organization selection/creation, membership roles, protected hash routes
-  and real Ticket list/detail/search/pagination. Private request ownership is
-  verified with synthetic-response UI tests and a real local PostgreSQL/browser
-  walkthrough. Hosted private-flow release is verified below; the full Month 04
-  feature/UI scope remains incomplete.
-
-Earlier dated sections retain the evidence available at that time. The latest
-release verification is recorded at the end.
+The scoped Month 04 UI/integration is delivered. Full Month 04 operational gates
+are not all closed: hosted-export restore evidence, abuse controls, provider audit,
+current cost review and development-dependency remediation remain follow-ups.
+Assignment/status transitions, membership administration, PostgreSQL CI and AI
+remain separately planned product work. The earlier dated checkpoints below
+preserve what was known at that time; they do not override this current summary.
 
 ## Closed design and implementation issues
 
@@ -81,25 +56,19 @@ dashboard and display adapter merged normally in
 | --- | --- | --- |
 | Ticket list/detail | [F11 #19](https://github.com/ozdemirr1/opsdesk/issues/19) | Backend merged in PR #46 with CI; runtime guards/private UI merged in PR #47; local and hosted browser smoke passed |
 | Membership directory/add/reactivation | #16, #17 | Needed before meaningful membership administration UI; estimate at Month 04 handoff |
-| Priority/assignment and status workflow | #20, #21 | Current-state role checks and cooperating locks; not inert UI buttons |
+| Priority/assignment and status workflow | #20, #21 | Priority API/UI shipped in PR #49; assignment and full status transitions remain |
 | Role/deactivation and ownership transfer | #22, #23 | Reviewed invariants and overlapping-operation tests |
-| Comments | [F14 #24](https://github.com/ozdemirr1/opsdesk/issues/24) | Schema/scoped repository verified locally; service authorization, locking, API and form remain |
+| Comments | [F14 #24](https://github.com/ozdemirr1/opsdesk/issues/24) | Schema, service/locking, GET/POST and form shipped in PR #49; hosted persistence verified on 2 November |
 | PostgreSQL CI | [Q03 #25](https://github.com/ozdemirr1/opsdesk/issues/25) | Dedicated isolated CI database; local passing results do not close this |
 | Full backend preview release | [R01 #26](https://github.com/ozdemirr1/opsdesk/issues/26) | Full scoped backend acceptance and operational evidence; the identity preview is narrower |
 
-The original Month 04 frontend MVP is incomplete. On 25 October, the learner
-approved an intensive 26 October–1 November plan: 42 focused hours plus up to
-8 contingency hours, replacing the earlier 18-hour proposal. Required deliveries
-include scoped reads/title search, real Organization/list/detail integration and
-protected routes, persisted comments, a role-aware priority action, the complete
-Tailwind/responsive/sidebar/empty-state/toast/modal/accessibility package and
-verification/release/learning evidence. Re-estimate Tuesday and Friday; unmet
-acceptance gates require an explicit calendar correction, not reduced UI scope
-or a false completion claim. F12 is covered only for priority; assignment, full
-status workflow and membership administration remain separate backend backlog.
-The plan itself is not completion evidence; the local read implementation below
-now covers its first backend slice. See the
-[detailed plan](https://github.com/ozdemirr1/ai-backend-bootcamp/blob/main/weekly-reports/week-16-plan.md).
+The 25 October intensive plan aimed at 26 October–1 November, with 42 focused
+hours plus 8 contingency hours estimated. Final hosted acceptance and recovery
+work continued to 2 November; actual hours were not measured. The scoped UI
+and integration are now delivered, while the operational gates listed above
+stay explicit. F12 covers priority only. See the
+[Month 04 review](https://github.com/ozdemirr1/ai-backend-bootcamp/blob/main/monthly-reports/month-04.md)
+and [Week 16 plan](https://github.com/ozdemirr1/ai-backend-bootcamp/blob/main/weekly-reports/week-16-plan.md).
 
 ## Verification and live recovery
 
@@ -511,3 +480,67 @@ publication, hosted smoke, operational recovery or Month 04 retrospective gates.
 Creation and this continuation remain uncommitted. No commit, push, merge or
 Railway action was performed; the manual deployment instructions remain a release
 step after the intended source is published. No new daily file was introduced.
+
+
+## 2 November — live flow and authorization acceptance
+
+Scope: the two requested Week 16 checks, not the full Month 04 closure.
+Runtime source `8a633d0` was merged in OpsDesk PR #49 and deployed successfully
+as Railway deployment `3215ab49-07c6-4b91-9372-59c14d63f47e` on 1 November.
+The release-head CI passed 740 backend non-integration and 356 frontend tests;
+these are separate from the focused checks below.
+
+### Hosted browser evidence
+
+Using the synthetic account registered on 1 November, the browser completed
+login, Organization creation, Ticket creation, canonical detail navigation,
+priority change to high, Comment posting, sign-out and sign-in back to the
+protected detail. Ticket #3 in Organization #2 retained its title, description,
+high priority and one Comment after signing in again. Browser Back after logout
+showed Login without private content. Reloading the detail also required login.
+No real customer/support data was entered and no hosted data was deleted.
+
+The first Comment GET returned 500. Read-only inspection confirmed that
+`opsdesk_app` had neither SELECT nor INSERT on `public.comments`. Using the
+existing guarded hosted migration connection, after checking database, role and
+revision `84c2f9a17d60`, granted only SELECT/INSERT on that table and USAGE on
+`public.comments_comment_id_seq`. No role membership, ownership, UPDATE/DELETE,
+schema-wide privileges or application-code change was added. Retry then loaded
+the empty list; posting and re-reading the Comment succeeded. A healthy readiness
+endpoint alone had not detected this missing table permission.
+
+### Isolated authorization and session evidence
+
+- Fresh real-PostgreSQL run on guarded `opsdesk_product_test`:
+  `tests/integration/test_ticket_reads.py`, `test_comment_api.py` and
+  `test_ticket_priority.py`: **98 passed**. Coverage includes customer/staff
+  scope, hidden/foreign resources, closed-Ticket comments, current-role/state
+  rechecks, rollback and cooperating-operation contention.
+- Fresh frontend run of `src/WorkspaceFlow.test.tsx` and
+  `src/components/Comments.test.tsx`: **88 passed**. Synthetic-response tests
+  verify invalid-session cleanup, role visibility, logout/history protection,
+  filter/draft reset and ignored late responses. This is not a new full-suite run.
+- Separate real local browser/API walkthrough used Alpha and Beta Organizations
+  with two synthetic identities: one customer in Alpha/owner in Beta, one staff
+  owner in Alpha without Beta membership. Customer saw only its one Alpha Ticket
+  and no priority control; staff saw both Alpha Tickets. Switching to Beta showed
+  only its Ticket and owner controls, with the Alpha comment draft cleared.
+- Direct FastAPI-to-PostgreSQL checks on these fixtures returned 404 for a hidden
+  Ticket, 403 for a foreign Organization, 403 for customer priority modification,
+  and 401 for missing/invalid tokens. The rejected priority write left the full
+  Ticket response unchanged. Other staff roles are covered by the automated matrix;
+  no hosted customer membership was fabricated.
+
+Both requested checks are complete with the environment boundaries above.
+The temporary local server is stopped. Full backup/restore and rollback evidence,
+broader operational review, README/release publication cleanup and the Month 04
+retrospective/learner handoff remain separate work. No new daily report was created.
+
+## 2 November — recovery and documentation closure
+
+The [recovery record](release-recovery.md) matches runtime/schema evidence to
+PR #49, documents successful local restore/rollback-read checks, and records
+remaining operational limits. Product/frontend READMEs now describe the published
+creation/comment/priority UI and include the actual hosted screenshot. No product
+behavior, database migration or dependency version changed in this documentation
+follow-up. The Month 04 review and learner explanations live in the bootcamp repo.
