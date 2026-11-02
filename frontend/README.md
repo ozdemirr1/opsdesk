@@ -3,7 +3,26 @@
 React + TypeScript interface for the OpsDesk support-ticket product, developed
 inside the product monorepo. Vite provides the development server and build tooling.
 
-## Current checkpoint — 1 November 2026, Saturday tasks 4–6 completed
+## Current checkpoint — 2 November 2026
+
+The creation dialog, comments, priority control, responsive shell and recovery
+states are published through [PR #49](https://github.com/ozdemirr1/opsdesk/pull/49)
+at runtime `8a633d0`. Hosted create/comment/priority persistence passed after
+logout/login; real local customer/staff and two-Organization checks also passed.
+The narrow hosted Comment permission repair is recorded in project status.
+
+Release CI: 356 frontend tests / 17 files, production build and lint passed on
+1 November. Focused session/comment checks: 88 tests on 2 November. Earlier
+responsive/keyboard checks covered 1280/700/320 CSS pixels; these are separate
+from hosted browser evidence. See [current product status](../docs/project-status.md)
+and [operational follow-ups](../docs/release-recovery.md).
+
+![Hosted Ticket detail with priority and persisted comment](../docs/images/ticket-detail-2026-11-02.png)
+
+Earlier checkpoints retain their original dates; statements that work was local
+or uncommitted below describe those checkpoints, not the current release.
+
+## Earlier checkpoint — 1 November 2026, Saturday tasks 4–6 completed
 
 Shared `ResourceState` components present loading and successful-empty results;
 errors remain distinct in `ResourceFeedback`. Empty screens offer Ticket creation,

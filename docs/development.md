@@ -511,6 +511,25 @@ Application connections use the separate `OPSDESK_DB_*` settings with
 migration-role membership. Grant required table and sequence permissions
 after migrations; do not grant application write access to `alembic_version`.
 
+After the Comment migration `84c2f9a17d60`, verify the runtime role can read and
+insert Comments. On 2 November the migration existed but these grants were missing,
+causing Comment GET to return 500 while readiness and Ticket operations passed.
+Using the guarded hosted migration connection (database `opsdesk_demo`, existing
+non-superuser `opsdesk_migrator`, expected revision checked), the narrow repair was:
+
+```sql
+GRANT SELECT, INSERT ON TABLE public.comments TO opsdesk_app;
+GRANT USAGE ON SEQUENCE public.comments_comment_id_seq TO opsdesk_app;
+```
+
+These grants are idempotent and specific to append-only Comments. Do not grant
+UPDATE/DELETE, table ownership, migration-role membership, or blanket future-table
+privileges. Check the actual identity sequence before applying the sequence grant.
+Verify through the runtime role and an authorized Comment list/post/read flow;
+`/health/ready` checks connectivity, not per-table privileges. New tables require
+an explicit runtime-permission review as part of their deployment.
+
+
 If both credential sets are configured on the same Railway service, they
 are available to that service's processes; separate prefixes do not provide
 secret isolation.
@@ -572,3 +591,10 @@ Local verification on 19 October: 506 non-integration backend tests passed
 with 160 database/schema tests deselected, and the same-origin frontend build
 succeeded. The preview is now hosted; see [project status](project-status.md)
 for the 25 October recovery, deployed source and remaining operational checks.
+
+## Isolated release recovery evidence
+
+See [the 2 November recovery record](release-recovery.md) for PostgreSQL 18 dump/restore
+preconditions, exact test target, sequence/data comparisons, old-runtime compatibility
+and separate schema/data test results. Hosted backups and grants are distinct from
+the synthetic local rehearsal; never substitute the hosted demo for the test target.

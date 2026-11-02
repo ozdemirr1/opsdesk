@@ -10,82 +10,72 @@ full-stack learning documented in my
 
 **[Open OpsDesk](https://opsdesk-production-448f.up.railway.app/)**
 
-Verified on **29 October 2026** after deployment of the 28 October work:
-registration, login, workspace creation/selection and real Ticket list/detail work
-against the FastAPI backend and hosted PostgreSQL database. FastAPI serves the
-React build and API from the same origin on Railway; deployment follows `main`.
+Verified on **2 November 2026** at runtime source `8a633d0`:
+registration/login, workspace creation/selection, real Ticket creation/list/detail,
+persisted comments, staff priority changes and logout/relogin work against FastAPI
+and hosted PostgreSQL. Search/filter and reload were also checked on 29 October;
+see the dated evidence rather than treating all checks as one fresh run.
+FastAPI serves the React build and API from the same origin; Railway follows `main`.
 
 Use a made-up email such as `your-name-demo@example.com` and a password used only
 for this demo. Accounts may be reset; do not enter real customer/support data.
 Tokens stay in memory, so reloading requires login again. Sign-out clears the
 browser session; it is not server-side JWT revocation.
 
-**Sign in to access your workspaces and Tickets.** Search, status filters and
-pagination use the real API. A new workspace starts empty: Ticket creation is
-available through the API in the last verified hosted release. The local branch
-now includes its creation modal, comments and priority controls; their hosted
-verification remains pending. Workflow actions and AI are not yet available.
+**Sign in to access your workspaces and Tickets.** A new workspace starts empty;
+use New ticket to add a record. Search, status filters and pagination use the real
+API. Agent/admin/owner priority controls depend on current role and Ticket state;
+the server checks authorization independently. Assignment, status transitions,
+membership administration and AI are not yet implemented.
 
-![Live OpsDesk Ticket detail, captured 29 October 2026](docs/images/ticket-detail-2026-10-29.png)
+![Live Ticket detail with persisted comment and priority, 2 November 2026](docs/images/ticket-detail-2026-11-02.png)
 
-Actual browser capture of runtime source `2013248`, using a synthetic account and
-API-created test Ticket. This is a learning preview, not a production-readiness
-claim. The older public fixture dashboard is no longer in product navigation.
+Actual browser capture of runtime `8a633d0`, using a synthetic account and a
+UI-created Ticket after signing out and back in. This is an early learning
+preview, not a production-readiness claim. Fixture Tickets are outside product
+navigation.
 
 ## Implemented and planned
 
 | Area | Implemented now | Remaining work |
 | --- | --- | --- |
-| Identity | Registration, Argon2id password hashes, JWT login, persisted active User resolution; browser forms/session handling | Bounded public-demo abuse controls and further operational verification |
-| Organizations | Atomic creation with owner membership; scoped list/detail API and hosted selection/creation UI | Membership/role/ownership mutations |
-| Tickets | Tenant-consistent schema, creation and scoped list/detail APIs with title search/filter/pagination; hosted protected real-data table/detail; locally tested creation modal, staff priority API and role-aware detail control | Assignment, status workflow; hosted creation-UI verification |
-| Comments | Deployed storage; local authorized GET/POST API plus real detail CommentForm/list, pagination and scope cleanup | Review/CI/deployment and hosted verification of the new comments flow |
-| Quality and deployment | Backend/frontend CI; guarded local PostgreSQL tests; live same-origin preview and health endpoints | PostgreSQL CI, isolated restore/rollback evidence, broader release gates |
-| UI and AI | Typed components, Tailwind tokens, shared controls, responsive sidebar/auth screens, accessible creation modal/success notice, actionable empty/loading/error states and table semantics | Final integrated release/recovery gates and retrospective; AI planned for Month 06 |
+| Identity | Registration, Argon2id hashing, JWT login, current active User; browser forms and in-memory session | Bounded public-demo abuse controls and provider audit review |
+| Organizations | Atomic creation with owner membership; scoped list/detail and protected selection UI | Membership/role/ownership mutations |
+| Tickets | Tenant-safe creation, scoped reads/search/filter/pagination, creation modal and role-aware priority API/UI | Assignment and full status workflow |
+| Comments | Authorized GET/POST, pagination, form/list, scope cleanup; hosted persistence verified | Editing/deletion are outside current scope |
+| Quality and deployment | Backend/frontend CI, guarded PostgreSQL tests, live same-origin preview, isolated restore and rollback-read rehearsal | PostgreSQL CI, hosted backup automation/restore verification, broader operational acceptance |
+| UI and AI | React/TypeScript, Tailwind, responsive sidebar/forms/table/detail, modal, success notice, keyboard and empty/loading/error states | Dependency maintenance; AI is planned for Month 06 |
 
-The Week 16 backend has nine deployed business endpoints: `POST /users`,
-`POST /auth/login`, `GET /users/me`, `POST /organizations`, `GET /organizations`,
-`GET /organizations/{organization_id}` and
-`POST /organizations/{organization_id}/tickets`,
-`GET /organizations/{organization_id}/tickets` and
-`GET /organizations/{organization_id}/tickets/{ticket_id}`, plus two health endpoints.
-The Week 16 reads are deployed and verified through the hosted UI.
-Three additional routes are implemented locally: Comment GET/POST on
-`/organizations/{organization_id}/tickets/{ticket_id}/comments` and PUT on
-`/organizations/{organization_id}/tickets/{ticket_id}/priority`. The source total
-is twelve business endpoints. Comment UI and priority API were pushed as `acb5a57`
-with passing Backend/Frontend CI. The Friday priority UI and responsive design are committed as `19dfaff`;
-the Saturday creation UI and empty-state/accessibility continuation (finished
-1 November) are locally implemented and uncommitted;
-no PR or new deployment is claimed. These three routes are not claimed deployed.
-The 22-endpoint design inventory describes the target, not the implemented API.
+The published source has **12 business endpoints**: identity (3), Organizations
+(3), Ticket creation/list/detail (3), Comment GET/POST (2) and Ticket priority PUT
+(1), plus two health endpoints. They shipped through
+[PR #49](https://github.com/ozdemirr1/opsdesk/pull/49); the 22-endpoint design
+inventory remains a target, not a delivered count.
 
 ## Verification evidence
 
-These are separate, dated test groups, not a combined current-run total:
+Separate test groups and environments; these are not a combined test total:
 
-| Check | Last recorded local result | Date |
+| Check | Result | Evidence date |
 | --- | --- | --- |
-| Frontend | 356 tests across 17 files; build/lint passed | 1 November |
-| Backend non-integration | 740 passed; 286 database/schema tests deselected; Ruff passed | 30 October |
-| PostgreSQL data integration | 281 passed on guarded `opsdesk_product_test` | 30 October |
-| Guarded schema/migration suite | 5 passed | 28 October |
+| Frontend | 356 tests / 17 files; build/lint passed | 1 November release CI |
+| Backend non-integration | 740 passed; Ruff passed | 1 November release CI |
+| PostgreSQL data integration | 281 passed on guarded `opsdesk_product_test` | 2 November |
+| Guarded schema/migration suite | 5 passed; Alembic check found no drift | 2 November |
+| Recovery rehearsal | Synthetic rows and sequence values matched after dump/restore; prior runtime read succeeded | 2 November |
 
-The 26 October frontend retry used one worker after an initial disk-space error;
-see the [baseline and contract preparation](docs/issues/f11.md#week-16-implementation-ready-contract--26-october-2026).
-Ticket reads/search are implemented and locally tested; see the
-[implementation evidence](docs/issues/f11.md#week-16-local-implementation--26-october-2026).
-The 28 October Comment foundation adds revision `84c2f9a17d60`; its guarded
-migration tests and metadata check pass. The test database and hosted deployment
-are upgraded; the last verified local development schema remains `31be9023cfb2`.
+Source/test/hosted schema head is `84c2f9a17d60`. Hosted comment privileges were
+repaired with narrow grants and rechecked; readiness alone did not detect their
+absence. The last verified development schema remains `31be9023cfb2`.
+Read the [recovery record and boundaries](docs/release-recovery.md),
+[project status](docs/project-status.md), and
+[Month 04 review](https://github.com/ozdemirr1/ai-backend-bootcamp/blob/main/monthly-reports/month-04.md).
 
-Week 15 merged through [PR #43](https://github.com/ozdemirr1/opsdesk/pull/43).
-[Backend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40193369253) and
-[Frontend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/40193369467)
-passed at merge commit `122c052`. Backend CI excludes PostgreSQL tests.
-The deployed source verified on 25 October was `255f937`; both health endpoints
-returned 200 then. The newer runtime `2013248` passed hosted smoke on 29 October.
-Full evidence, limitations and issue closures are in [project status](docs/project-status.md).
+The scoped UI and integration are delivered. Broader demo exposure remains gated
+on abuse controls, provider audit review and hosted backup evidence. The 2 November
+npm audit reported 16 development-tool findings (14 moderate, 2 high);
+`npm audit --omit=dev` reported zero. This does not clear build-tool risk or
+certify the Python dependencies. No automatic dependency upgrades were applied.
 
 ## Run locally and explore the design
 
@@ -103,10 +93,9 @@ The older bootcamp databases `opsdesk_dev` / `opsdesk_test` are separate learnin
 artifacts. Never run destructive tests against development or the hosted demo.
 
 Organization/Ticket HTTP adapters validate responses at runtime and serve the
-protected workspace screens. The real PostgreSQL/browser walkthrough passed
-locally on 28 October and on the hosted preview on 29 October.
-[PR #47](https://github.com/ozdemirr1/opsdesk/pull/47) merged as `2013248` with passing
-Backend/Frontend CI and successful Railway deployment. See [project status](docs/project-status.md).
+protected workspace screens. The protected workspace flow shipped in PR #47; creation, comments and priority
+shipped in PR #49 and passed the 2 November hosted persistence check. See
+[project status](docs/project-status.md) for dated evidence and remaining gates.
 
 Next: review/publish the comments flow and priority API/UI, then complete the
 remaining Month 04 UI package. The revised Week 16 plan allocates 42 focused hours plus
