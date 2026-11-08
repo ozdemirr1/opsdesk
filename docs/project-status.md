@@ -1,6 +1,19 @@
-# Project status — 2 November 2026
+# Project status — 9 November 2026
 
-## Current delivered boundary
+## Local Docker milestone — 9 November
+
+A single-stage backend image now builds locally with locked runtime dependencies.
+Isolated checks verified imports, missing-secret failure, liveness 200, expected
+unavailable-database readiness 503 and SIGTERM shutdown with exit 0. Local Ruff
+checks passed (141 formatted files); non-integration pytest reported 740 passed
+and 286 deselected in 9.98 seconds. These are local results, not a new CI run.
+See [Docker scope and evidence](docker.md).
+
+The image does not yet contain the existing frontend build or a non-root runtime.
+Docker CI, successful PostgreSQL readiness and persistence remain unverified for
+this image. No new deployment or hosted verification is claimed.
+
+## Published product boundary — 2 November
 
 OpsDesk PR #49 merged normally as `8a633d0` and is deployed on Railway. The
 protected real-data flow includes identity, Organizations, Ticket creation and
