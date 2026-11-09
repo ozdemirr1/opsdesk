@@ -25,7 +25,7 @@ RUN uv sync --locked --no-dev --no-editable --no-cache
 
 COPY alembic.ini ./
 COPY migrations/ ./migrations/
-COPY --from=frontend-build /frontend/dist ./frontend/dist
+COPY --from=frontend-build /frontend/dist-missing ./frontend/dist
 
 ENV PATH="/app/.venv/bin:$PATH" \
     OPSDESK_FRONTEND_DIST_DIR="/app/frontend/dist"
