@@ -1,6 +1,21 @@
 # Project status — 9 November 2026
 
-## Local Docker milestone — 9 November
+## Local multi-stage milestone — 9 November
+
+The Node build/Python runtime image includes the existing React dist and runs as
+UID/GID 10001. Local checks passed for artifact exclusions, Node/npm absence,
+denied /app writes, static HTML/JS/CSS/favicon responses and health behavior.
+The unavailable database correctly returned readiness 503. A nonexistent frontend
+path produced the expected controlled error. SIGTERM shutdown took 0.478 seconds,
+exit 0. Unchanged rebuild reused cached layers.
+
+Local regression: Ruff clean, 141 formatted files; 740 backend tests passed,
+286 deselected (9.71 seconds); 356 frontend tests passed (16.62 seconds), lint clean.
+Browser interaction against this container and real database persistence were
+not tested. Docker CI and a new deployment remain pending.
+See [Docker scope and evidence](docker.md).
+
+## Earlier single-stage milestone — 9 November
 
 A single-stage backend image now builds locally with locked runtime dependencies.
 Isolated checks verified imports, missing-secret failure, liveness 200, expected
@@ -9,7 +24,7 @@ checks passed (141 formatted files); non-integration pytest reported 740 passed
 and 286 deselected in 9.98 seconds. These are local results, not a new CI run.
 See [Docker scope and evidence](docker.md).
 
-The image does not yet contain the existing frontend build or a non-root runtime.
+At this earlier checkpoint, the image did not yet contain the frontend build or a non-root runtime.
 Docker CI, successful PostgreSQL readiness and persistence remain unverified for
 this image. No new deployment or hosted verification is claimed.
 

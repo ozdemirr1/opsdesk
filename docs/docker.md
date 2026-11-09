@@ -1,15 +1,16 @@
-# Basic backend Docker image
+# Docker image
 
-This single-stage image is the first Month 05 local backend milestone. It does
-not yet include the existing React build, a non-root runtime, Compose or a
-Docker build CI job. It is not a replacement for the published full-stack release.
+The current local image builds the existing React frontend in a Node 24 stage
+and copies only its dist output into the Python 3.14.7 runtime. The application
+runs as UID/GID 10001. Compose and Docker build CI remain subsequent work.
+No new hosted deployment is claimed.
 
 ## Build and configuration
 
 Run from the repository root:
 
 ```bash
-docker build --progress=plain -t opsdesk:week17-basic .
+docker build --progress=plain -t opsdesk:week17-multistage .
 ```
 
 The image uses Python 3.14.7 and uv 0.12.3. `uv sync --locked --no-dev
@@ -19,8 +20,19 @@ The default command starts the Uvicorn application factory on container port 800
 `EXPOSE 8000` does not publish a host port. Application request logs remain enabled
 through the existing structured logging middleware.
 
-The `.dockerignore` allowlist includes dependency manifests, source and Alembic
-files. Local environments, credentials, frontend sources and tests are excluded.
+The `.dockerignore` allowlist includes dependency manifests, backend source,
+Alembic files and the frontend build inputs. Local node_modules, dist, environments
+and credential file patterns are excluded. Frontend sources (including colocated
+tests) enter the build stage; only dist is copied into the final stage.
+
+`npm ci` uses package-lock.json. Copying manifests before frontend source lets
+the dependency layer survive source-only changes. `VITE_API_BASE_URL=/` is a
+public build-time value for same-origin API requests without the development
+Vite proxy. Never put secrets in browser-exposed VITE variables.
+`OPSDESK_FRONTEND_DIST_DIR=/app/frontend/dist` enables the existing FastAPI static
+file integration. Node/npm are absent from the runtime; Python and uv remain.
+The non-root process can read the root-owned application files but cannot write
+into /app. No frontend feature or backend source change was introduced.
 Do not copy a host virtual environment into the image or pass secrets during build.
 
 Supply the required runtime variables described in [configuration](development.md).
@@ -28,7 +40,36 @@ The application does not automatically load `.env`, run migrations or create
 tables. Starting the default command without configuration fails on the required
 JWT secret. Successful image creation does not imply successful database access.
 
-## Local verification — 9 November 2026
+## Multi-stage local verification — 9 November 2026
+
+Recorded terminal checks passed:
+
+- Image build and unchanged rebuild exited 0; npm ci, frontend build and uv sync
+  reused cached layers on the unchanged rebuild.
+- Configured and effective UID/GID were 10001:10001. /app writes were denied.
+- Required backend/Alembic/dist paths existed; selected root exclusions,
+  frontend source and node_modules were absent; node/npm were not on PATH.
+- Network-disabled runtime startup ran Uvicorn as PID 1 with ephemeral secrets
+  generated inside the process and an unavailable loopback database target.
+- Internal HTTP checks returned 200 for /, HTML-referenced JS/CSS, favicon and
+  /health/live; /health/ready returned the expected generic 503 envelope.
+- Calling mount_frontend with a nonexistent path raised the expected
+  "Frontend build is missing or incomplete." error, with exit 1. No file was
+  deleted to trigger this failure.
+- SIGTERM shutdown completed in 0.478 seconds with exit 0 and OOM false.
+- Local Ruff passed; 141 files already formatted. Backend non-integration tests:
+  740 passed, 286 deselected in 9.71 seconds.
+- Local Node 24.21.0: frontend tests 356 passed across 17 files in 16.62 seconds;
+  frontend lint and git diff whitespace checks passed.
+
+These results do not establish browser interaction against the container,
+successful database readiness/persistence, exhaustive image-layer secret scanning,
+in-flight transaction draining, or remote CI. The static-file request logs used
+the existing <unmatched> route label with status 200; that label alone is not 404.
+
+## Historical single-stage verification — earlier on 9 November 2026
+
+The following evidence refers to opsdesk:week17-basic before the multi-stage change.
 
 The following results were recorded from local terminal runs:
 

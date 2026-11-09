@@ -80,7 +80,7 @@ certify the Python dependencies. No automatic dependency upgrades were applied.
 ## Run locally and explore the design
 
 - [Backend setup, configuration, database targets and test commands](docs/development.md)
-- [Basic backend Docker image and local verification](docs/docker.md)
+- [Docker image and local verification](docs/docker.md)
 - [Frontend setup, architecture and browser checks](frontend/README.md)
 - [Requirements](docs/requirements.md), [domain model](docs/domain-model.md),
   [relational model](docs/relational-model.md) and [ERD](docs/erd.md)
@@ -98,8 +98,9 @@ protected workspace screens. The protected workspace flow shipped in PR #47; cre
 shipped in PR #49 and passed the 2 November hosted persistence check. See
 [project status](docs/project-status.md) for dated evidence and remaining gates.
 
-Next: extend the locally verified basic backend image with the existing frontend
-build, multi-stage packaging and a non-root runtime, then learn and add Docker CI.
+The multi-stage image now packages the existing frontend and runs non-root,
+with local static-file and health checks. Next: GitHub Actions fundamentals and
+Docker build CI.
 Compose, Redis and Celery remain subsequent Month 05 work;
 AI summarization, priority/category suggestions and evaluations remain Month 06.
 The broader backend release issue R01 is still open: this smaller workspace preview

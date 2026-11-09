@@ -13,7 +13,22 @@
 !migrations/
 !migrations/**
 
+!frontend/
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/index.html
+!frontend/tsconfig.json
+!frontend/tsconfig.app.json
+!frontend/tsconfig.node.json
+!frontend/vite.config.ts
+!frontend/src/
+!frontend/src/**
+!frontend/public/
+!frontend/public/**
+
 # Exclude local artifacts even inside included directories.
+**/node_modules
+**/dist
 **/__pycache__
 **/*.py[cod]
 **/.env
