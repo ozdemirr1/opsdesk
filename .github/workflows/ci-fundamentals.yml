@@ -23,7 +23,7 @@ jobs:
       - name: Deliberate failure
         run: |
           echo "Deliberate learning failure"
-          exit 1
+          exit 0
 
       - name: Following step
         run: echo "Reached the final step"
