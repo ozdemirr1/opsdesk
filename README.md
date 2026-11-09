@@ -99,8 +99,9 @@ shipped in PR #49 and passed the 2 November hosted persistence check. See
 [project status](docs/project-status.md) for dated evidence and remaining gates.
 
 The multi-stage image now packages the existing frontend and runs non-root,
-with local static-file and health checks. Next: GitHub Actions fundamentals and
-Docker build CI.
+with local static-file and health checks. Docker build CI now runs alongside
+the existing backend/frontend workflows; controlled failure and recovery are
+documented in the [Docker guide](docs/docker.md). Next: Week 17 review and handoff.
 Compose, Redis and Celery remain subsequent Month 05 work;
 AI summarization, priority/category suggestions and evaluations remain Month 06.
 The broader backend release issue R01 is still open: this smaller workspace preview

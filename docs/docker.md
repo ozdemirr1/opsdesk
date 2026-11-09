@@ -2,8 +2,30 @@
 
 The current local image builds the existing React frontend in a Node 24 stage
 and copies only its dist output into the Python 3.14.7 runtime. The application
-runs as UID/GID 10001. Compose and Docker build CI remain subsequent work.
+runs as UID/GID 10001. Docker build CI is implemented; Compose remains subsequent work.
 No new hosted deployment is claimed.
+
+## Docker CI — 9 November 2026
+
+`.github/workflows/docker-ci.yml` runs on push and pull_request. Its docker-build
+job checks out the repository, then runs docker build on ubuntu-latest with a
+20-minute timeout and contents:read permissions. It does not publish the image,
+start a container, test runtime permissions or connect to PostgreSQL. Backend
+Ruff/pytest and frontend test/build/lint checks remain separate workflows.
+
+Evidence:
+- Initial build at a35af07 passed (run 42683580921).
+- Controlled failure at f294911: frontend build succeeded, but Dockerfile:28
+  copied from nonexistent /frontend/dist-missing and exited 1.
+  [Failure log](https://github.com/ozdemirr1/opsdesk/actions/runs/42684285925).
+- Restoring /frontend/dist at 67500f2 passed
+  [Docker CI](https://github.com/ozdemirr1/opsdesk/actions/runs/42684862264),
+  [Backend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/42684862267) and
+  [Frontend CI](https://github.com/ozdemirr1/opsdesk/actions/runs/42684862697).
+
+The branch/path-scoped ci-fundamentals.yml is a bounded exit-code demonstration,
+not a product test. Its failed and recovered runs remain in Git history.
+These checks establish build/test results for the cited commits, not deployment.
 
 ## Build and configuration
 

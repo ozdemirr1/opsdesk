@@ -1,6 +1,14 @@
 # Project status — 9 November 2026
 
-## Local multi-stage milestone — 9 November
+## Docker CI milestone — 9 November
+
+Docker build workflow added at a35af07. Controlled failure f294911 was diagnosed
+from the COPY source-path error after successful frontend compilation; recovery
+67500f2 passed Docker, backend and frontend CI. See the linked runs in the
+[Docker guide](docker.md). This is build verification, not runtime CI or a new
+deployment. PostgreSQL integration CI remains subsequent work.
+
+## Earlier local multi-stage milestone — 9 November
 
 The Node build/Python runtime image includes the existing React dist and runs as
 UID/GID 10001. Local checks passed for artifact exclusions, Node/npm absence,
@@ -12,7 +20,8 @@ exit 0. Unchanged rebuild reused cached layers.
 Local regression: Ruff clean, 141 formatted files; 740 backend tests passed,
 286 deselected (9.71 seconds); 356 frontend tests passed (16.62 seconds), lint clean.
 Browser interaction against this container and real database persistence were
-not tested. Docker CI and a new deployment remain pending.
+not tested. At this local checkpoint Docker CI was still pending; a new deployment
+is not claimed.
 See [Docker scope and evidence](docker.md).
 
 ## Earlier single-stage milestone — 9 November
