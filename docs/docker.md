@@ -157,3 +157,70 @@ suite ran in the local development environment, not inside the runtime image.
 No successful PostgreSQL readiness, persistence, migration, frontend build or
 in-flight transaction shutdown behavior is established by these checks.
 Destructive database tests remain restricted to guarded `opsdesk_product_test`.
+
+
+## Railway release review — 10 November 2026 (not deployed)
+
+PR #51 remains a draft until release approval. Read-only provider inspection
+found the production app follows main, currently using Railpack at source
+`f8f42be7c07bb88623e05730210b805a7d5cda3c`. Its public domain targets port 8080;
+readiness is `/health/ready`, with a 300-second timeout. The app has no volume.
+Required runtime and hosted-migration variable names exist; values were not
+printed or copied into repository files. No explicit PORT or frontend-dist
+variable overrides the image/platform defaults.
+
+The existing start and pre-deploy commands use `uv run --locked --no-dev`.
+Running that wrapper in the new non-root image failed with exit 2 because
+`/home/opsdesk/.cache/uv` cannot be created. Runtime dependencies are already
+installed at build time, so the release should invoke their executables directly.
+Docker start-command overrides also need an explicit shell for PORT expansion.
+
+### Proposed service settings (apply only at the approved release)
+
+| Setting | Prepared value |
+| --- | --- |
+| Builder | Dockerfile, repository-root `Dockerfile` |
+| Start command | `/bin/sh -c 'exec /app/.venv/bin/uvicorn opsdesk.main:create_app --factory --host 0.0.0.0 --port "${PORT:-8080}" --no-access-log'` |
+| Pre-deploy command | `/app/.venv/bin/alembic -x target=hosted upgrade head` |
+| Public domain target | Keep 8080; ensure injected PORT matches 8080 |
+| Health check | Keep `/health/ready`, timeout 300 seconds |
+| Frontend | Use image default `/app/frontend/dist`; no Node build at startup |
+
+These settings are prepared, not applied. Coordinate the setting change with the
+approved main merge so the old Railpack deployment is not rebuilt with the new
+image-specific commands. Keep existing runtime and migration secrets and guards.
+No schema revision changes in this PR; pre-deploy still performs the guarded
+hosted migration check. Do not run hosted migration commands from a local shell.
+
+No new railway.toml was introduced: current Railway documentation deprecates
+Config as Code and restricts new adoption. A service-setting change is bounded
+to this release; an infrastructure-as-code migration is outside Week 17.
+
+### Repeat the isolated command check
+
+```bash
+python3 scripts/docker/smoke.py opsdesk:week17-closure --railway
+```
+
+This uses the prepared shell command with PORT=8080, ephemeral in-process
+configuration and `--network none`. It checks static assets, liveness, expected
+unavailable-database readiness and SIGTERM. Alembic additionally generates SQL
+with `--sql` as UID 10001 without opening a database connection. Offline SQL does
+not validate hosted credentials, privileges, current revision or online guards.
+Containers are stopped/retained, not deleted.
+
+Executed on 10 November against `opsdesk:week17-closure`: all assertions passed;
+HTML/JS/CSS/favicon and liveness returned 200, readiness returned expected 503.
+Shutdown completed in 0.365 seconds with exit 0 and OOM false. Offline SQL reached
+revision `84c2f9a17d60` and COMMIT. The updated script passed Ruff lint/format checks.
+This is local command validation; Railway's Docker launch remains unverified until
+the approved deployment.
+
+After approval, verify the exact deployed commit and resolved commands, successful
+pre-deploy and readiness, HTTPS static assets, and a synthetic login/read flow.
+A local smoke check or green image build is not proof of a successful deployment.
+If the new release fails, use the prior successful Railway deployment and restore
+its resolved start/pre-deploy settings; do not reset the database or delete data.
+
+References: [Railway start-command behavior](https://docs.railway.com/deployments/start-command),
+[Config as Code status](https://docs.railway.com/config-as-code).

@@ -20,6 +20,11 @@ def docker(*args, expected=0, timeout=30):
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("image", help="Locally built image tag or ID")
+parser.add_argument(
+    "--railway",
+    action="store_true",
+    help="Check the proposed Railway start command on port 8080 and offline migrations",
+)
 args = parser.parse_args()
 prefix = f"opsdesk-smoke-{uuid.uuid4().hex[:8]}"
 runtime = f"{prefix}-runtime"
@@ -92,6 +97,38 @@ os.environ.update({
 os.execvp('uvicorn', ['uvicorn', 'opsdesk.main:create_app', '--factory',
                      '--host', '0.0.0.0', '--port', '8000', '--no-access-log'])
 """
+if args.railway:
+    launch = (
+        launch[: launch.index("os.execvp(")]
+        + """
+os.environ['PORT'] = '8080'
+os.execv('/bin/sh', ['/bin/sh', '-c',
+    'exec /app/.venv/bin/uvicorn opsdesk.main:create_app --factory '
+    '--host 0.0.0.0 --port "${PORT:-8080}" --no-access-log'])
+"""
+    )
+    sql = docker(
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--name",
+        f"{prefix}-migration",
+        args.image,
+        "/app/.venv/bin/alembic",
+        "-x",
+        "target=hosted",
+        "upgrade",
+        "head",
+        "--sql",
+    )
+    assert "84c2f9a17d60" in sql and "COMMIT;" in sql
+    print(
+        "PASS offline migration SQL; no database contacted; retained:",
+        f"{prefix}-migration",
+        flush=True,
+    )
+
 http_check = """
 import json, time
 from html.parser import HTMLParser
@@ -138,6 +175,9 @@ for path in sorted(assets.paths):
 assert fetch('/favicon.svg', 200)
 assert json.loads(fetch('/health/ready', 503))['error']['code'] == 'service_unavailable'
 """
+if args.railway:
+    http_check = http_check.replace("127.0.0.1:8000", "127.0.0.1:8080")
+
 try:
     docker(
         "run",

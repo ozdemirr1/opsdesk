@@ -1,5 +1,13 @@
 # Project status — 10 November 2026
 
+## PR #51 Railway release preparation — 10 November
+
+Read-only production review identified uv-cache permissions and Docker shell/PORT
+compatibility in the existing Railpack commands. Proposed service settings and
+repeatable offline checks are in [the Docker release guide](docker.md#railway-release-review--10-november-2026-not-deployed).
+The provider configuration, hosted database and running deployment were not
+changed. Merge/deployment approval is still required; PR #51 remains draft.
+
 ## Week 17 closure verification — 10 November
 
 Independent repeat of the current Dockerfile passed build and isolated runtime
