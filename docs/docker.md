@@ -14,6 +14,7 @@ start a container, test runtime permissions or connect to PostgreSQL. Backend
 Ruff/pytest and frontend test/build/lint checks remain separate workflows.
 
 Evidence:
+
 - Initial build at a35af07 passed (run 42683580921).
 - Controlled failure at f294911: frontend build succeeded, but Dockerfile:28
   copied from nonexistent /frontend/dist-missing and exited 1.
@@ -61,6 +62,42 @@ Supply the required runtime variables described in [configuration](development.m
 The application does not automatically load `.env`, run migrations or create
 tables. Starting the default command without configuration fails on the required
 JWT secret. Successful image creation does not imply successful database access.
+
+## Repeat the isolated checks
+
+With Docker running, execute from the repository root using a host Python 3:
+
+```bash
+docker build --progress=plain -t opsdesk:week17-closure .
+python3 scripts/docker/smoke.py opsdesk:week17-closure
+```
+
+The script uses unique container names, disables container networking and mounts
+no host files. It supplies no production/development database credentials.
+Temporary secrets are generated inside the runtime process. It verifies selected
+image paths, UID/GID 10001, absence of Node/npm on PATH and denied /app write
+access; the default command must reject missing JWT configuration. It then starts
+Uvicorn, requests HTML and its referenced assets plus health endpoints internally,
+and checks SIGTERM shutdown. Readiness 503 is expected because the loopback DB
+target is deliberately unavailable. It does not exercise a real database or browser.
+
+Containers are retained, with names printed at the start. The runtime container
+is stopped in a finally block. Use docker logs with the printed runtime name to
+inspect it. No removal, prune or volume operation is performed. If Docker itself
+stalls, a stop can fail; inspect the named container after restoring Docker access.
+
+On 10 November, an independent repeat passed with Engine 28.5.1, Compose
+v2.40.2-desktop.1 available and 7.4 GiB free before build. Build exit 0 used cached
+layers; the smoke script passed and SIGTERM completed in 0.374 seconds with exit 0.
+This is an independent verification run, not a new learner exercise or cold build.
+
+## Release boundary
+
+The hosted preview follows main. Adding this Dockerfile can change the hosted
+build path; before merging for release, review the provider start-command/port,
+frontend path and migration configuration. Local smoke and Docker build CI do
+not certify that hosted configuration. No provider settings or deployment were
+changed during Week 17 verification.
 
 ## Multi-stage local verification — 9 November 2026
 

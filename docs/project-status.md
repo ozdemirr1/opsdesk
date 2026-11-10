@@ -1,4 +1,19 @@
-# Project status — 9 November 2026
+# Project status — 10 November 2026
+
+## Week 17 closure verification — 10 November
+
+Independent repeat of the current Dockerfile passed build and isolated runtime
+checks. The reusable scripts/docker/smoke.py and Docker guide document non-root,
+missing configuration, static files, liveness and unavailable-DB readiness checks.
+SIGTERM completed in 0.374 seconds with exit 0; test containers were retained.
+No destructive DB test, real database connection or hosted deployment was used.
+Earlier source commit 5f6f291 passed backend/frontend/Docker CI; new PR checks must
+be assessed at their own head. Merge/release review remains pending because main
+is connected to the hosted preview.
+
+Week 18 preparation keeps the exact integration target guard. Compose requires
+a separate, explicitly guarded migration target; existing development/test guards
+must not be relaxed to accept a service hostname.
 
 ## Docker CI milestone — 9 November
 
