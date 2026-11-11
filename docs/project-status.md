@@ -1,6 +1,66 @@
-# Project status — 2 November 2026
+# Project status — 10 November 2026
 
-## Current delivered boundary
+## PR #51 Railway release preparation — 10 November
+
+Read-only production review identified uv-cache permissions and Docker shell/PORT
+compatibility in the existing Railpack commands. Proposed service settings and
+repeatable offline checks are in [the Docker release guide](docker.md#railway-release-review--10-november-2026-not-deployed).
+The provider configuration, hosted database and running deployment were not
+changed. Merge/deployment approval is still required; PR #51 remains draft.
+
+## Week 17 closure verification — 10 November
+
+Independent repeat of the current Dockerfile passed build and isolated runtime
+checks. The reusable scripts/docker/smoke.py and Docker guide document non-root,
+missing configuration, static files, liveness and unavailable-DB readiness checks.
+SIGTERM completed in 0.374 seconds with exit 0; test containers were retained.
+No destructive DB test, real database connection or hosted deployment was used.
+Earlier source commit 5f6f291 passed backend/frontend/Docker CI; new PR checks must
+be assessed at their own head. Merge/release review remains pending because main
+is connected to the hosted preview.
+
+Week 18 preparation keeps the exact integration target guard. Compose requires
+a separate, explicitly guarded migration target; existing development/test guards
+must not be relaxed to accept a service hostname.
+
+## Docker CI milestone — 9 November
+
+Docker build workflow added at a35af07. Controlled failure f294911 was diagnosed
+from the COPY source-path error after successful frontend compilation; recovery
+67500f2 passed Docker, backend and frontend CI. See the linked runs in the
+[Docker guide](docker.md). This is build verification, not runtime CI or a new
+deployment. PostgreSQL integration CI remains subsequent work.
+
+## Earlier local multi-stage milestone — 9 November
+
+The Node build/Python runtime image includes the existing React dist and runs as
+UID/GID 10001. Local checks passed for artifact exclusions, Node/npm absence,
+denied /app writes, static HTML/JS/CSS/favicon responses and health behavior.
+The unavailable database correctly returned readiness 503. A nonexistent frontend
+path produced the expected controlled error. SIGTERM shutdown took 0.478 seconds,
+exit 0. Unchanged rebuild reused cached layers.
+
+Local regression: Ruff clean, 141 formatted files; 740 backend tests passed,
+286 deselected (9.71 seconds); 356 frontend tests passed (16.62 seconds), lint clean.
+Browser interaction against this container and real database persistence were
+not tested. At this local checkpoint Docker CI was still pending; a new deployment
+is not claimed.
+See [Docker scope and evidence](docker.md).
+
+## Earlier single-stage milestone — 9 November
+
+A single-stage backend image now builds locally with locked runtime dependencies.
+Isolated checks verified imports, missing-secret failure, liveness 200, expected
+unavailable-database readiness 503 and SIGTERM shutdown with exit 0. Local Ruff
+checks passed (141 formatted files); non-integration pytest reported 740 passed
+and 286 deselected in 9.98 seconds. These are local results, not a new CI run.
+See [Docker scope and evidence](docker.md).
+
+At this earlier checkpoint, the image did not yet contain the frontend build or a non-root runtime.
+Docker CI, successful PostgreSQL readiness and persistence remain unverified for
+this image. No new deployment or hosted verification is claimed.
+
+## Published product boundary — 2 November
 
 OpsDesk PR #49 merged normally as `8a633d0` and is deployed on Railway. The
 protected real-data flow includes identity, Organizations, Ticket creation and

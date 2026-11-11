@@ -80,6 +80,7 @@ certify the Python dependencies. No automatic dependency upgrades were applied.
 ## Run locally and explore the design
 
 - [Backend setup, configuration, database targets and test commands](docs/development.md)
+- [Docker image and local verification](docs/docker.md)
 - [Frontend setup, architecture and browser checks](frontend/README.md)
 - [Requirements](docs/requirements.md), [domain model](docs/domain-model.md),
   [relational model](docs/relational-model.md) and [ERD](docs/erd.md)
@@ -97,9 +98,11 @@ protected workspace screens. The protected workspace flow shipped in PR #47; cre
 shipped in PR #49 and passed the 2 November hosted persistence check. See
 [project status](docs/project-status.md) for dated evidence and remaining gates.
 
-Next: review/publish the comments flow and priority API/UI, then complete the
-remaining Month 04 UI package. The revised Week 16 plan allocates 42 focused hours plus
-up to 8 contingency hours; these are targets, not shipped features. Docker/Redis remain Month 05;
+The multi-stage image now packages the existing frontend and runs non-root,
+with local static-file and health checks. Docker build CI now runs alongside
+the existing backend/frontend workflows; controlled failure and recovery are
+documented in the [Docker guide](docs/docker.md). Next: Week 17 review and handoff.
+Compose, Redis and Celery remain subsequent Month 05 work;
 AI summarization, priority/category suggestions and evaluations remain Month 06.
 The broader backend release issue R01 is still open: this smaller workspace preview
 does not fulfill its complete feature and operational acceptance criteria.

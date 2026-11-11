@@ -1,0 +1,29 @@
+name: CI fundamentals
+
+on:
+  push:
+    branches:
+      - feature/week-17-docker-foundation
+    paths:
+      - .github/workflows/ci-fundamentals.yml
+
+permissions:
+  contents: read
+
+jobs:
+  exit-code-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Successful command
+        run: |
+          echo "First step completed"
+          exit 0
+
+      - name: Deliberate failure
+        run: |
+          echo "Deliberate learning failure"
+          exit 0
+
+      - name: Following step
+        run: echo "Reached the final step"
