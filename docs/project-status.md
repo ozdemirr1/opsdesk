@@ -1,4 +1,18 @@
-# Project status — 10 November 2026
+# Project status — 11 November 2026
+
+## Local Compose role/migration foundation — 11 November
+
+The Compose DB has isolated admin/migrator/runtime credentials and a separate
+validated migration target. DB health gates migration; migration success gates
+API startup. Fresh-volume setup and wrong-target rejection were exercised;
+readiness and synthetic registration/login/organization creation passed locally.
+The initial shell bootstrap error and non-destructive recovery are documented in
+[the Compose guide](compose.md). No existing guards or hosted settings changed.
+Week 18 CI, retry/delay, persistence and restore acceptance remain pending.
+
+PR #51 previously merged as 7dfed5a and was deployed successfully on Railway on
+11 November; backend/frontend/Docker CI and HTTPS/API release checks passed.
+That release is separate from these unmerged local Compose changes.
 
 ## PR #51 Railway release preparation — 10 November
 

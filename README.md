@@ -81,6 +81,7 @@ certify the Python dependencies. No automatic dependency upgrades were applied.
 
 - [Backend setup, configuration, database targets and test commands](docs/development.md)
 - [Docker image and local verification](docs/docker.md)
+- [Local Compose setup and verification](docs/compose.md)
 - [Frontend setup, architecture and browser checks](frontend/README.md)
 - [Requirements](docs/requirements.md), [domain model](docs/domain-model.md),
   [relational model](docs/relational-model.md) and [ERD](docs/erd.md)

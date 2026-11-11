@@ -1,0 +1,73 @@
+# Local-only Compose development stack; never a destructive test target.
+name: opsdesk-compose-dev
+
+services:
+  api:
+    build: .
+    image: opsdesk:compose-dev
+    ports:
+      - "127.0.0.1:${OPSDESK_HTTP_PORT:-8089}:8000"
+    environment:
+      OPSDESK_ENVIRONMENT: development
+      OPSDESK_JWT_SECRET: ${COMPOSE_JWT_SECRET:?Set COMPOSE_JWT_SECRET locally}
+      OPSDESK_DB_HOST: db
+      OPSDESK_DB_PORT: "5432"
+      OPSDESK_DB_DATABASE: opsdesk_compose_dev
+      OPSDESK_DB_USERNAME: opsdesk_compose_app
+      OPSDESK_DB_PASSWORD: ${COMPOSE_APP_PASSWORD:?Set COMPOSE_APP_PASSWORD locally}
+      OPSDESK_DB_CONNECT_TIMEOUT_SECONDS: "2"
+    networks: [default, data]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    image: opsdesk:compose-dev
+    build: .
+    command: ["/bin/sh", "-c", "alembic -x target=compose upgrade head && python -m opsdesk.db.compose_permissions"]
+    environment:
+      OPSDESK_COMPOSE_MIGRATION_HOST: db
+      OPSDESK_COMPOSE_MIGRATION_PORT: "5432"
+      OPSDESK_COMPOSE_MIGRATION_DATABASE: opsdesk_compose_dev
+      OPSDESK_COMPOSE_MIGRATION_USERNAME: opsdesk_compose_migrator
+      OPSDESK_COMPOSE_MIGRATION_PASSWORD: ${COMPOSE_MIGRATOR_PASSWORD:?Set COMPOSE_MIGRATOR_PASSWORD locally}
+    networks: [data]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  db:
+    image: postgres:18.6-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: opsdesk_compose_dev
+      POSTGRES_PASSWORD: ${COMPOSE_POSTGRES_PASSWORD:?Set COMPOSE_POSTGRES_PASSWORD locally}
+      COMPOSE_MIGRATOR_PASSWORD: ${COMPOSE_MIGRATOR_PASSWORD:?Set COMPOSE_MIGRATOR_PASSWORD locally}
+      COMPOSE_APP_PASSWORD: ${COMPOSE_APP_PASSWORD:?Set COMPOSE_APP_PASSWORD locally}
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U postgres -d opsdesk_compose_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - ./scripts/compose/bootstrap.sql:/docker-entrypoint-initdb.d/10-opsdesk.sql:ro
+      - postgres_data:/var/lib/postgresql
+    networks: [data]
+
+  redis:
+    image: redis:8.2.11-bookworm
+    # Ephemeral connectivity exercise; durable jobs/cache policy is later work.
+    command: [redis-server, --save, "", --appendonly, "no"]
+    tmpfs:
+      - /data
+    networks: [data]
+
+networks:
+  default: {}
+  data:
+    internal: true
+
+volumes:
+  postgres_data: {}
