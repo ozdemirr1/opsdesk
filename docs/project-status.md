@@ -1,5 +1,16 @@
 # Project status — 11 November 2026
 
+## PostgreSQL CI — 13 November
+
+Feature branch implementation 72ee274 passed 5 guarded schema tests followed by
+281 data tests in separate disposable PostgreSQL services. Loopback/DB/role guards
+remain intact; CI verifies restricted role privileges before migration. Backend
+783 tests (286 deselected), frontend and Docker workflows passed at the same head.
+The initial bootstrap failure, recovery and precise scope are recorded in
+[PostgreSQL CI evidence](postgresql-ci.md). This is unmerged CI work, not a deployment
+or closure of Q03/Week 18 acceptance. Learner review remains pending.
+
+
 ## Local Compose role/migration foundation — 11 November
 
 The Compose DB has isolated admin/migrator/runtime credentials and a separate
