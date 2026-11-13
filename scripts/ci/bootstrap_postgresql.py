@@ -76,7 +76,7 @@ REVOKE ALL ON DATABASE opsdesk_product_test FROM PUBLIC;
         "SELECT pg_reload_conf();",
     )
     path = Path(os.environ["RUNNER_TEMP"]) / "opsdesk-test.env"
-    with path.open("x", opener=lambda p, flags: os.open(p, flags, 0o600)) as handle:
+    with open(path, "x", opener=lambda p, flags: os.open(p, flags, 0o600)) as handle:
         handle.write(
             "OPSDESK_TEST_DB_HOST=127.0.0.1\n"
             "OPSDESK_TEST_DB_PORT=5432\n"

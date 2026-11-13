@@ -62,3 +62,20 @@ def test_connected_target_rejected_before_migration(monkeypatch, mismatch):
         module.main()
     upgrade.assert_not_called()
     engine.dispose.assert_called_once()
+
+
+def test_bootstrap_writes_private_env_file(monkeypatch, tmp_path, capsys):
+    module = load_script("bootstrap_postgresql")
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("RUNNER_ENVIRONMENT", "github-hosted")
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.setattr(
+        module.sys, "argv", ["bootstrap_postgresql.py", "synthetic-service"]
+    )
+    monkeypatch.setattr(module, "docker", Mock(return_value=""))
+    module.main()
+    path = tmp_path / "opsdesk-test.env"
+    assert path.stat().st_mode & 0o777 == 0o600
+    assert "OPSDESK_TEST_DB_DATABASE=opsdesk_product_test" in path.read_text()
+    assert "OPSDESK_TEST_DB_PASSWORD=" in path.read_text()
+    capsys.readouterr()
