@@ -1,0 +1,96 @@
+name: PostgreSQL CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.6-bookworm
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Bootstrap isolated test database
+        env:
+          POSTGRES_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: python3 scripts/ci/bootstrap_postgresql.py "$POSTGRES_SERVICE_ID"
+
+      - name: Run guarded schema suite
+        env:
+          POSTGRES_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: |
+          docker run --name opsdesk-schema-tests \
+            --network "container:$POSTGRES_SERVICE_ID" \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly" \
+            --workdir /workspace \
+            --env-file "$RUNNER_TEMP/opsdesk-test.env" \
+            -e UV_PROJECT_ENVIRONMENT=/tmp/opsdesk-venv \
+            -e UV_PYTHON_DOWNLOADS=never \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            python:3.14.7-slim sh -eu -c '
+              python -m pip install --no-cache-dir uv==0.12.3
+              uv sync --locked --no-cache
+              uv run --locked pytest -q tests/test_database_guards.py tests/test_database_connection.py -p no:cacheprovider
+              uv run --locked python scripts/ci/run_postgresql.py schema
+            '
+
+  data:
+    needs: schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.6-bookworm
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Bootstrap isolated test database
+        env:
+          POSTGRES_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: python3 scripts/ci/bootstrap_postgresql.py "$POSTGRES_SERVICE_ID"
+
+      - name: Run guarded data suite
+        env:
+          POSTGRES_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: |
+          docker run --name opsdesk-data-tests \
+            --network "container:$POSTGRES_SERVICE_ID" \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly" \
+            --workdir /workspace \
+            --env-file "$RUNNER_TEMP/opsdesk-test.env" \
+            -e UV_PROJECT_ENVIRONMENT=/tmp/opsdesk-venv \
+            -e UV_PYTHON_DOWNLOADS=never \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            python:3.14.7-slim sh -eu -c '
+              python -m pip install --no-cache-dir uv==0.12.3
+              uv sync --locked --no-cache
+              uv run --locked pytest -q tests/test_database_guards.py tests/test_database_connection.py -p no:cacheprovider
+              uv run --locked python scripts/ci/run_postgresql.py data
+            '
