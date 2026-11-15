@@ -38,7 +38,7 @@ jobs:
       - name: Verify authenticated SQL connection
         env:
           PGHOST: 127.0.0.1
-          PGPORT: "5432"
+          PGPORT: "65432"
           PGDATABASE: week18_connection_lab
           PGUSER: postgres
           PGPASSWORD: ${{ secrets.WEEK18_POSTGRES_LAB_PASSWORD }}
