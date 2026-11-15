@@ -1,5 +1,40 @@
 # Local Compose development
 
+## Read-only acceptance — 15 November 2026
+
+With the existing stack running, from the repository root:
+
+```bash
+.venv/bin/python scripts/compose/acceptance.py
+```
+
+The command checks existing service states, migration exit 0, DB health, private
+DB/Redis ports, loopback HTTP publication, bounded readiness GET retries, liveness,
+unauthenticated profile rejection, React HTML/JS/CSS/favicon, non-root UID/GID,
+configuration separation, runtime DB identity/privileges and Redis PING. Docker
+operations have time limits; raw errors/configuration are withheld. It neither
+starts/stops containers nor changes business rows, schemas or volumes. API GETs
+produce ordinary request logs. Redirects and HTTP proxy environment settings are
+disabled for these local checks.
+
+Observed: all checks passed on 15 November. Seven focused address/asset/redirect
+tests passed. This is bounded local acceptance, not full authorization coverage,
+UI automation, production readiness or cache/rate-limit implementation.
+
+Separate learner evidence on 15 November: one synthetic Ticket and Comment were
+created through the UI. Nonempty ordered table/sequence snapshots matched before
+and after DB stop/start and after restoring a custom-format dump to a new network-none
+PostgreSQL container, opsdesk_product_test / opsdesk_product_test_runner. Dump and
+restore exited 0; next User sequence value exceeded restored IDs. No source data
+was overwritten. The isolated restore container was stopped, not removed; its
+volume and private temporary backup remain. Restore omitted ownership/grants, so
+it does not prove recovery of production roles, grants, hosted backups or permissions.
+
+The learner CI connection failure at 617d175 returned connection refused on 65432
+(exit 2); needs skipped the successor. Recovery 80f62a0 restored 5432; all five
+workflows passed. See the separate PostgreSQL CI guide for product-suite scope.
+
+
 ## Verified 11 November 2026
 
 The local stack now includes isolated role bootstrap and a one-shot migration
