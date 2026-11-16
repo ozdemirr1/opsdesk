@@ -1,4 +1,29 @@
-# Project status — 10 November 2026
+# Project status — 11 November 2026
+
+## PostgreSQL CI — 13 November
+
+Feature branch implementation 72ee274 passed 5 guarded schema tests followed by
+281 data tests in separate disposable PostgreSQL services. Loopback/DB/role guards
+remain intact; CI verifies restricted role privileges before migration. Backend
+783 tests (286 deselected), frontend and Docker workflows passed at the same head.
+The initial bootstrap failure, recovery and precise scope are recorded in
+[PostgreSQL CI evidence](postgresql-ci.md). This is unmerged CI work, not a deployment
+or closure of Q03/Week 18 acceptance. Learner review remains pending.
+
+
+## Local Compose role/migration foundation — 11 November
+
+The Compose DB has isolated admin/migrator/runtime credentials and a separate
+validated migration target. DB health gates migration; migration success gates
+API startup. Fresh-volume setup and wrong-target rejection were exercised;
+readiness and synthetic registration/login/organization creation passed locally.
+The initial shell bootstrap error and non-destructive recovery are documented in
+[the Compose guide](compose.md). No existing guards or hosted settings changed.
+Week 18 CI, retry/delay, persistence and restore acceptance remain pending.
+
+PR #51 previously merged as 7dfed5a and was deployed successfully on Railway on
+11 November; backend/frontend/Docker CI and HTTPS/API release checks passed.
+That release is separate from these unmerged local Compose changes.
 
 ## PR #51 Railway release preparation — 10 November
 

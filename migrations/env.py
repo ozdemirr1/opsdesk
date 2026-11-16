@@ -3,6 +3,11 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy.exc import SQLAlchemyError
 
+from opsdesk.db.compose import (
+    ComposeMigrationSettings,
+    create_compose_migration_engine,
+    verify_compose_connection,
+)
 from opsdesk.db.config import IntegrationDatabaseSettings
 from opsdesk.db.connection import create_integration_engine
 from opsdesk.db.development import (
@@ -63,16 +68,22 @@ def run_migrations_online() -> None:
         engine = create_integration_engine(IntegrationDatabaseSettings())
     elif target == "development":
         engine = create_development_migration_engine(DevelopmentMigrationSettings())
+    elif target == "compose":
+        engine = create_compose_migration_engine(ComposeMigrationSettings())
     elif target == "hosted":
         engine = create_hosted_migration_engine(HostedMigrationSettings())
     else:
-        raise ValueError("Unknown migration target; use test, development or hosted.")
+        raise ValueError(
+            "Unknown migration target; use test, development, hosted or compose."
+        )
 
     try:
         with engine.connect() as connection:
             with connection.begin():
                 if target == "development":
                     verify_development_connection(connection)
+                elif target == "compose":
+                    verify_compose_connection(connection)
                 elif target == "hosted":
                     verify_hosted_connection(connection)
 

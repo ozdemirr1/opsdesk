@@ -1,0 +1,56 @@
+name: PostgreSQL learning
+
+on:
+  push:
+    branches:
+      - feature/week-18-compose-postgres-ci
+    paths:
+      - .github/workflows/postgresql-learning.yml
+
+permissions: {}
+
+jobs:
+  connection-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:18.6-bookworm
+        env:
+          POSTGRES_DB: week18_connection_lab
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.WEEK18_POSTGRES_LAB_PASSWORD }}
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d week18_connection_lab"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Verify authenticated SQL connection
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGDATABASE: week18_connection_lab
+          PGUSER: postgres
+          PGPASSWORD: ${{ secrets.WEEK18_POSTGRES_LAB_PASSWORD }}
+          PGCONNECT_TIMEOUT: "3"
+        run: |
+          psql -X --no-password --set=ON_ERROR_STOP=1 \
+            --command="SELECT current_database(), current_user, 1 AS connection_ok;"
+
+  after-connection:
+    needs: connection-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Confirm dependency succeeded
+        run: echo "PostgreSQL connection check passed; this job can now run."
