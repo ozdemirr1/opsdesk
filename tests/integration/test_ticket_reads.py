@@ -224,6 +224,7 @@ def test_access_errors_do_not_disclose_ticket_existence(
         with client_for(factory, data["user"]) as client:
             for target in (
                 path(data),
+                f"/organizations/{data['org']}/ticket-stats",
                 path(data, ticket),
                 path(data, 9223372036854775807),
             ):
@@ -448,3 +449,72 @@ def test_read_uses_current_access_despite_preloaded_membership(identity_scope, c
                     if change == "membership"
                     else read.access.organization_active
                 )
+
+
+@pytest.mark.parametrize("role", ["customer", "agent", "admin", "owner"])
+def test_stats_scope_and_zero_counts_without_writes(identity_scope, role):
+    with identity_scope() as factory:
+        data = seed(factory, role)
+        add_ticket(factory, data, status="open")
+        add_ticket(factory, data, status="in_progress")
+        add_ticket(
+            factory,
+            data,
+            status="resolved",
+            requester=data["other"],
+            assignee_membership_id=data["mine"],
+        )
+        add_ticket(factory, data, foreign=True, status="closed")
+        before = snapshot(factory)
+        with client_for(factory, data["user"]) as client:
+            response = client.get(f"/organizations/{data['org']}/ticket-stats")
+            assert response.status_code == 200
+            resolved = 0 if role == "customer" else 1
+            assert response.json() == {
+                "total": 2 + resolved,
+                "by_status": {
+                    "open": 1,
+                    "in_progress": 1,
+                    "resolved": resolved,
+                    "closed": 0,
+                },
+            }
+            # The same actor is only a customer in the second organization.
+            empty = client.get(f"/organizations/{data['foreign_org']}/ticket-stats")
+            assert empty.status_code == 200
+            assert empty.json() == {
+                "total": 0,
+                "by_status": {
+                    "open": 0,
+                    "in_progress": 0,
+                    "resolved": 0,
+                    "closed": 0,
+                },
+            }
+        assert snapshot(factory) == before
+
+
+def test_stats_checks_foreign_membership_and_current_role(identity_scope):
+    with identity_scope() as factory:
+        data = seed(factory, "agent")
+        add_ticket(factory, data)
+        add_ticket(factory, data, requester=data["other"], status="closed")
+        with client_for(factory, data["other_user"]) as client:
+            denied = client.get(f"/organizations/{data['foreign_org']}/ticket-stats")
+            assert denied.status_code == 403
+        with session_scope(factory) as session:
+            stale = session.get(OrganizationMembershipRow, data["mine"])
+            assert stale.role == "agent"
+            with session_scope(factory) as writer:
+                writer.execute(
+                    update(OrganizationMembershipRow)
+                    .where(OrganizationMembershipRow.membership_id == data["mine"])
+                    .values(role="customer")
+                )
+                writer.commit()
+            service = TicketReadService(SqlAlchemyTicketReadRepository(session))
+            stats = service.stats_for_actor(
+                actor_user_id=data["user"], organization_id=data["org"]
+            )
+            assert stats.total == 1
+            assert stats.by_status["closed"] == 0

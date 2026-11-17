@@ -1,5 +1,12 @@
-from opsdesk.tickets.models import NewTicket, Ticket
-from opsdesk.tickets.read_models import TicketFilters, TicketList, TicketReadAccess
+from typing import get_args
+
+from opsdesk.tickets.models import NewTicket, Ticket, TicketStatus
+from opsdesk.tickets.read_models import (
+    TicketFilters,
+    TicketList,
+    TicketReadAccess,
+    TicketStats,
+)
 from opsdesk.tickets.repositories import (
     TicketConcurrencyError,
     TicketCreationRepository,
@@ -143,3 +150,18 @@ class TicketReadService:
         if result.ticket is None:
             raise TicketNotFoundError
         return result.ticket
+
+    def stats_for_actor(
+        self, *, actor_user_id: int, organization_id: int
+    ) -> TicketStats:
+        try:
+            result = self._repository.stats_for_actor(
+                actor_user_id=actor_user_id, organization_id=organization_id
+            )
+        except TicketConcurrencyError:
+            raise TicketReadBusyError from None
+        self._check_access(result.access)
+        counts = {
+            status: result.counts.get(status, 0) for status in get_args(TicketStatus)
+        }
+        return TicketStats(total=sum(counts.values()), by_status=counts)

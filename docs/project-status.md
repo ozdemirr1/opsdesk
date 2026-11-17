@@ -1,5 +1,20 @@
 # Project status — 11 November 2026
 
+## 17 November — uncached scoped Ticket statistics
+
+Added GET `/organizations/{organization_id}/ticket-stats` with current active
+actor/membership/Organization checks and existing requester visibility. Access
+metadata and grouped counts use one SQL snapshot; zero-result success remains
+distinct from access denial. All four statuses are returned, and query parameters
+are rejected. No frontend, Redis, migration or hosted configuration changes.
+
+Local validation: 808 non-integration tests passed (291 deselected), 286 guarded
+PostgreSQL data tests passed, Ruff passed, and Alembic found no drift. Data checks
+verified exact `opsdesk_product_test`, loopback 5432 and a restricted test role.
+The five schema tests were not rerun. Publication and CI remain separate gates;
+this entry does not claim deployment.
+
+
 ## PostgreSQL CI — 13 November
 
 Feature branch implementation 72ee274 passed 5 guarded schema tests followed by

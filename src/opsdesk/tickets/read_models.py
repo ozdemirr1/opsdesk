@@ -38,3 +38,15 @@ class TicketListRead:
 class TicketDetailRead:
     access: TicketReadAccess
     ticket: Ticket | None
+
+
+@dataclass(frozen=True, slots=True)
+class TicketStats:
+    total: int
+    by_status: dict[TicketStatus, int]
+
+
+@dataclass(frozen=True, slots=True)
+class TicketStatsRead:
+    access: TicketReadAccess
+    counts: dict[TicketStatus, int]

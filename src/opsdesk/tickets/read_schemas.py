@@ -78,3 +78,19 @@ class TicketListResponse(BaseModel):
     total_count: Annotated[int, Field(ge=0)]
     limit: Annotated[int, Field(ge=1, le=100)]
     offset: Annotated[int, Field(ge=0, le=BIGINT_MAX)]
+
+
+class TicketStatusCounts(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    open: Annotated[int, Field(ge=0)]
+    in_progress: Annotated[int, Field(ge=0)]
+    resolved: Annotated[int, Field(ge=0)]
+    closed: Annotated[int, Field(ge=0)]
+
+
+class TicketStatsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, from_attributes=True)
+
+    total: Annotated[int, Field(ge=0)]
+    by_status: TicketStatusCounts

@@ -108,3 +108,8 @@ Compose, Redis and Celery remain subsequent Month 05 work;
 AI summarization, priority/category suggestions and evaluations remain Month 06.
 The broader backend release issue R01 is still open: this smaller workspace preview
 does not fulfill its complete feature and operational acceptance criteria.
+
+
+Week 19 local development adds an uncached, authorized Ticket statistics endpoint.
+See the [statistics contract](docs/api-contract.md#week-19-scoped-ticket-statistics-17-november-2026).
+Local checks on 17 November passed 808 non-integration and 286 guarded PostgreSQL data tests; Alembic reported no schema drift. This working-branch addition is not a deployment claim.

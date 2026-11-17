@@ -5,7 +5,12 @@ from opsdesk.tickets.models import (
     Ticket,
     TicketCreationContext,
 )
-from opsdesk.tickets.read_models import TicketDetailRead, TicketFilters, TicketListRead
+from opsdesk.tickets.read_models import (
+    TicketDetailRead,
+    TicketFilters,
+    TicketListRead,
+    TicketStatsRead,
+)
 
 
 class TicketConcurrencyError(Exception):
@@ -33,6 +38,10 @@ class TicketTransaction(Protocol):
 
 
 class TicketReadRepository(Protocol):
+    def stats_for_actor(
+        self, *, actor_user_id: int, organization_id: int
+    ) -> TicketStatsRead: ...
+
     def list_for_actor(
         self,
         *,

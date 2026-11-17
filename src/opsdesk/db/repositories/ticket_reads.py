@@ -17,6 +17,7 @@ from opsdesk.tickets.read_models import (
     TicketList,
     TicketListRead,
     TicketReadAccess,
+    TicketStatsRead,
 )
 
 
@@ -118,4 +119,31 @@ class SqlAlchemyTicketReadRepository:
         return TicketDetailRead(
             access=_access(row),
             ticket=None if row["ticket_id"] is None else _ticket(row),
+        )
+
+    def stats_for_actor(
+        self, *, actor_user_id: int, organization_id: int
+    ) -> TicketStatsRead:
+        access = access_statement(actor_user_id, organization_id)
+        visible = visible_statement(actor_user_id, organization_id).cte(
+            "stats_visible_tickets"
+        )
+        counts = (
+            select(visible.c.status, func.count().label("status_count"))
+            .group_by(visible.c.status)
+            .cte("ticket_status_counts")
+        )
+        # Keep access and aggregation in one snapshot, including empty results.
+        statement = select(access, counts).select_from(access.outerjoin(counts, true()))
+        try:
+            rows = self._session.execute(statement).mappings().all()
+        except DBAPIError as error:
+            _raise_database_error(error)
+        return TicketStatsRead(
+            access=_access(rows[0]),
+            counts={
+                row["status"]: int(row["status_count"])
+                for row in rows
+                if row["status"] is not None
+            },
         )
