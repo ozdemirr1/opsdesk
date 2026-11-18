@@ -24,6 +24,7 @@ from opsdesk.identity.token_config import TokenSettings
 from opsdesk.identity.tokens import Clock, utc_now
 from opsdesk.organizations.router import router as organizations_router
 from opsdesk.tickets.router import router as tickets_router
+from opsdesk.tickets.stats_cache import StatsCacheSettings, create_cache
 
 
 def create_app(
@@ -31,6 +32,7 @@ def create_app(
     session_factory: sessionmaker[Session] | None = None,
     token_settings: TokenSettings | None = None,
     token_clock: Clock = utc_now,
+    stats_cache_settings: StatsCacheSettings | None = None,
 ) -> FastAPI:
     if settings is None:
         settings = Settings()
@@ -51,11 +53,25 @@ def create_app(
         owned_engine = create_database_engine(DatabaseSettings())
         session_factory = create_session_factory(owned_engine)
 
+    if stats_cache_settings is None:
+        stats_cache_settings = (
+            StatsCacheSettings(enabled=False)
+            if settings.environment == "test"
+            else StatsCacheSettings()
+        )
+    stats_cache = (
+        create_cache(stats_cache_settings, settings.environment)
+        if stats_cache_settings.enabled
+        else None
+    )
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             yield
         finally:
+            if stats_cache is not None:
+                stats_cache.close()
             if owned_engine is not None:
                 owned_engine.dispose()
 
@@ -68,6 +84,7 @@ def create_app(
         lifespan=lifespan,
     )
 
+    app.state.stats_cache = stats_cache
     app.state.session_factory = session_factory
     app.state.token_settings = token_settings
     app.state.token_clock = token_clock

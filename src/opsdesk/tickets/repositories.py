@@ -38,6 +38,10 @@ class TicketTransaction(Protocol):
 
 
 class TicketReadRepository(Protocol):
+    def stats_access_for_actor(
+        self, *, actor_user_id: int, organization_id: int
+    ) -> TicketStatsRead: ...
+
     def stats_for_actor(
         self, *, actor_user_id: int, organization_id: int
     ) -> TicketStatsRead: ...

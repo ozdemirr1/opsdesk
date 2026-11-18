@@ -42,7 +42,10 @@ def get_ticket_read_service(request: Request) -> Iterator[TicketReadService]:
     if factory is None:
         raise RuntimeError("Database session factory is not configured.")
     with session_scope(factory) as session:
-        yield TicketReadService(repository=SqlAlchemyTicketReadRepository(session))
+        yield TicketReadService(
+            repository=SqlAlchemyTicketReadRepository(session),
+            stats_cache=getattr(request.app.state, "stats_cache", None),
+        )
 
 
 def reject_ticket_detail_query(request: Request) -> None:

@@ -50,3 +50,4 @@ class TicketStats:
 class TicketStatsRead:
     access: TicketReadAccess
     counts: dict[TicketStatus, int]
+    scope: tuple[int, str] | None = None

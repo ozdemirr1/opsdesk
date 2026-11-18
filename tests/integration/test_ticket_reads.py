@@ -518,3 +518,56 @@ def test_stats_checks_foreign_membership_and_current_role(identity_scope):
             )
             assert stats.total == 1
             assert stats.by_status["closed"] == 0
+
+
+def test_cached_stats_skip_actual_aggregate_and_recheck_role(
+    identity_scope, integration_engine
+):
+    from opsdesk.tickets.stats_cache import TicketStatsCache
+
+    class MemoryClient:
+        def __init__(self):
+            self.values = {}
+
+        def get(self, key):
+            return self.values.get(key)
+
+        def set(self, key, value, ex):
+            self.values[key] = value
+
+    with identity_scope() as factory:
+        data = seed(factory, "agent")
+        add_ticket(factory, data)
+        add_ticket(factory, data, requester=data["other"], status="closed")
+        aggregates = []
+
+        def observe(conn, cursor, statement, parameters, context, executemany):
+            if "ticket_status_counts AS" in statement:
+                aggregates.append(statement)
+
+        event.listen(integration_engine, "before_cursor_execute", observe)
+        try:
+            with session_scope(factory) as session:
+                service = TicketReadService(
+                    SqlAlchemyTicketReadRepository(session),
+                    TicketStatsCache(MemoryClient(), "test", 30),
+                )
+
+                def read():
+                    return service.stats_for_actor(
+                        actor_user_id=data["user"], organization_id=data["org"]
+                    )
+
+                assert read().total == read().total == 2
+                assert len(aggregates) == 1
+                with session_scope(factory) as writer:
+                    writer.execute(
+                        update(OrganizationMembershipRow)
+                        .where(OrganizationMembershipRow.membership_id == data["mine"])
+                        .values(role="customer")
+                    )
+                    writer.commit()
+                assert read().total == 1
+                assert len(aggregates) == 2
+        finally:
+            event.remove(integration_engine, "before_cursor_execute", observe)
