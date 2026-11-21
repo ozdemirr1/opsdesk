@@ -532,8 +532,11 @@ def test_cached_stats_skip_actual_aggregate_and_recheck_role(
         def get(self, key):
             return self.values.get(key)
 
-        def set(self, key, value, ex):
+        def set(self, key, value, ex=None, nx=False):
+            if nx and key in self.values:
+                return False
             self.values[key] = value
+            return True
 
     with identity_scope() as factory:
         data = seed(factory, "agent")
@@ -571,3 +574,61 @@ def test_cached_stats_skip_actual_aggregate_and_recheck_role(
                 assert len(aggregates) == 2
         finally:
             event.remove(integration_engine, "before_cursor_execute", observe)
+
+
+def test_committed_creation_during_count_cannot_poison_current_generation(
+    identity_scope,
+):
+    from opsdesk.db.repositories.tickets import (
+        SqlAlchemyTicketRepository,
+        SqlAlchemyTicketTransaction,
+    )
+    from opsdesk.tickets.services import TicketCreationService
+    from opsdesk.tickets.stats_cache import TicketStatsCache
+
+    class MemoryClient:
+        def __init__(self):
+            self.values = {}
+
+        def get(self, key):
+            return self.values.get(key)
+
+        def set(self, key, value, ex=None, nx=False):
+            if nx and key in self.values:
+                return False
+            self.values[key] = value
+            return True
+
+    cache = TicketStatsCache(MemoryClient(), "test", 30)
+    with identity_scope() as factory:
+        data = seed(factory, "agent")
+        add_ticket(factory, data)
+        with session_scope(factory) as session:
+            repository = SqlAlchemyTicketReadRepository(session)
+            original = repository.stats_for_actor
+
+            def interleaved(**kwargs):
+                old = original(**kwargs)
+                # A separate committed SQL transaction runs between count and fill.
+                with session_scope(factory) as writer:
+                    creator = TicketCreationService(
+                        SqlAlchemyTicketRepository(writer),
+                        SqlAlchemyTicketTransaction(writer),
+                        cache,
+                    )
+                    creator.create(
+                        actor_user_id=data["user"],
+                        organization_id=data["org"],
+                        title="Concurrent",
+                        description="Synthetic",
+                        priority="medium",
+                    )
+                return old
+
+            repository.stats_for_actor = interleaved
+            reader = TicketReadService(repository, cache)
+            args = dict(actor_user_id=data["user"], organization_id=data["org"])
+            assert reader.stats_for_actor(**args).total == 1
+            repository.stats_for_actor = original
+            assert reader.stats_for_actor(**args).total == 2
+            assert reader.stats_for_actor(**args).total == 2

@@ -29,11 +29,14 @@ class Client:
             raise self.error
         return self.values.get(key)
 
-    def set(self, key, value, ex):
+    def set(self, key, value, ex=None, nx=False):
         if self.write_error:
             raise ConnectionError("private-host")
+        if nx and key in self.values:
+            return False
         self.sets.append((key, ex))
         self.values[key] = value
+        return True
 
 
 class Repository:
@@ -71,11 +74,11 @@ def test_hit_skips_aggregation_but_never_authorization():
     assert call(service).total == call(service).total == 2
     assert repo.reads == 1
     assert repo.authorizations == 2
-    assert client.sets[0][1] == 30
+    assert client.sets[-1][1] == 30
     repo.access = TicketReadAccess(True, False, True)
     with pytest.raises(TicketOrganizationAccessDeniedError):
         call(service)
-    assert len(client.gets) == 2
+    assert len(client.gets) == 4
 
 
 def test_user_org_and_role_scope_never_share_cached_result():
@@ -86,14 +89,14 @@ def test_user_org_and_role_scope_never_share_cached_result():
     repo.scope = (101, "agent")
     call(service)
     assert repo.reads == 4
-    assert len(set(client.gets)) == 4
+    assert len({key for key in client.gets if ":user:" in key}) == 4
 
 
 def test_scope_change_between_access_and_aggregate_does_not_cache():
     repo, client, service = setup()
     repo.result_scope = (101, "agent")
     assert call(service).total == 2
-    assert not client.sets
+    assert not [key for key, _ in client.sets if ":user:" in key]
 
 
 @pytest.mark.parametrize(
@@ -111,6 +114,7 @@ def test_read_outage_falls_back_without_attempting_write(error, caplog):
 
 def test_write_outage_does_not_lose_database_result(caplog):
     repo, client, service = setup()
+    service._stats_cache.generation(10)
     client.write_error = True
     assert call(service).total == 2
     assert "write_unavailable" in caplog.text
@@ -144,9 +148,9 @@ def test_write_outage_does_not_lose_database_result(caplog):
 )
 def test_invalid_cache_is_a_miss(value, caplog):
     repo, client, service = setup()
-    client.values[
-        "opsdesk:test:ticket-stats:v1:org:10:user:42:membership:101:scope:own"
-    ] = value
+    cache = service._stats_cache
+    generation = cache.generation(10)
+    client.values[cache.key(42, 10, repo.scope, generation)] = value
     assert call(service).total == 2
     assert repo.reads == 1
     assert "invalid_value" in caplog.text
@@ -168,3 +172,54 @@ def test_client_has_bounded_timeouts_and_no_retries():
         assert cache.client.connection_pool.max_connections == 10
     finally:
         cache.close()
+
+
+def test_delayed_fill_stays_in_old_generation():
+    repo, client, service = setup()
+    cache = service._stats_cache
+    original = repo.stats_for_actor
+
+    def interleaved_read(**kwargs):
+        old = original(**kwargs)
+        repo.counts = {"open": 3}
+        cache.invalidate(10)
+        return old
+
+    repo.stats_for_actor = interleaved_read
+    assert call(service).total == 2
+    repo.stats_for_actor = original
+    assert call(service).total == 3
+    assert call(service).total == 3
+    assert repo.reads == 2
+
+
+def test_lost_generation_never_reactivates_old_results():
+    repo, client, service = setup()
+    assert call(service).total == 2
+    cache = service._stats_cache
+    previous = cache.generation(10)
+    del client.values[cache.generation_key(10)]
+    repo.counts = {"open": 3}
+    assert call(service).total == 3
+    assert cache.generation(10) != previous
+
+
+def test_initialization_loser_uses_winners_generation():
+    client = Client()
+    cache = TicketStatsCache(client, "test", 30)
+    winner = "a" * 32
+
+    def competing_set(key, value, **kwargs):
+        client.values[key] = winner
+        return False
+
+    client.set = competing_set
+    assert cache.generation(10) == winner
+
+
+def test_invalid_generation_bypasses_result_cache():
+    repo, client, service = setup()
+    client.values[service._stats_cache.generation_key(10)] = b"invalid"
+    assert call(service).total == 2
+    assert not client.sets
+    assert len(client.gets) == 1

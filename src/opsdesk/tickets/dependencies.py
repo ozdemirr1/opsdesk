@@ -34,6 +34,7 @@ def get_ticket_creation_service(
         yield TicketCreationService(
             repository=SqlAlchemyTicketRepository(session),
             transaction=SqlAlchemyTicketTransaction(session),
+            stats_cache=getattr(request.app.state, "stats_cache", None),
         )
 
 

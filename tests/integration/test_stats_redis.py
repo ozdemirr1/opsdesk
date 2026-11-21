@@ -33,7 +33,7 @@ def cache():
 
 
 def test_real_redis_miss_hit_expiry_and_invalid_payload(cache):
-    key = cache.key(42, 10, (101, "customer"))
+    key = cache.key(42, 10, (101, "customer"), cache.generation(10))
     stats = TicketStats(0, dict(open=0, in_progress=0, resolved=0, closed=0))
     assert cache.get(key) == (None, True)
     cache.put(key, stats)
@@ -78,3 +78,17 @@ def test_unresponsive_tcp_peer_has_bounded_timeout(cache, caplog):
             stalled.close()
             finished.set()
             worker.join(timeout=3)
+
+
+def test_real_generation_rotation_isolates_delayed_fill(cache):
+    old_generation = cache.generation(10)
+    cache.invalidate(10)
+    current_generation = cache.generation(10)
+    assert current_generation != old_generation
+    old_key = cache.key(42, 10, (101, "customer"), old_generation)
+    current_key = cache.key(42, 10, (101, "customer"), current_generation)
+    old_stats = TicketStats(2, dict(open=2, in_progress=0, resolved=0, closed=0))
+    cache.put(old_key, old_stats)
+    assert cache.get(current_key) == (None, True)
+    assert cache.get(old_key) == (old_stats, True)
+    assert 0 <= cache.client.ttl(cache.generation_key(10)) <= 2

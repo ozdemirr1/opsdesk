@@ -36,9 +36,11 @@ class TicketCreationService:
         self,
         repository: TicketCreationRepository,
         transaction: TicketTransaction,
+        stats_cache=None,
     ) -> None:
         self._repository = repository
         self._transaction = transaction
+        self._stats_cache = stats_cache
 
     def create(
         self,
@@ -89,6 +91,8 @@ class TicketCreationService:
             self._transaction.rollback()
             raise
 
+        if self._stats_cache is not None:
+            self._stats_cache.invalidate(organization_id)
         return ticket
 
 
@@ -158,6 +162,7 @@ class TicketReadService:
         cache = self._stats_cache
         key = None
         writable = False
+        generation = None
         try:
             if cache is not None:
                 access = self._repository.stats_access_for_actor(
@@ -165,10 +170,14 @@ class TicketReadService:
                 )
                 self._check_access(access.access)
                 if access.scope is not None:
-                    key = cache.key(actor_user_id, organization_id, access.scope)
-                    hit, writable = cache.get(key)
-                    if hit is not None:
-                        return hit
+                    generation = cache.generation(organization_id)
+                    if generation is not None:
+                        key = cache.key(
+                            actor_user_id, organization_id, access.scope, generation
+                        )
+                        hit, writable = cache.get(key)
+                        if hit is not None:
+                            return hit
             result = self._repository.stats_for_actor(
                 actor_user_id=actor_user_id, organization_id=organization_id
             )
@@ -182,7 +191,9 @@ class TicketReadService:
         # Only cache under the scope observed with the aggregate itself.
         # A role change between the two SQL snapshots must not poison either key.
         if cache is not None and writable and result.scope is not None:
-            result_key = cache.key(actor_user_id, organization_id, result.scope)
+            result_key = cache.key(
+                actor_user_id, organization_id, result.scope, generation
+            )
             if result_key == key:
                 cache.put(key, stats)
         return stats

@@ -1,6 +1,7 @@
 """Optional, bounded Redis cache for authorized Ticket counts."""
 
 import logging
+from uuid import uuid4
 
 from pydantic import Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -47,12 +48,55 @@ class TicketStatsCache:
         self.environment = environment
         self.ttl_seconds = ttl_seconds
 
-    def key(self, actor_user_id: int, organization_id: int, scope: tuple[int, str]):
+    def generation_key(self, organization_id: int) -> str:
+        return f"opsdesk:{self.environment}:ticket-stats:v2:org:{organization_id}:generation"
+
+    def generation(self, organization_id: int) -> str | None:
+        key = self.generation_key(organization_id)
+        try:
+            raw = self.client.get(key)
+            if raw is None:
+                candidate = uuid4().hex
+                if self.client.set(key, candidate, nx=True, ex=2 * self.ttl_seconds):
+                    return candidate
+                # Another reader or a committed writer won initialization.
+                raw = self.client.get(key)
+            token = raw.decode("ascii") if isinstance(raw, bytes) else raw
+            if (
+                not isinstance(token, str)
+                or len(token) != 32
+                or any(char not in "0123456789abcdef" for char in token)
+            ):
+                logger.warning("ticket_stats_cache_generation_invalid")
+                return None
+            return token
+        except RedisError, UnicodeError:
+            logger.warning("ticket_stats_cache_generation_read_unavailable")
+            return None
+
+    def invalidate(self, organization_id: int) -> None:
+        try:
+            self.client.set(
+                self.generation_key(organization_id),
+                uuid4().hex,
+                ex=2 * self.ttl_seconds,
+            )
+        except RedisError:
+            # The database commit has already succeeded. Never retry creation.
+            logger.warning("ticket_stats_cache_invalidation_unavailable")
+
+    def key(
+        self,
+        actor_user_id: int,
+        organization_id: int,
+        scope: tuple[int, str],
+        generation: str,
+    ):
         membership_id, role = scope
         visibility = "own" if role == "customer" else "all"
         return (
-            f"opsdesk:{self.environment}:ticket-stats:v1:org:{organization_id}:"
-            f"user:{actor_user_id}:membership:{membership_id}:scope:{visibility}"
+            f"opsdesk:{self.environment}:ticket-stats:v2:org:{organization_id}:"
+            f"user:{actor_user_id}:membership:{membership_id}:scope:{visibility}:generation:{generation}"
         )
 
     def get(self, key: str) -> tuple[TicketStats | None, bool]:

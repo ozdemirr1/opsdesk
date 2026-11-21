@@ -1,9 +1,8 @@
 # Optional Ticket statistics cache
 
 Implemented for the planned 18 November exercise on 19 November 2026.
-This is a local learning increment. Cache is disabled by default; post-commit
-invalidation and stale-fill race handling remain the next exercise. Do not enable
-this increment in the hosted preview.
+Extended on 21 November for the planned 19 November generation exercise.
+Cache remains disabled by default. Hosted enablement is a separate decision.
 
 ## Request flow
 
@@ -16,8 +15,7 @@ inactive membership is denied before cache access.
 On a miss, the original aggregate reads access and counts in one SQL snapshot.
 Cache writes use the scope returned by that snapshot and occur only when it
 matches the initial scope. This prevents a between-query role change from writing
-an all-Tickets result under an own-Tickets key. It does not solve the separate
-post-commit stale-fill race or guarantee immediate revocation after a request's
+an all-Tickets result under an own-Tickets key. It does not guarantee immediate revocation after a request's
 last authorization snapshot.
 
 Malformed, oversized (>4096 bytes), negative, incomplete or inconsistent cached
@@ -59,3 +57,29 @@ an ephemeral non-default port, `OPSDESK_RUN_REDIS_TESTS=1` and
 never flushes a database. It checks expiry, invalid JSON and a TCP peer that never
 replies. The ordinary PostgreSQL CI does not opt into Redis tests yet; Redis CI is
 planned for 22 November. Never use the development Redis as this lab target.
+
+## Post-commit generation invalidation
+
+Version 2 result keys also contain an Organization generation token. Authorization
+runs before generation access. A reader captures the token before SQL aggregation
+and always fills that same generation; it never fetches a new token for an old
+result. Successful Ticket creation rotates the Organization token after commit,
+covering all customer and staff result keys. Rollback does not rotate it. Priority
+changes do not alter status counts and do not invalidate these results.
+
+Missing tokens are initialized with a fresh random UUID using SET NX. A losing
+initializer reads the winner's token. Generation metadata expires after twice the
+result TTL; expiration or eviction creates a new random token, never a reset
+counter that could reactivate old results. Invalid/unavailable generation data
+bypasses cache. Old result keys expire naturally; no key scan or bulk deletion.
+
+A deterministic SQL interleaving test commits creation after an old count but
+before its cache fill. The next read uses the new generation and sees the new
+count. A separate real Redis test verifies token rotation and old-key isolation.
+
+This is best-effort freshness, not an atomic PostgreSQL/Redis transaction. A process
+can stop after commit or Redis rotation can fail. Creation still succeeds and must
+not be retried because of that cache failure. Existing stale entries then expire
+by their own TTL; a delayed reader may fill one later, so TTL is not a hard bound
+measured from commit. Concurrent in-flight reads can return older snapshots.
+Durable invalidation delivery and stronger consistency are outside this slice.
