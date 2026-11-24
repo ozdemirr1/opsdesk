@@ -2,6 +2,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 ERROR_DEFINITIONS: dict[str, tuple[int, str]] = {
+    "rate_limited": (429, "Too many requests. Please try again later."),
     "unauthenticated": (401, "Authentication required."),
     "organization_access_denied": (403, "Organization access denied."),
     "ticket_not_found": (404, "Ticket not found."),
@@ -26,10 +27,15 @@ ERROR_DEFINITIONS: dict[str, tuple[int, str]] = {
 
 
 class ApiError(Exception):
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, *, retry_after: int | None = None) -> None:
         if code not in ERROR_DEFINITIONS:
             raise ValueError("Unknown API error code.")
 
+        if retry_after is not None and (
+            code != "rate_limited" or type(retry_after) is not int or retry_after < 1
+        ):
+            raise ValueError("Invalid retry delay")
+        self.retry_after = retry_after
         self.code = code
         super().__init__(code)
 
@@ -56,4 +62,7 @@ def error_response(
 
 
 async def handle_api_error(request: Request, exc: ApiError) -> JSONResponse:
-    return error_response(exc.code)
+    response = error_response(exc.code)
+    if exc.retry_after is not None:
+        response.headers["Retry-After"] = str(exc.retry_after)
+    return response

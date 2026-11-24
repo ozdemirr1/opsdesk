@@ -118,3 +118,9 @@ Optional Ticket statistics cache-aside is now available for local learning,
 disabled by default. See [Redis cache configuration and limits](docs/redis-cache.md).
 Post-commit invalidation and the stale-fill race remain pending; no hosted enablement
 is claimed.
+
+
+Authentication rate limiting is available as a default-disabled local opt-in.
+See [the login/register limiter contract](docs/auth-rate-limiting.md) for thresholds,
+proxy trust, fail-closed behavior and test boundaries. It is not enabled in the
+hosted preview by this increment.

@@ -19,6 +19,7 @@ from opsdesk.db.connection import create_database_engine
 from opsdesk.db.session import create_session_factory
 from opsdesk.frontend import mount_frontend
 from opsdesk.identity.passwords import PasswordHasher
+from opsdesk.identity.rate_limit import AuthLimitSettings, create_auth_limiter
 from opsdesk.identity.router import router as identity_router
 from opsdesk.identity.token_config import TokenSettings
 from opsdesk.identity.tokens import Clock, utc_now
@@ -33,6 +34,7 @@ def create_app(
     token_settings: TokenSettings | None = None,
     token_clock: Clock = utc_now,
     stats_cache_settings: StatsCacheSettings | None = None,
+    auth_limit_settings: AuthLimitSettings | None = None,
 ) -> FastAPI:
     if settings is None:
         settings = Settings()
@@ -65,11 +67,25 @@ def create_app(
         else None
     )
 
+    if auth_limit_settings is None:
+        auth_limit_settings = (
+            AuthLimitSettings(enabled=False)
+            if settings.environment == "test"
+            else AuthLimitSettings()
+        )
+    auth_limiter = (
+        create_auth_limiter(auth_limit_settings, settings.environment)
+        if auth_limit_settings.enabled
+        else None
+    )
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             yield
         finally:
+            if auth_limiter is not None:
+                auth_limiter.close()
             if stats_cache is not None:
                 stats_cache.close()
             if owned_engine is not None:
@@ -84,6 +100,7 @@ def create_app(
         lifespan=lifespan,
     )
 
+    app.state.auth_limiter = auth_limiter
     app.state.stats_cache = stats_cache
     app.state.session_factory = session_factory
     app.state.token_settings = token_settings
