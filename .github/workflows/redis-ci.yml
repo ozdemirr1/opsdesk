@@ -1,0 +1,77 @@
+name: Redis CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  redis-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      redis:
+        image: redis:8.2.11-bookworm
+        ports:
+          - 127.0.0.1::6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.12.3"
+
+      - name: Install Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run isolated Redis tests
+        id: redis_tests
+        env:
+          OPSDESK_RUN_REDIS_TESTS: "1"
+          OPSDESK_REDIS_LAB_PORT: ${{ job.services.redis.ports[6379] }}
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          uv run --locked pytest -q \
+            tests/integration/test_stats_redis.py \
+            tests/integration/test_auth_limit_redis.py \
+            -p no:cacheprovider \
+            --junitxml="$RUNNER_TEMP/redis-tests.xml"
+
+      - name: Verify tests ran without skips
+        run: |
+          uv run --locked python - "$RUNNER_TEMP/redis-tests.xml" <<'PYTHON'
+          import sys
+          from xml.etree import ElementTree
+
+          suites = list(ElementTree.parse(sys.argv[1]).getroot().iter("testsuite"))
+          totals = {
+              field: sum(int(suite.get(field, "0")) for suite in suites)
+              for field in ("tests", "failures", "errors", "skipped")
+          }
+          print(totals)
+          assert totals["tests"] > 0, "No Redis tests executed"
+          assert all(totals[field] == 0 for field in ("failures", "errors", "skipped"))
+          PYTHON
+
+      - name: Upload Redis test report
+        if: ${{ always() && steps.redis_tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: redis-test-report
+          path: ${{ runner.temp }}/redis-tests.xml
+          retention-days: 7
+          if-no-files-found: error
