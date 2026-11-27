@@ -42,7 +42,7 @@ jobs:
         id: redis_tests
         env:
           OPSDESK_RUN_REDIS_TESTS: "1"
-          OPSDESK_REDIS_LAB_PORT: ${{ job.services.redis.ports[6379] }}
+          OPSDESK_REDIS_LAB_PORT: "1" # Deliberate connection failure lab
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
           uv run --locked pytest -q \
