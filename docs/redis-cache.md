@@ -55,8 +55,10 @@ fake; real Redis transport/expiry checks are separate.
 an ephemeral non-default port, `OPSDESK_RUN_REDIS_TESTS=1` and
 `OPSDESK_REDIS_LAB_PORT`. It uses unique synthetic keys with one-second expiry and
 never flushes a database. It checks expiry, invalid JSON and a TCP peer that never
-replies. The ordinary PostgreSQL CI does not opt into Redis tests yet; Redis CI is
-planned for 22 November. Never use the development Redis as this lab target.
+replies. PostgreSQL CI keeps these opt-in Redis tests separate. The isolated
+[Redis CI workflow](redis-ci.md) now runs both cache and limiter integration
+modules; its verified recovery run passed all ten cases. Never use development
+Redis as this lab target.
 
 ## Post-commit generation invalidation
 

@@ -72,8 +72,10 @@ Opt-in tests/integration/test_auth_limit_redis.py uses an isolated loopback Redi
 port with unique synthetic namespaces; never use development Redis. It verifies
 10 concurrent attempts admit exactly 3, expiry, non-refreshing rejections, corrupt
 counter failure and real-Redis HTTP enforcement. Corrupt lab keys receive expiry;
-no database flush or resource deletion. Redis CI remains the planned 22 November
-work, so these tests are not claimed as current remote CI evidence.
+no database flush or resource deletion. The isolated [Redis CI](redis-ci.md)
+now executes these tests together with the cache integration tests. Recovery
+commit `c0d08f0` passed all ten cases without skips. This verifies CI behavior,
+not hosted limiter enablement or production proxy configuration.
 
 References: [Redis scripting](https://redis.io/docs/latest/develop/programmability/eval-intro/)
 and [Uvicorn proxy settings](https://uvicorn.dev/settings/).
