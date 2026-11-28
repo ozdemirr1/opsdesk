@@ -20,7 +20,11 @@ from opsdesk.tickets.priority import (
     PriorityStateError,
     TicketPriorityService,
 )
-from opsdesk.tickets.read_schemas import TicketListQuery, TicketListResponse
+from opsdesk.tickets.read_schemas import (
+    TicketListQuery,
+    TicketListResponse,
+    TicketStatsResponse,
+)
 from opsdesk.tickets.schemas import (
     ChangePriorityRequest,
     CreateTicketRequest,
@@ -172,3 +176,28 @@ def change_ticket_priority(
     except PriorityInputError:
         raise ApiError("validation_error") from None
     return TicketResponse.model_validate(result)
+
+
+@router.get(
+    "/organizations/{organization_id}/ticket-stats",
+    response_model=TicketStatsResponse,
+)
+def ticket_stats(
+    organization_id: PositiveBigInt,
+    current_user: Annotated[User, Depends(get_current_user)],
+    query_check: Annotated[None, Depends(reject_ticket_detail_query)],
+    service: Annotated[TicketReadService, Depends(get_ticket_read_service)],
+) -> TicketStatsResponse:
+    try:
+        result = service.stats_for_actor(
+            actor_user_id=current_user.user_id, organization_id=organization_id
+        )
+    except TicketActorUnavailableError:
+        raise ApiError("unauthenticated") from None
+    except TicketOrganizationAccessDeniedError:
+        raise ApiError("organization_access_denied") from None
+    except TicketOrganizationSuspendedError:
+        raise ApiError("organization_suspended") from None
+    except TicketReadBusyError:
+        raise ApiError("concurrency_busy") from None
+    return TicketStatsResponse.model_validate(result)

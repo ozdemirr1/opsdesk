@@ -362,3 +362,63 @@ def test_unknown_failure_rolls_back_and_is_reraised(
         )
 
     assert events == expected_events
+
+
+@pytest.mark.parametrize("fail_commit", [False, True])
+def test_invalidation_only_after_successful_commit(fail_commit):
+    events = []
+
+    class Cache:
+        def invalidate(self, organization_id):
+            assert organization_id == 100
+            events.append("invalidate")
+
+    service = TicketCreationService(
+        FakeTicketRepository(events, build_context()),
+        FakeTransaction(
+            events, failure=TicketConcurrencyError() if fail_commit else None
+        ),
+        Cache(),
+    )
+    kwargs = dict(
+        actor_user_id=42,
+        organization_id=100,
+        title="Test",
+        description="Test",
+        priority="medium",
+    )
+    if fail_commit:
+        with pytest.raises(TicketCreationBusyError):
+            service.create(**kwargs)
+        assert events == ["lock_context", "create", "commit", "rollback"]
+    else:
+        assert service.create(**kwargs).ticket_id == 300
+        assert events == ["lock_context", "create", "commit", "invalidate"]
+
+
+def test_redis_invalidation_failure_preserves_committed_creation(caplog):
+    from redis.exceptions import ConnectionError
+
+    from opsdesk.tickets.stats_cache import TicketStatsCache
+
+    class UnavailableClient:
+        def set(self, *args, **kwargs):
+            raise ConnectionError("private-secret")
+
+    events = []
+    service = TicketCreationService(
+        FakeTicketRepository(events, build_context()),
+        FakeTransaction(events),
+        TicketStatsCache(UnavailableClient(), "test", 30),
+    )
+    ticket = service.create(
+        actor_user_id=42,
+        organization_id=100,
+        title="Test",
+        description="Test",
+        priority="medium",
+    )
+    assert ticket.ticket_id == 300
+    assert events == ["lock_context", "create", "commit"]
+    assert "invalidation_unavailable" in caplog.text
+    assert "private-secret" not in caplog.text

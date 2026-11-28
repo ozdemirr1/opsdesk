@@ -4,6 +4,7 @@ from sqlalchemy import func, select, true
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
+from opsdesk.db.models.organization_membership import OrganizationMembershipRow
 from opsdesk.db.models.ticket import TicketRow
 from opsdesk.db.repositories.ticket_visibility import (
     access_statement,
@@ -17,6 +18,7 @@ from opsdesk.tickets.read_models import (
     TicketList,
     TicketListRead,
     TicketReadAccess,
+    TicketStatsRead,
 )
 
 
@@ -49,6 +51,31 @@ def _access(row: Mapping) -> TicketReadAccess:
 
 def _ticket(row: Mapping) -> Ticket:
     return Ticket(**{column.name: row[column.name] for column in TicketRow.__table__.c})
+
+
+def _stats_access(actor_user_id: int, organization_id: int):
+    access = access_statement(actor_user_id, organization_id)
+    member = OrganizationMembershipRow
+    membership = (
+        select(member.membership_id, member.role)
+        .where(
+            member.user_id == actor_user_id,
+            member.organization_id == organization_id,
+            member.is_active.is_(True),
+        )
+        .subquery()
+    )
+    return (
+        select(access, membership)
+        .select_from(access.outerjoin(membership, true()))
+        .cte("stats_access")
+    )
+
+
+def _stats_scope(row):
+    if row["membership_id"] is None:
+        return None
+    return (row["membership_id"], row["role"])
 
 
 class SqlAlchemyTicketReadRepository:
@@ -118,4 +145,45 @@ class SqlAlchemyTicketReadRepository:
         return TicketDetailRead(
             access=_access(row),
             ticket=None if row["ticket_id"] is None else _ticket(row),
+        )
+
+    def stats_access_for_actor(self, *, actor_user_id: int, organization_id: int):
+        try:
+            row = (
+                self._session.execute(
+                    select(_stats_access(actor_user_id, organization_id))
+                )
+                .mappings()
+                .one()
+            )
+        except DBAPIError as error:
+            _raise_database_error(error)
+        return TicketStatsRead(access=_access(row), counts={}, scope=_stats_scope(row))
+
+    def stats_for_actor(
+        self, *, actor_user_id: int, organization_id: int
+    ) -> TicketStatsRead:
+        access = _stats_access(actor_user_id, organization_id)
+        visible = visible_statement(actor_user_id, organization_id).cte(
+            "stats_visible_tickets"
+        )
+        counts = (
+            select(visible.c.status, func.count().label("status_count"))
+            .group_by(visible.c.status)
+            .cte("ticket_status_counts")
+        )
+        # Keep access and aggregation in one snapshot, including empty results.
+        statement = select(access, counts).select_from(access.outerjoin(counts, true()))
+        try:
+            rows = self._session.execute(statement).mappings().all()
+        except DBAPIError as error:
+            _raise_database_error(error)
+        return TicketStatsRead(
+            access=_access(rows[0]),
+            scope=_stats_scope(rows[0]),
+            counts={
+                row["status"]: int(row["status_count"])
+                for row in rows
+                if row["status"] is not None
+            },
         )

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
 from opsdesk.api.errors import ApiError
 from opsdesk.api.transport import JsonAPIRoute
@@ -10,6 +10,7 @@ from opsdesk.identity.dependencies import (
     get_registration_service,
 )
 from opsdesk.identity.models import User
+from opsdesk.identity.rate_limit import enforce_auth_limit
 from opsdesk.identity.schemas import (
     AccessTokenResponse,
     LoginRequest,
@@ -33,11 +34,13 @@ router = APIRouter(route_class=JsonAPIRoute)
 )
 def register_user(
     payload: RegisterUserRequest,
+    request: Request,
     service: Annotated[
         RegistrationService,
         Depends(get_registration_service),
     ],
 ) -> UserProfile:
+    enforce_auth_limit(request, "register")
     try:
         user = service.register_user(
             email=payload.email,
@@ -55,11 +58,13 @@ def register_user(
 )
 def login(
     payload: LoginRequest,
+    request: Request,
     service: Annotated[
         LoginService,
         Depends(get_login_service),
     ],
 ) -> AccessTokenResponse:
+    enforce_auth_limit(request, "login")
     try:
         access_token = service.login(
             email=payload.email,

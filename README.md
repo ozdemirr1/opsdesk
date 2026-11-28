@@ -108,3 +108,19 @@ Compose, Redis and Celery remain subsequent Month 05 work;
 AI summarization, priority/category suggestions and evaluations remain Month 06.
 The broader backend release issue R01 is still open: this smaller workspace preview
 does not fulfill its complete feature and operational acceptance criteria.
+
+
+Week 19 local development adds an uncached, authorized Ticket statistics endpoint.
+See the [statistics contract](docs/api-contract.md#week-19-scoped-ticket-statistics-17-november-2026).
+Local checks on 17 November passed 808 non-integration and 286 guarded PostgreSQL data tests; Alembic reported no schema drift. This working-branch addition is not a deployment claim.
+
+Optional Ticket statistics cache-aside is now available for local learning,
+disabled by default. See [Redis cache configuration and limits](docs/redis-cache.md).
+Post-commit invalidation and the stale-fill race remain pending; no hosted enablement
+is claimed.
+
+
+Authentication rate limiting is available as a default-disabled local opt-in.
+See [the login/register limiter contract](docs/auth-rate-limiting.md) for thresholds,
+proxy trust, fail-closed behavior and test boundaries. It is not enabled in the
+hosted preview by this increment.

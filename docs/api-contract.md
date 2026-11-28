@@ -676,3 +676,20 @@ Dependent implementations must add the listed behavior and database tests.
 
 These references explain protocol and database behavior. OpsDesk's roles, no-op
 permissions, response shapes, and release boundaries remain product decisions.
+
+
+## Week 19: scoped Ticket statistics (17 November 2026)
+
+`GET /organizations/{organization_id}/ticket-stats` requires an active authenticated
+User and active membership in an active Organization. It accepts no query parameters.
+Customers count only Tickets requested by their own membership; agent/admin/owner
+count all Tickets in that Organization. Creator and assignee do not widen customer
+visibility. Existing authentication, Organization access/suspension, validation and
+safe database/concurrency error contracts remain unchanged.
+
+Response: `{"total": 3, "by_status": {"open": 2, "in_progress": 1, "resolved": 0, "closed": 0}}`.
+All four statuses are always present. Authorized empty results return zero counts;
+access denial must not become an empty success. Authorization state and aggregation
+share one SQL statement snapshot through the existing Ticket visibility query.
+There is no cache, pagination, frontend change or migration in this increment.
+Real PostgreSQL acceptance must be run against guarded `opsdesk_product_test`.

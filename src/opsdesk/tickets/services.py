@@ -1,5 +1,12 @@
-from opsdesk.tickets.models import NewTicket, Ticket
-from opsdesk.tickets.read_models import TicketFilters, TicketList, TicketReadAccess
+from typing import get_args
+
+from opsdesk.tickets.models import NewTicket, Ticket, TicketStatus
+from opsdesk.tickets.read_models import (
+    TicketFilters,
+    TicketList,
+    TicketReadAccess,
+    TicketStats,
+)
 from opsdesk.tickets.repositories import (
     TicketConcurrencyError,
     TicketCreationRepository,
@@ -29,9 +36,11 @@ class TicketCreationService:
         self,
         repository: TicketCreationRepository,
         transaction: TicketTransaction,
+        stats_cache=None,
     ) -> None:
         self._repository = repository
         self._transaction = transaction
+        self._stats_cache = stats_cache
 
     def create(
         self,
@@ -82,6 +91,8 @@ class TicketCreationService:
             self._transaction.rollback()
             raise
 
+        if self._stats_cache is not None:
+            self._stats_cache.invalidate(organization_id)
         return ticket
 
 
@@ -94,8 +105,9 @@ class TicketReadBusyError(Exception):
 
 
 class TicketReadService:
-    def __init__(self, repository: TicketReadRepository) -> None:
+    def __init__(self, repository: TicketReadRepository, stats_cache=None) -> None:
         self._repository = repository
+        self._stats_cache = stats_cache
 
     @staticmethod
     def _check_access(access: TicketReadAccess) -> None:
@@ -143,3 +155,45 @@ class TicketReadService:
         if result.ticket is None:
             raise TicketNotFoundError
         return result.ticket
+
+    def stats_for_actor(
+        self, *, actor_user_id: int, organization_id: int
+    ) -> TicketStats:
+        cache = self._stats_cache
+        key = None
+        writable = False
+        generation = None
+        try:
+            if cache is not None:
+                access = self._repository.stats_access_for_actor(
+                    actor_user_id=actor_user_id, organization_id=organization_id
+                )
+                self._check_access(access.access)
+                if access.scope is not None:
+                    generation = cache.generation(organization_id)
+                    if generation is not None:
+                        key = cache.key(
+                            actor_user_id, organization_id, access.scope, generation
+                        )
+                        hit, writable = cache.get(key)
+                        if hit is not None:
+                            return hit
+            result = self._repository.stats_for_actor(
+                actor_user_id=actor_user_id, organization_id=organization_id
+            )
+        except TicketConcurrencyError:
+            raise TicketReadBusyError from None
+        self._check_access(result.access)
+        counts = {
+            status: result.counts.get(status, 0) for status in get_args(TicketStatus)
+        }
+        stats = TicketStats(total=sum(counts.values()), by_status=counts)
+        # Only cache under the scope observed with the aggregate itself.
+        # A role change between the two SQL snapshots must not poison either key.
+        if cache is not None and writable and result.scope is not None:
+            result_key = cache.key(
+                actor_user_id, organization_id, result.scope, generation
+            )
+            if result_key == key:
+                cache.put(key, stats)
+        return stats

@@ -224,6 +224,7 @@ def test_access_errors_do_not_disclose_ticket_existence(
         with client_for(factory, data["user"]) as client:
             for target in (
                 path(data),
+                f"/organizations/{data['org']}/ticket-stats",
                 path(data, ticket),
                 path(data, 9223372036854775807),
             ):
@@ -448,3 +449,186 @@ def test_read_uses_current_access_despite_preloaded_membership(identity_scope, c
                     if change == "membership"
                     else read.access.organization_active
                 )
+
+
+@pytest.mark.parametrize("role", ["customer", "agent", "admin", "owner"])
+def test_stats_scope_and_zero_counts_without_writes(identity_scope, role):
+    with identity_scope() as factory:
+        data = seed(factory, role)
+        add_ticket(factory, data, status="open")
+        add_ticket(factory, data, status="in_progress")
+        add_ticket(
+            factory,
+            data,
+            status="resolved",
+            requester=data["other"],
+            assignee_membership_id=data["mine"],
+        )
+        add_ticket(factory, data, foreign=True, status="closed")
+        before = snapshot(factory)
+        with client_for(factory, data["user"]) as client:
+            response = client.get(f"/organizations/{data['org']}/ticket-stats")
+            assert response.status_code == 200
+            resolved = 0 if role == "customer" else 1
+            assert response.json() == {
+                "total": 2 + resolved,
+                "by_status": {
+                    "open": 1,
+                    "in_progress": 1,
+                    "resolved": resolved,
+                    "closed": 0,
+                },
+            }
+            # The same actor is only a customer in the second organization.
+            empty = client.get(f"/organizations/{data['foreign_org']}/ticket-stats")
+            assert empty.status_code == 200
+            assert empty.json() == {
+                "total": 0,
+                "by_status": {
+                    "open": 0,
+                    "in_progress": 0,
+                    "resolved": 0,
+                    "closed": 0,
+                },
+            }
+        assert snapshot(factory) == before
+
+
+def test_stats_checks_foreign_membership_and_current_role(identity_scope):
+    with identity_scope() as factory:
+        data = seed(factory, "agent")
+        add_ticket(factory, data)
+        add_ticket(factory, data, requester=data["other"], status="closed")
+        with client_for(factory, data["other_user"]) as client:
+            denied = client.get(f"/organizations/{data['foreign_org']}/ticket-stats")
+            assert denied.status_code == 403
+        with session_scope(factory) as session:
+            stale = session.get(OrganizationMembershipRow, data["mine"])
+            assert stale.role == "agent"
+            with session_scope(factory) as writer:
+                writer.execute(
+                    update(OrganizationMembershipRow)
+                    .where(OrganizationMembershipRow.membership_id == data["mine"])
+                    .values(role="customer")
+                )
+                writer.commit()
+            service = TicketReadService(SqlAlchemyTicketReadRepository(session))
+            stats = service.stats_for_actor(
+                actor_user_id=data["user"], organization_id=data["org"]
+            )
+            assert stats.total == 1
+            assert stats.by_status["closed"] == 0
+
+
+def test_cached_stats_skip_actual_aggregate_and_recheck_role(
+    identity_scope, integration_engine
+):
+    from opsdesk.tickets.stats_cache import TicketStatsCache
+
+    class MemoryClient:
+        def __init__(self):
+            self.values = {}
+
+        def get(self, key):
+            return self.values.get(key)
+
+        def set(self, key, value, ex=None, nx=False):
+            if nx and key in self.values:
+                return False
+            self.values[key] = value
+            return True
+
+    with identity_scope() as factory:
+        data = seed(factory, "agent")
+        add_ticket(factory, data)
+        add_ticket(factory, data, requester=data["other"], status="closed")
+        aggregates = []
+
+        def observe(conn, cursor, statement, parameters, context, executemany):
+            if "ticket_status_counts AS" in statement:
+                aggregates.append(statement)
+
+        event.listen(integration_engine, "before_cursor_execute", observe)
+        try:
+            with session_scope(factory) as session:
+                service = TicketReadService(
+                    SqlAlchemyTicketReadRepository(session),
+                    TicketStatsCache(MemoryClient(), "test", 30),
+                )
+
+                def read():
+                    return service.stats_for_actor(
+                        actor_user_id=data["user"], organization_id=data["org"]
+                    )
+
+                assert read().total == read().total == 2
+                assert len(aggregates) == 1
+                with session_scope(factory) as writer:
+                    writer.execute(
+                        update(OrganizationMembershipRow)
+                        .where(OrganizationMembershipRow.membership_id == data["mine"])
+                        .values(role="customer")
+                    )
+                    writer.commit()
+                assert read().total == 1
+                assert len(aggregates) == 2
+        finally:
+            event.remove(integration_engine, "before_cursor_execute", observe)
+
+
+def test_committed_creation_during_count_cannot_poison_current_generation(
+    identity_scope,
+):
+    from opsdesk.db.repositories.tickets import (
+        SqlAlchemyTicketRepository,
+        SqlAlchemyTicketTransaction,
+    )
+    from opsdesk.tickets.services import TicketCreationService
+    from opsdesk.tickets.stats_cache import TicketStatsCache
+
+    class MemoryClient:
+        def __init__(self):
+            self.values = {}
+
+        def get(self, key):
+            return self.values.get(key)
+
+        def set(self, key, value, ex=None, nx=False):
+            if nx and key in self.values:
+                return False
+            self.values[key] = value
+            return True
+
+    cache = TicketStatsCache(MemoryClient(), "test", 30)
+    with identity_scope() as factory:
+        data = seed(factory, "agent")
+        add_ticket(factory, data)
+        with session_scope(factory) as session:
+            repository = SqlAlchemyTicketReadRepository(session)
+            original = repository.stats_for_actor
+
+            def interleaved(**kwargs):
+                old = original(**kwargs)
+                # A separate committed SQL transaction runs between count and fill.
+                with session_scope(factory) as writer:
+                    creator = TicketCreationService(
+                        SqlAlchemyTicketRepository(writer),
+                        SqlAlchemyTicketTransaction(writer),
+                        cache,
+                    )
+                    creator.create(
+                        actor_user_id=data["user"],
+                        organization_id=data["org"],
+                        title="Concurrent",
+                        description="Synthetic",
+                        priority="medium",
+                    )
+                return old
+
+            repository.stats_for_actor = interleaved
+            reader = TicketReadService(repository, cache)
+            args = dict(actor_user_id=data["user"], organization_id=data["org"])
+            assert reader.stats_for_actor(**args).total == 1
+            repository.stats_for_actor = original
+            assert reader.stats_for_actor(**args).total == 2
+            assert reader.stats_for_actor(**args).total == 2

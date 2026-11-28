@@ -1,4 +1,40 @@
-# Project status — 11 November 2026
+# Project status — 28 November 2026
+
+## Week 19 acceptance review — planned 23 November
+
+Scoped statistics, optional Redis cache with post-commit generation invalidation,
+and optional atomic login/register limiting have test coverage on the Week 19
+feature branch. Cache and limiter remain disabled by default.
+
+At `c0d08f0`, all five CI workflows passed. Backend: 854 non-integration tests,
+Ruff and formatting. PostgreSQL data: 288 passed, ten Redis cases intentionally
+skipped; guarded schema checks passed with no drift. The separate Redis job
+passed all ten cases with no skips. Frontend and Docker checks also passed.
+See [Redis CI evidence](redis-ci.md) for the controlled failure/recovery links.
+
+Generation invalidation is best-effort, not an atomic database/cache transaction.
+The real-Redis HTTP limiter tests use a recording business service; PostgreSQL
+behavior is verified separately. These checks do not claim a hosted end-to-end
+test, production Redis capacity review, or a live proxy trust review.
+
+Final weekly learner review, publication of this documentation checkpoint and
+normal PR review/merge remain pending. No live enablement or deployment occurred.
+Earlier dated entries below preserve the evidence available at those times.
+
+## 17 November — uncached scoped Ticket statistics
+
+Added GET `/organizations/{organization_id}/ticket-stats` with current active
+actor/membership/Organization checks and existing requester visibility. Access
+metadata and grouped counts use one SQL snapshot; zero-result success remains
+distinct from access denial. All four statuses are returned, and query parameters
+are rejected. No frontend, Redis, migration or hosted configuration changes.
+
+Local validation: 808 non-integration tests passed (291 deselected), 286 guarded
+PostgreSQL data tests passed, Ruff passed, and Alembic found no drift. Data checks
+verified exact `opsdesk_product_test`, loopback 5432 and a restricted test role.
+The five schema tests were not rerun. Publication and CI remain separate gates;
+this entry does not claim deployment.
+
 
 ## PostgreSQL CI — 13 November
 
